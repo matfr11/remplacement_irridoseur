@@ -262,7 +262,7 @@ Les autres paramètres sont configurables depuis l'onglet **⚙️ Config** de l
 | **PR-01** | ✅ Fait | Structure projet, CMakeLists, sdkconfig, squelettes modules |
 | **PR-02** | ✅ Fait | GPIO handler complet, ISR vitesse, mode IRRITESTEUR |
 | **PR-03** | ✅ Fait | Table constructeur Irrifrance 13 entrées, lookup vitesse cible |
-| **PR-04** | 🔲 À faire | Calculs mécaniques, auto-calibration, T_attente feedforward |
+| **PR-04** | ✅ Fait | Calculs mécaniques, auto-calibration poumon, T_attente feedforward, calibration capteur |
 | **PR-05** | 🔲 À faire | Machine d'états complète, sous-états poumon, fail-safe |
 | **PR-06** | 🔲 À faire | NVS complet, 5 programmes, paramètres machine |
 | **PR-07** | 🔲 À faire | WiFi AP, WebSocket, synchronisation heure |
