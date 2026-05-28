@@ -1,0 +1,44 @@
+# sdkconfig.defaults — Irrifrance ESP32
+# Valeurs par défaut compilées dans le firmware.
+# Modifiables via "idf.py menuconfig" mais ces valeurs seront ré-appliquées
+# à chaque "idf.py set-target" ou suppression du sdkconfig généré.
+
+# --- FreeRTOS ---
+# Tick à 1ms pour timing précis des cycles poumon et anti-rebond ISR
+CONFIG_FREERTOS_HZ=1000
+CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH=4096
+
+# --- Tâche principale ---
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# --- Table de partition ---
+# Large app single : flash 4MB, max ~3.5MB pour le firmware (HTML embarqué PR-08)
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+
+# --- WiFi ---
+# Mode Access Point uniquement — pas de réseau externe sur le terrain
+CONFIG_ESP_WIFI_SOFTAP_SUPPORT=y
+CONFIG_ESP32_WIFI_STATIC_RX_BUFFER_NUM=4
+CONFIG_ESP32_WIFI_DYNAMIC_RX_BUFFER_NUM=8
+# SSID et mot de passe configurés dans wifi_ap_init() (config_nvs ou hardcodé PR-07)
+# SSID    : Irrifrance-ESP32
+# Mot de passe : irrigation
+# Canal   : 6
+# IP fixe : 192.168.4.1
+
+# --- mDNS ---
+# Accessible via http://irrifrance.local depuis le navigateur mobile
+CONFIG_MDNS_ENABLED=y
+CONFIG_LWIP_LOCAL_HOSTNAME="irrifrance"
+
+# --- Logs ---
+# Niveau INFO par défaut — réduire à WARNING pour la prod terrain
+CONFIG_LOG_DEFAULT_LEVEL=3
+
+# --- NVS ---
+# Pas de chiffrement NVS (pas de secure boot sur cette cible)
+# CONFIG_NVS_ENCRYPTION is not set
+
+# --- Tests unitaires ---
+# Désactivé par défaut — activer avec "idf.py menuconfig" pour le dev
+# CONFIG_IRRI_ENABLE_TESTS is not set
