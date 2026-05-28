@@ -20,8 +20,9 @@ if(CONFIG_IRRI_ENABLE_TESTS)
     list(APPEND SRCS
         "test/test_calculs_hydraulique.c"
         "test/test_calculs_mecanique.c"
-        "test/test_state_machine.c"
         "test/test_gpio.c"
+        "test/test_regulation.c"
+        "test/test_state_machine.c"
     )
 endif()
 

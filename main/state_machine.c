@@ -293,6 +293,7 @@ void tick_state_machine(void)
 
                 if (dist_cycle > 0.0f) {
                     float dist_moy = regulation_update_dist_par_cycle(dist_cycle);
+                    s_cfg_machine.dist_cycle_nvs = dist_moy;
                     s_longueur_enroulee += dist_cycle;
 
                     // Recalcul T_attente feedforward
@@ -355,6 +356,7 @@ void tick_state_machine(void)
         if (!e.fin_course) {
             s_longueur_enroulee = 0.0f;
             regulation_reset_calibration();
+            config_nvs_sauver_machine(&s_cfg_machine);
             memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
             entrer_etat(ETAT_VEILLE);
         }
@@ -366,6 +368,16 @@ void tick_state_machine(void)
         break;
 
     }  // switch etat
+
+    // Mode dégradé A — estimation vitesse depuis cycles poumon
+    if (s_cfg_machine.mode_deg_vitesse && s_etat == ETAT_EN_COURS) {
+        float t_cycle_s = (s_t_remplissage_ms + s_t_attente_ms) / 1000.0f
+                        + s_cfg_machine.t_vidange_s;
+        float v_est = (t_cycle_s > 0.5f)
+                    ? (s_cfg_machine.dist_cycle_nvs * 60.0f / t_cycle_s)
+                    : 0.0f;
+        gpio_handler_set_vitesse_estimee(v_est);
+    }
 
     // Mise à jour statut diffusé
     s_status.etat         = s_etat;
@@ -436,6 +448,7 @@ void state_machine_cmd_reset(void)
         config_nvs_sauver_urgence("");
         s_longueur_enroulee = 0.0f;
         regulation_reset_calibration();
+        config_nvs_sauver_machine(&s_cfg_machine);
         entrer_etat(ETAT_VEILLE);
     }
     xSemaphoreGive(s_mutex);
