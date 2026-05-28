@@ -50,5 +50,54 @@ void test_calculs_mecanique_run(void)
     if (!ok) ESP_LOGE(TAG, "FAIL etalonnage facteur 1.05 devrait etre accepté");
     else     assert_near(1.05f, facteur, "facteur etalonnage 1.05");
 
+    // dist_pulse étage 4 : 2π × 0.977 / 10 ≈ 0.6139m
+    float dp4 = calcul_dist_pulse_m(r4);
+    assert_near(0.6139f, dp4, "dist pulse etage 4");
+
+    // dist_pulse étage 1 : 2π × 0.731 / 10 ≈ 0.4593m
+    float dp1 = calcul_dist_pulse_m(r1);
+    assert_near(0.4593f, dp1, "dist pulse etage 1");
+
+    // longueur étage 1 : 13.45 × 2π × 0.731 ≈ 61.78m
+    float l1 = calcul_longueur_etage_m(1, &profil);
+    assert_near(61.78f, l1, "longueur etage 1");
+
+    // cumul 4 étages ≈ 288.68m (géométrie tambour, ≠ 330m physique)
+    float l_tot = 0.0f;
+    for (int n = 1; n <= 4; n++) l_tot += calcul_longueur_etage_m(n, &profil);
+    if (fabsf(l_tot - 288.68f) > 0.1f) {
+        ESP_LOGE(TAG, "FAIL longueur totale 4 etages : attendu~288.68 recu=%.2f", l_tot);
+    } else {
+        ESP_LOGI(TAG, "PASS longueur totale 4 etages : %.2fm", l_tot);
+    }
+
+    // étage courant 70m → étage 2 (L1≈61.78m < 70m ≤ L1+L2≈130.48m)
+    int e70 = calcul_etage_courant(70.0f, &profil);
+    assert_near(2.0f, (float)e70, "etage courant 70m");
+
+    // étage courant 330m > cumul géo (≈288.68m) → clamp nb_etages = 4
+    int e330 = calcul_etage_courant(330.0f, &profil);
+    assert_near(4.0f, (float)e330, "etage courant 330m clamp");
+
+    // C1 : impulsions insuffisantes (49 < 50) → refus
+    ok = calcul_facteur_etalonnage(100.0f, 105.0f, 49, &facteur);
+    if (ok) ESP_LOGE(TAG, "FAIL C1 impulsions 49 devrait etre refusé");
+    else    ESP_LOGI(TAG, "PASS C1 impulsions 49 refusé");
+
+    // C2 : facteur < 0.5 (40/100 = 0.4) → refus
+    ok = calcul_facteur_etalonnage(100.0f, 40.0f, 100, &facteur);
+    if (ok) ESP_LOGE(TAG, "FAIL C2 facteur 0.4 devrait etre refusé");
+    else    ESP_LOGI(TAG, "PASS C2 facteur 0.4 refusé");
+
+    // C3 : écart > 30% (135/100 = 1.35, |1.35-1.0|=0.35 > 0.30) → refus
+    ok = calcul_facteur_etalonnage(100.0f, 135.0f, 100, &facteur);
+    if (ok) ESP_LOGE(TAG, "FAIL C3 ecart 35%% devrait etre refusé");
+    else    ESP_LOGI(TAG, "PASS C3 ecart 35%% refusé");
+
+    // C4 : longueur théorique < 1m → refus
+    ok = calcul_facteur_etalonnage(0.5f, 0.6f, 100, &facteur);
+    if (ok) ESP_LOGE(TAG, "FAIL C4 longueur theo 0.5m devrait etre refusé");
+    else    ESP_LOGI(TAG, "PASS C4 longueur theo 0.5m refusé");
+
     ESP_LOGI(TAG, "=== Fin tests mecanique ===");
 }
