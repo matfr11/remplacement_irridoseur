@@ -1,0 +1,7 @@
+# Fins de ligne : LF partout (fichiers C embarqués, cross-platform)
+* text=auto eol=lf
+
+# Binaires — pas de conversion
+*.pdf binary
+*.png binary
+*.jpg binary

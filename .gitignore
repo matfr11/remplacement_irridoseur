@@ -1,0 +1,30 @@
+# ESP-IDF — fichiers générés à la compilation
+build/
+sdkconfig
+.cache/
+
+# Composants gérés par idf component manager
+managed_components/
+dependencies.lock
+
+# Fichiers de configuration IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Système
+.DS_Store
+Thumbs.db
+
+# Python (scripts IDF)
+__pycache__/
+*.pyc
+*.pyo
+
+# Documents PDF de référence (binaires — ne pas versionner)
+*.pdf
+
+# Note : sdkconfig.defaults est VOLONTAIREMENT versionné (paramètres projet)
+# Note : sdkconfig (fichier généré par menuconfig) est ignoré
