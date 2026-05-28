@@ -5,6 +5,17 @@ Format : [PR-XX] — date — description
 
 ---
 
+## [PR-04] — 2026-05-28 — Calculs mécaniques : suite de tests complete
+
+### test/test_calculs_mecanique.c — 16 tests (etait 6)
+
+- `calcul_dist_pulse_m` : tests etage 1 (≈0.4593m) et etage 4 (≈0.6139m)
+- `calcul_longueur_etage_m` : valeur etage 1 (≈61.78m) + cumul 4 etages (≈288.68m)
+- `calcul_etage_courant` : 70m → etage 2, 330m → clamp etage 4
+- `calcul_facteur_etalonnage` : couverture complete des 4 conditions de refus (C1 impulsions < 50, C2 facteur < 0.5, C3 ecart > 30%, C4 longueur theorique < 1m)
+
+---
+
 ## [PR-03] — 2026-05-28 — Calculs hydrauliques — double interpolation abaque
 
 ### calculs_hydraulique.h
