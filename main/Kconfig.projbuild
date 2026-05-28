@@ -1,0 +1,11 @@
+menu "Irrifrance Configuration"
+
+    config IRRI_ENABLE_TESTS
+        bool "Activer les tests unitaires au démarrage"
+        default n
+        help
+            Si activé, les tests unitaires de tous les modules sont exécutés
+            dans app_main() avant le démarrage normal du système.
+            À désactiver impérativement pour le déploiement terrain.
+
+endmenu
