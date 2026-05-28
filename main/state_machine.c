@@ -122,6 +122,13 @@ void tick_state_machine(void)
 
     entrees_t e;
     gpio_handler_lire_entrees(&e);
+#ifdef CONFIG_IRRI_ENABLE_TESTS
+    if (s_sim_active) {
+        e.pression_ok  = s_sim_pression;
+        e.fin_course   = s_sim_fin_course;
+        e.secu_spires  = s_sim_secu_spires;
+    }
+#endif
     int64_t t_dans_etat = now_ms() - s_t_etat_ms;
 
     switch (s_etat) {
@@ -488,11 +495,20 @@ void state_machine_declencher_urgence(const char *raison)
 // Hooks de test
 // ---------------------------------------------------------------------------
 #ifdef CONFIG_IRRI_ENABLE_TESTS
+static bool s_sim_active      = false;
+static bool s_sim_pression    = true;
+static bool s_sim_fin_course  = false;
+static bool s_sim_secu_spires = false;
+
 void state_machine_test_injecter_etat(etat_machine_t etat)
 {
+    s_sim_active      = true;
+    s_sim_pression    = true;
+    s_sim_fin_course  = false;
+    s_sim_secu_spires = false;
     entrer_etat(etat);
 }
-void state_machine_test_set_pression(bool pression_ok)  { (void)pression_ok; }
-void state_machine_test_set_fin_course(bool active)      { (void)active; }
-void state_machine_test_set_secu_spires(bool active)     { (void)active; }
+void state_machine_test_set_pression(bool pression_ok)  { s_sim_pression    = pression_ok; }
+void state_machine_test_set_fin_course(bool active)      { s_sim_fin_course  = active; }
+void state_machine_test_set_secu_spires(bool active)     { s_sim_secu_spires = active; }
 #endif

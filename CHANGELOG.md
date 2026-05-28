@@ -5,6 +5,24 @@ Format : [PR-XX] — date — description
 
 ---
 
+## [PR-05] — 2026-05-28 — Machine d'états : stubs test + 11 tests simulation
+
+### state_machine.c
+
+- Variables de simulation statiques (s_sim_active/pression/fin_course/secu_spires) sous CONFIG_IRRI_ENABLE_TESTS
+- `state_machine_test_injecter_etat()` : active la simulation avec valeurs sures par defaut
+- `state_machine_test_set_pression/fin_course/secu_spires()` : implementes (etaient vides)
+- Override des entrees GPIO dans tick_state_machine quand sim active
+
+### test/test_state_machine.c — 11 tests (etait 3)
+
+- Injection directe de chaque etat principal (EN_COURS, OUVERTURE_CANON, TEMPO_ARRIVEE, PAUSE_PRESSION)
+- Urgence depuis EN_COURS et PAUSE_PRESSION → ARRET_URGENCE → reset → VEILLE
+- cmd_stop depuis EN_COURS → ARRET_FINAL
+- cmd_stop noop depuis ARRET_URGENCE (reste en urgence)
+
+---
+
 ## [PR-04] — 2026-05-28 — Calculs mécaniques : suite de tests complete
 
 ### test/test_calculs_mecanique.c — 16 tests (etait 6)
