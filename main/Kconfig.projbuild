@@ -1,11 +1,11 @@
-menu "Irrifrance Configuration"
+menu "Irrifrance ESP32"
 
     config IRRI_ENABLE_TESTS
-        bool "Activer les tests unitaires au démarrage"
+        bool "Activer les tests unitaires embarqués"
         default n
         help
-            Si activé, les tests unitaires de tous les modules sont exécutés
-            dans app_main() avant le démarrage normal du système.
-            À désactiver impérativement pour le déploiement terrain.
+            Active la compilation des fichiers test/test_*.c.
+            Les tests s'exécutent au démarrage (app_main).
+            À désactiver impérativement en production.
 
 endmenu

@@ -11,9 +11,14 @@ CONFIG_FREERTOS_TIMER_TASK_STACK_DEPTH=4096
 # --- Tâche principale ---
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
 
-# --- Table de partition ---
-# Large app single : flash 4MB, max ~3.5MB pour le firmware (HTML embarqué PR-08)
-CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+# --- Flash ---
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="4MB"
+
+# --- Table de partition OTA ---
+# Partition custom : 2 partitions app (OTA), NVS, SPIFFS (PR-08)
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
 # --- WiFi ---
 # Mode Access Point uniquement — pas de réseau externe sur le terrain

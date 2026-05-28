@@ -1,127 +1,163 @@
 #include "gpio_handler.h"
+#include "gpio_config.h"
 #include "driver/gpio.h"
 #include "esp_timer.h"
-#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_log.h"
+#include <string.h>
 
-static const char *TAG = "gpio";
+// Implémentation complète — PR-02
+static const char *TAG = "gpio_handler";
 
-// Variable globale capteur vitesse — accessible depuis ISR (IRAM) et tâche
-capteur_vitesse_t g_capteur_vitesse = {0};
+// --- Vitesse : fenêtre glissante sur N impulsions ---
+#define VITESSE_FENETRE_MAX  20
 
-// Sens des contacteurs — chargé depuis NVS via gpio_handler_set_sens()
-// Défaut : tous NO (actif bas), cohérent avec schéma câblage pull-up 10kΩ
-static gpio_sens_t s_sens = {
-    .contact_no_fin_course      = true,
-    .contact_no_securite_spires = true,
-    .contact_no_poumon          = true,
-    .contact_no_pressostat      = true,
-};
+static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 
-// Lecture d'un contact en tenant compte de son type NO/NC
-static inline bool lire_contact(gpio_num_t pin, bool contact_no)
+static volatile int64_t  s_ts_pulses[VITESSE_FENETRE_MAX];  // timestamps µs
+static volatile int      s_pulse_head  = 0;
+static volatile int      s_pulse_count = 0;
+static volatile uint32_t s_impulsions  = 0;   // compteur session
+static volatile int64_t  s_last_isr_us = 0;
+static volatile int      s_cycles_sans_impulsion = 0;
+
+// Paramètres runtime (mis à jour depuis config NVS)
+static int   s_fenetre      = 5;
+static int   s_max_cycles   = 15;
+
+static void IRAM_ATTR isr_capteur_vitesse(void *arg)
 {
-    // NO (contact_no=true)  : actif quand GPIO LOW  → !gpio_get_level()
-    // NC (contact_no=false) : actif quand GPIO HIGH →  gpio_get_level()
-    int level = gpio_get_level(pin);
-    return contact_no ? !level : level;
-}
+    (void)arg;
+    int64_t now = esp_timer_get_time();
 
-// ISR capteur vitesse — exécutée depuis IRAM, latence minimale
-// Front montant GPIO 34 (diviseur 10kΩ/3.3kΩ : 0V → ~3V)
-static void IRAM_ATTR isr_vitesse(void *arg)
-{
-    uint64_t now_us   = esp_timer_get_time();
-    uint64_t delta_us = now_us - g_capteur_vitesse.last_isr_us;
-
-    // Anti-rebond logiciel : rejeter les fronts trop proches
-    if (delta_us < DEBOUNCE_VITESSE_US) {
+    // Anti-rebond temporel
+    if (now - s_last_isr_us < (int64_t)DEBOUNCE_VITESSE_MS * 1000) {
         return;
     }
+    s_last_isr_us = now;
 
-    g_capteur_vitesse.periode_us    = (uint32_t)delta_us;
-    g_capteur_vitesse.last_isr_us   = now_us;
-    g_capteur_vitesse.nb_impulsions++;
+    portENTER_CRITICAL_ISR(&s_mux);
+    s_ts_pulses[s_pulse_head] = now;
+    s_pulse_head = (s_pulse_head + 1) % VITESSE_FENETRE_MAX;
+    if (s_pulse_count < VITESSE_FENETRE_MAX) s_pulse_count++;
+    s_impulsions++;
+    s_cycles_sans_impulsion = 0;
+    portEXIT_CRITICAL_ISR(&s_mux);
 }
 
 void gpio_handler_init(void)
 {
-    // Entrées contacts secs — pull-up 10kΩ externe câblé (pull-up interne désactivé)
-    gpio_config_t cfg_in = {
-        .pin_bit_mask = (1ULL << PIN_FIN_COURSE)      |
-                        (1ULL << PIN_SECURITE_SPIRES)  |
-                        (1ULL << PIN_CONTACT_POUMON)   |
+    // Sorties électrovannes
+    gpio_config_t out_cfg = {
+        .pin_bit_mask = (1ULL << PIN_EV_CANON) | (1ULL << PIN_EV_POUMON),
+        .mode         = GPIO_MODE_OUTPUT,
+        .pull_up_en   = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&out_cfg);
+    gpio_set_level(PIN_EV_CANON,  0);
+    gpio_set_level(PIN_EV_POUMON, 0);
+
+    // Entrées capteurs (pas de pull interne — résistances externes sur câblage)
+    gpio_config_t in_cfg = {
+        .pin_bit_mask = (1ULL << PIN_CAPTEUR_VITESSE) |
+                        (1ULL << PIN_FIN_COURSE)       |
+                        (1ULL << PIN_SECU_SPIRES)      |
+                        (1ULL << PIN_POUMON_PLEIN)     |
                         (1ULL << PIN_PRESSOSTAT),
         .mode         = GPIO_MODE_INPUT,
         .pull_up_en   = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type    = GPIO_INTR_DISABLE,
     };
-    ESP_ERROR_CHECK(gpio_config(&cfg_in));
+    gpio_config(&in_cfg);
 
-    // GPIO 34 : capteur vitesse inductif NPN 12V — input only, pas de pull-up interne
-    // Diviseur 10kΩ/3.3kΩ ramène 12V → ~3V compatible ESP32
-    gpio_config_t cfg_vitesse = {
-        .pin_bit_mask = (1ULL << PIN_CAPTEUR_VITESSE),
-        .mode         = GPIO_MODE_INPUT,
-        .pull_up_en   = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_POSEDGE,  // Front montant 0V → 3V
-    };
-    ESP_ERROR_CHECK(gpio_config(&cfg_vitesse));
+    // ISR capteur vitesse — RISING uniquement
+    gpio_set_intr_type(PIN_CAPTEUR_VITESSE, GPIO_INTR_POSEDGE);
+    gpio_install_isr_service(0);
+    gpio_isr_handler_add(PIN_CAPTEUR_VITESSE, isr_capteur_vitesse, NULL);
 
-    // Sorties relais — actif bas (LOW = relais actif = électrovanne ouverte)
-    gpio_config_t cfg_out = {
-        .pin_bit_mask = (1ULL << PIN_EV1) | (1ULL << PIN_EV2),
-        .mode         = GPIO_MODE_OUTPUT,
-        .pull_up_en   = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
-    ESP_ERROR_CHECK(gpio_config(&cfg_out));
-
-    // État initial sûr : électrovannes fermées
-    gpio_all_ev_off();
-
-    // ISR capteur vitesse
-    ESP_ERROR_CHECK(gpio_install_isr_service(0));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(PIN_CAPTEUR_VITESSE, isr_vitesse, NULL));
-
-    ESP_LOGI(TAG, "GPIO initialisés — EV1=OFF EV2=OFF ISR vitesse active");
-    ESP_LOGI(TAG, "Sens contacteurs par défaut : NO (actif bas) — à vérifier terrain");
-}
-
-void gpio_handler_set_sens(const gpio_sens_t *sens)
-{
-    s_sens = *sens;
-    ESP_LOGI(TAG, "Sens contacteurs mis à jour : fin_crs=%s secu=%s poumon=%s press=%s",
-             sens->contact_no_fin_course      ? "NO" : "NC",
-             sens->contact_no_securite_spires ? "NO" : "NC",
-             sens->contact_no_poumon          ? "NO" : "NC",
-             sens->contact_no_pressostat      ? "NO" : "NC");
+    ESP_LOGI(TAG, "GPIO initialisé — EV_CANON=%d EV_POUMON=%d", PIN_EV_CANON, PIN_EV_POUMON);
 }
 
 void gpio_handler_lire_entrees(entrees_t *entrees)
 {
-    entrees->fin_course      = lire_contact(PIN_FIN_COURSE,      s_sens.contact_no_fin_course);
-    entrees->securite_spires = lire_contact(PIN_SECURITE_SPIRES, s_sens.contact_no_securite_spires);
-    entrees->contact_poumon  = lire_contact(PIN_CONTACT_POUMON,  s_sens.contact_no_poumon);
-    entrees->pressostat      = lire_contact(PIN_PRESSOSTAT,      s_sens.contact_no_pressostat);
+    // Contacts NC : HIGH = activé/danger
+    entrees->fin_course   = gpio_get_level(PIN_FIN_COURSE)   != 0;
+    entrees->secu_spires  = gpio_get_level(PIN_SECU_SPIRES)  != 0;
+    entrees->poumon_plein = gpio_get_level(PIN_POUMON_PLEIN) != 0;
+    entrees->pression_ok  = gpio_get_level(PIN_PRESSOSTAT)   == 0;  // LOW = pression présente
 }
 
-void gpio_ev1_set(bool actif)
+void gpio_ev_canon_set(bool actif)
 {
-    gpio_set_level(PIN_EV1, actif ? 0 : 1);
+    gpio_set_level(PIN_EV_CANON, actif ? 1 : 0);
 }
 
-void gpio_ev2_set(bool actif)
+void gpio_ev_poumon_set(bool actif)
 {
-    gpio_set_level(PIN_EV2, actif ? 0 : 1);
+    gpio_set_level(PIN_EV_POUMON, actif ? 1 : 0);
 }
 
 void gpio_all_ev_off(void)
 {
-    // Fail-safe : HIGH = relais repos = électrovannes fermées
-    gpio_set_level(PIN_EV1, 1);
-    gpio_set_level(PIN_EV2, 1);
+    gpio_set_level(PIN_EV_CANON,  0);
+    gpio_set_level(PIN_EV_POUMON, 0);
+}
+
+float gpio_get_vitesse_m_h(float facteur_correction)
+{
+    portENTER_CRITICAL(&s_mux);
+    int    count = s_pulse_count;
+    int    head  = s_pulse_head;
+    int    fenetre = (s_fenetre < count) ? s_fenetre : count;
+    int64_t ts_newest, ts_oldest;
+    portEXIT_CRITICAL(&s_mux);
+
+    if (fenetre < 2) {
+        return 0.0f;
+    }
+    if (s_cycles_sans_impulsion > s_max_cycles) {
+        return 0.0f;
+    }
+
+    portENTER_CRITICAL(&s_mux);
+    int idx_newest = (head - 1 + VITESSE_FENETRE_MAX) % VITESSE_FENETRE_MAX;
+    int idx_oldest = (head - fenetre + VITESSE_FENETRE_MAX) % VITESSE_FENETRE_MAX;
+    ts_newest = s_ts_pulses[idx_newest];
+    ts_oldest = s_ts_pulses[idx_oldest];
+    portEXIT_CRITICAL(&s_mux);
+
+    float dt_s = (float)(ts_newest - ts_oldest) / 1e6f;
+    if (dt_s < 1e-3f) {
+        return 0.0f;
+    }
+
+    // dist_pulse_m non connu ici — fourni à l'appel par state_machine via facteur_correction
+    // Pour PR-01 skeleton, retourne 0 — PR-02 câble dist_pulse depuis calculs_mecanique
+    (void)facteur_correction;
+    return 0.0f;
+}
+
+uint32_t gpio_get_impulsions(void)
+{
+    return s_impulsions;
+}
+
+void gpio_reset_impulsions_cycle(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    s_impulsions = 0;
+    portEXIT_CRITICAL(&s_mux);
+}
+
+// Appelé depuis tick_state_machine à chaque cycle poumon (100ms)
+// pour incrémenter le compteur de cycles sans impulsion
+void gpio_handler_tick_cycle(void)
+{
+    portENTER_CRITICAL(&s_mux);
+    s_cycles_sans_impulsion++;
+    portEXIT_CRITICAL(&s_mux);
 }

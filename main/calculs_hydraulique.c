@@ -3,84 +3,112 @@
 #include <math.h>
 #include <stddef.h>
 
-static const char *TAG = "calcul_hydro";
+static const char *TAG = "calculs_hyd";
 
-const float CANON_DOSES_MM[CANON_N_DOSES] = {10.0f, 15.0f, 20.0f, 25.0f, 30.0f};
+// Doses constructeur — ordre DÉCROISSANT (vitesse diminue quand dose augmente)
+#define CANON_N_DOSES  5
+static const float CANON_DOSES_MM[CANON_N_DOSES] = {40.0f, 30.0f, 25.0f, 20.0f, 15.0f};
 
-// Table abaque constructeur Irrifrance — enrouleur Structure 1 bis, canon Nelson SR150
-// 13 configurations buse/pression fournies par Irrifrance pour cet ensemble spécifique
-const canon_entry_t CANON_TABLE[CANON_N_ENTRIES] = {
-    {4.9f,23.0f,3.5f,17.3f,60.0f, { 9.6f,12.3f,15.3f,19.2f,25.6f}},
-    {5.6f,24.6f,4.0f,17.3f,63.0f, { 9.8f,13.0f,15.6f,19.5f,26.0f}},
-    {5.7f,29.8f,3.5f,20.3f,63.0f, {11.8f,15.8f,18.9f,23.7f,31.5f}},
-    {6.5f,31.9f,4.0f,20.3f,66.0f, {12.1f,16.1f,19.3f,24.2f,32.2f}},
-    {6.8f,37.8f,3.5f,22.9f,66.0f, {14.3f,19.1f,22.9f,28.6f,38.2f}},
-    {6.9f,27.5f,5.0f,17.8f,66.0f, {10.4f,13.9f,16.7f,20.8f,27.8f}},
-    {7.7f,40.4f,4.0f,22.9f,72.0f, {14.0f,18.7f,22.4f,28.1f,37.4f}},
-    {8.0f,35.7f,5.0f,20.3f,72.0f, {12.4f,16.5f,19.8f,24.8f,33.1f}},
-    {8.2f,30.1f,6.0f,17.8f,66.0f, {11.4f,15.2f,18.2f,22.8f,30.4f}},
-    {8.4f,46.9f,3.5f,25.4f,72.0f, {16.3f,21.7f,26.1f,32.6f,43.4f}},
-    {9.4f,50.1f,4.0f,25.4f,78.0f, {16.1f,21.4f,25.7f,32.1f,42.8f}},
-    {9.5f,39.1f,6.0f,20.3f,72.0f, {13.6f,18.1f,21.7f,27.2f,36.2f}},
-    {9.5f,45.2f,5.0f,22.9f,78.0f, {14.5f,19.3f,23.2f,29.0f,38.6f}},
-};
+// Plages de normalisation pour le nearest-neighbor (2 lignes les plus proches)
+#define CANON_P_RANGE     4.6f   // 9.5 - 4.9 bar
+#define CANON_BUSE_RANGE  8.1f   // 25.4 - 17.3 mm
 
-// Plages utilisées pour la normalisation de la distance euclidienne
-#define CANON_P_RANGE    4.6f   // 9.5 - 4.9 bar
-#define CANON_BUSE_RANGE 2.5f   // 6.0 - 3.5 mm
-
-float calcul_pression_canon(float p_mano_bar,
-                             float longueur_tuyau_m,
-                             float denivele_m)
+// Retourne la vitesse interpolée sur la dose pour une entrée donnée
+static float interpoler_dose(const canon_entry_t *e, float dose_mm)
 {
-    float perte_enrouleur = PERTE_ENROULEUR_DEFAULT_BAR;
-    float perte_tuyau     = (longueur_tuyau_m / 300.0f) * PERTE_TUYAU_BAR_PAR_300M;
-    float perte_denivele  = (denivele_m / 10.0f) * PERTE_DENIVELE_BAR_PAR_10M;
+    const float *v = &e->D40;   // D40 est le premier champ vitesse dans la struct
 
-    float p_canon = p_mano_bar - perte_enrouleur - perte_tuyau - perte_denivele;
-    return p_canon;
+    // Clamp haut — dose > 40mm → vitesse minimale (la plus lente)
+    if (dose_mm >= CANON_DOSES_MM[0]) {
+        return v[0];
+    }
+    // Clamp bas — dose < 15mm → vitesse maximale (la plus rapide)
+    if (dose_mm <= CANON_DOSES_MM[CANON_N_DOSES - 1]) {
+        return v[CANON_N_DOSES - 1];
+    }
+    // Interpolation linéaire entre deux colonnes adjacentes (ordre décroissant)
+    for (int d = 0; d < CANON_N_DOSES - 1; d++) {
+        if (dose_mm <= CANON_DOSES_MM[d] && dose_mm >= CANON_DOSES_MM[d + 1]) {
+            float t = (CANON_DOSES_MM[d] - dose_mm)
+                    / (CANON_DOSES_MM[d] - CANON_DOSES_MM[d + 1]);
+            return v[d] + t * (v[d + 1] - v[d]);
+        }
+    }
+    return v[0];  // ne devrait pas arriver
 }
 
-float lookup_vitesse_cible(float p_borne_bar, float buse_mm,
-                            float dose_mm, float *debit_m3h_out)
+// Distance normalisée (p, buse) entre un point cible et une entrée de l'abaque
+static float distance_normalisee(const canon_entry_t *e, float p, float buse)
 {
-    // Étape 1 : trouver l'entrée la plus proche par distance euclidienne normalisée
-    int   best_idx  = 0;
-    float best_dist = 1e30f;
+    float dp = (p - e->p_enrouleur) / CANON_P_RANGE;
+    float db = (buse - e->buse_mm)  / CANON_BUSE_RANGE;
+    return sqrtf(dp * dp + db * db);
+}
 
-    for (int i = 0; i < CANON_N_ENTRIES; i++) {
-        float dp = (p_borne_bar - CANON_TABLE[i].p_borne_bar) / CANON_P_RANGE;
-        float db = (buse_mm     - CANON_TABLE[i].buse_mm)     / CANON_BUSE_RANGE;
-        float d2 = dp * dp + db * db;
-        if (d2 < best_dist) {
-            best_dist = d2;
-            best_idx  = i;
+float lookup_vitesse_cible(const canon_abaque_t *abaque,
+                            float p_enrouleur,
+                            float buse_mm,
+                            float dose_mm,
+                            float *debit_out)
+{
+    if (!abaque || abaque->nb_entrees <= 0) {
+        ESP_LOGE(TAG, "abaque NULL ou vide");
+        if (debit_out) *debit_out = 0.0f;
+        return 0.0f;
+    }
+
+    if (dose_mm < DOSE_MIN_MM || dose_mm > DOSE_MAX_MM) {
+        ESP_LOGW(TAG, "dose %.1fmm hors plage [%.0f-%.0f]",
+                 dose_mm, DOSE_MIN_MM, DOSE_MAX_MM);
+    }
+
+    // Trouver les 2 entrées les plus proches (nearest neighbor)
+    int idx0 = 0, idx1 = -1;
+    float d0 = distance_normalisee(&abaque->table[0], p_enrouleur, buse_mm);
+    float d1 = 1e9f;
+
+    for (int i = 1; i < abaque->nb_entrees; i++) {
+        float d = distance_normalisee(&abaque->table[i], p_enrouleur, buse_mm);
+        if (d < d0) {
+            d1 = d0; idx1 = idx0;
+            d0 = d;  idx0 = i;
+        } else if (d < d1) {
+            d1 = d; idx1 = i;
         }
     }
 
-    const canon_entry_t *e = &CANON_TABLE[best_idx];
-    ESP_LOGD(TAG, "lookup: nearest entry %d (p=%.1f buse=%.1f)", best_idx,
-             e->p_borne_bar, e->buse_mm);
+    float v0 = interpoler_dose(&abaque->table[idx0], dose_mm);
 
-    if (debit_m3h_out) {
-        *debit_m3h_out = e->debit_m3h;
+    if (idx1 < 0 || d0 + d1 < 1e-6f) {
+        if (debit_out) *debit_out = abaque->table[idx0].q_m3h;
+        return v0;
     }
 
-    // Étape 2 : interpolation linéaire sur la dose
-    if (dose_mm <= CANON_DOSES_MM[0]) {
-        return e->vitesse_mh[0];
-    }
-    if (dose_mm >= CANON_DOSES_MM[CANON_N_DOSES - 1]) {
-        return e->vitesse_mh[CANON_N_DOSES - 1];
+    float v1 = interpoler_dose(&abaque->table[idx1], dose_mm);
+
+    // Interpolation pondérée par l'inverse des distances
+    float w0 = 1.0f / (d0 + 1e-6f);
+    float w1 = 1.0f / (d1 + 1e-6f);
+    float vitesse = (w0 * v0 + w1 * v1) / (w0 + w1);
+
+    if (debit_out) {
+        float q0 = abaque->table[idx0].q_m3h;
+        float q1 = abaque->table[idx1].q_m3h;
+        *debit_out = (w0 * q0 + w1 * q1) / (w0 + w1);
     }
 
-    for (int d = 0; d < CANON_N_DOSES - 1; d++) {
-        if (dose_mm >= CANON_DOSES_MM[d] && dose_mm <= CANON_DOSES_MM[d + 1]) {
-            float t = (dose_mm - CANON_DOSES_MM[d])
-                      / (CANON_DOSES_MM[d + 1] - CANON_DOSES_MM[d]);
-            return e->vitesse_mh[d] + t * (e->vitesse_mh[d + 1] - e->vitesse_mh[d]);
-        }
-    }
+    return vitesse;
+}
 
-    return e->vitesse_mh[CANON_N_DOSES - 1];
+float calcul_surface_m2(float longueur_enroulee_m, float largeur_m)
+{
+    return longueur_enroulee_m * largeur_m;
+}
+
+float calcul_dose_inst_mm(float debit_m3h, float vitesse_m_h, float largeur_m)
+{
+    if (vitesse_m_h < 1e-3f || largeur_m < 1e-3f) {
+        return 0.0f;
+    }
+    return (debit_m3h / (vitesse_m_h * largeur_m)) * 1000.0f;
 }

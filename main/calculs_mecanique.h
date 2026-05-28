@@ -1,64 +1,51 @@
 #pragma once
 
-#include <stdint.h>
+#include "machines/machines.h"
 
-// Nombre de pastilles métalliques sur la couronne de la bobine (valeur matérielle)
-#define NB_PASTILLES  10
+// =============================================================================
+// calculs_mecanique.h — Géométrie bobine + étalonnage Irrifrance ESP32
+// =============================================================================
 
-// ---
-// Rayon effectif à l'étage n (numérotation depuis 1)
-// R_n = R_tambour_vide + (n - 0.5) × d_tuyau_ext
-float calcul_rayon_etage(int n, float r_tambour_vide_m, float d_tuyau_ext_m);
+/**
+ * Rayon effectif à l'étage n (numérotation depuis 1).
+ * R_n = r_tambour_vide + (n - 0.5) × d_tuyau_ext
+ */
+float calcul_rayon_etage(int n, const machine_profile_t *profil);
 
-// ---
-// Détermine l'étage de spires courant depuis le comptage d'impulsions ISR
-int calcul_etage_courant(uint32_t nb_impulsions_total,
-                          float r_tambour_vide_m,
-                          float d_tuyau_ext_m,
-                          float longueur_tuyau_m,
-                          int   nb_etages);
-
-// ---
-// Distance linéaire parcourue par impulsion capteur : 2π×R / NB_PASTILLES
+/**
+ * Distance parcourue par impulsion capteur à l'étage donné.
+ * dist = (2π × r_etage) / NB_PASTILLES
+ */
 float calcul_dist_pulse_m(float r_etage_m);
 
-// ---
-// Longueur de tuyau correspondant à un comptage d'impulsions (tient compte des étages)
-float calcul_longueur_depuis_impulsions(uint32_t nb_impulsions,
-                                         float r_tambour_vide_m,
-                                         float d_tuyau_ext_m,
-                                         float longueur_tuyau_m,
-                                         int   nb_etages);
+/**
+ * Étage courant depuis longueur enroulée.
+ * Accumule longueur_etage = spires_par_etage × 2π × R_n jusqu'au bon étage.
+ * Retourne 1 au minimum.
+ */
+int calcul_etage_courant(float longueur_enroulee_m,
+                          const machine_profile_t *profil);
 
-// ---
-// Facteur de correction capteur vitesse (calibration terrain)
-// k = longueur_reelle_m / longueur_calculee_m
-// Retourne k si valide — l'appelant doit sauvegarder en NVS.
-// Retourne -1.0f si rejet — NE PAS écrire le NVS, conserver le facteur précédent.
-// Rejeté si : longueur_calculee < 5m, ou k hors [0.5 ; 2.0], ou longueur_reelle <= 0.
-float calcul_correction_capteur(float longueur_reelle_m, float longueur_calculee_m);
+/**
+ * Longueur totale d'un étage en mètres.
+ */
+float calcul_longueur_etage_m(int n, const machine_profile_t *profil);
 
-// ---
-// Moyenne glissante de la distance parcourue par cycle poumon (fenêtre 5 cycles)
-// Appelée en fin de phase VIDANGE avec le résultat mesuré par le capteur.
-void  update_dist_par_cycle(float nouvelle_mesure_m);
-float get_dist_par_cycle_m(void);
-
-// ---
-// Calcul T_attente par feedforward
-// T_attente = dist_par_cycle / vitesse_cible_m_s - t_remplissage - t_vidange
-// Retourne 0.0f si vitesse max insuffisante ou paramètres invalides.
-float calcul_t_attente_s(float dist_par_cycle_m,
-                          float vitesse_cible_m_s,
-                          float t_remplissage_mesure_s,
-                          float t_vidange_s);
-
-// ---
-// Correction proportionnelle de T_attente depuis la vitesse réelle mesurée.
-// S'applique après N cycles d'auto-calibration.
-// erreur = vitesse_reelle_m_h - vitesse_cible_m_h
-// T_nouveau = T_attente_actuel + erreur × kp  (clampé à 0 si négatif)
-float correction_vitesse(float t_attente_actuel_s,
-                          float vitesse_reelle_m_h,
-                          float vitesse_cible_m_h,
-                          float kp);
+/**
+ * Calcule et valide le facteur de correction étalonnage.
+ *
+ * Conditions de validation :
+ *   C1 : nb_impulsions_session > 50
+ *   C2 : 0.5 < facteur < 2.0
+ *   C3 : |facteur - 1.0| < 0.30
+ *
+ * @param longueur_theorique_m  Longueur calculée par le firmware
+ * @param longueur_reelle_m     Longueur saisie par l'opérateur
+ * @param nb_impulsions         Nombre d'impulsions de la session
+ * @param facteur_out           Résultat si validation OK
+ * @return true si facteur accepté, false sinon
+ */
+bool calcul_facteur_etalonnage(float longueur_theorique_m,
+                                float longueur_reelle_m,
+                                int   nb_impulsions,
+                                float *facteur_out);

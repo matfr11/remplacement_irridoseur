@@ -416,6 +416,161 @@ Avant de coder le module poumon, vérifier :
 
 ---
 
+---
+
+## MàJ 11 — Corrections table constructeur + machine d'états complète
+
+### 11a — Corrections table constructeur (hotfix PR-03)
+
+Les champs struct étaient mal nommés dans l'implémentation initiale.
+Les données numériques de la table CANON_TABLE sont correctes ; seule
+l'interprétation des colonnes 2-4 et l'ordre des doses étaient erronés.
+
+| Champ ancien | Champ corrigé | Valeur en table (entrée 0) |
+|---|---|---|
+| `buse_mm` | `p_canon_bar` | 3.5 bar (pression au canon) |
+| `largeur_m` | `buse_mm` | 17.3 mm (diamètre buse réel) |
+| `portee_m` | `esp_m` | 60 m (espacement entre passages) |
+
+Doses : `{10,15,20,25,30}mm` → corrigé en **`{40,30,25,20,15}mm`** (ordre décroissant).
+
+Normalisation nearest-neighbor : `CANON_BUSE_RANGE = 2.5f` → **`8.1f`**
+(plage des vrais diamètres buse : 25.4 − 17.3 = 8.1 mm).
+
+Logique d'interpolation dans `lookup_vitesse_cible()` inversée pour l'ordre décroissant :
+- Clamp haut : `dose >= 40mm` → `vitesse_mh[0]` (avance la plus lente)
+- Clamp bas : `dose <= 15mm` → `vitesse_mh[4]` (avance la plus rapide)
+- Interval : `DOSES[d] >= dose >= DOSES[d+1]`, t = (DOSES[d]-dose)/(DOSES[d]-DOSES[d+1])
+
+Signature `lookup_vitesse_cible(p_borne_bar, buse_mm, dose_mm, debit_out)` inchangée,
+mais `buse_mm` doit maintenant recevoir le **diamètre réel de la buse** (ex : 17.3mm, 22.9mm).
+
+### 11b — Machine d'états complète corrigée
+
+#### Corrections vs MàJ 6 (sous-états EN_COURS)
+
+| Erreur MàJ 6 | Correction |
+|---|---|
+| SOUS_ETAT_VIDANGE : impulsions comptées ici | La bobine avance pendant REMPLISSAGE. Compter impulsions dans SOUS_ETAT_REMPLISSAGE. |
+| Entrée EN_COURS : commencer par REMPLISSAGE | Poumon déjà plein → commencer par VIDANGE ① |
+| T_attente calculé à la fin de VIDANGE | Calculé à la fin de REMPLISSAGE (quand dist_cycle et T_rempl sont connus) |
+| EV1=OFF pendant TEMPO_DEPART | EV1=ON — le canon arrose en bout de champ pendant l'attente |
+| EV1=OFF pendant REMPLISSAGE_POUMON initial | EV1=ON — canon déjà ouvert dès le démarrage |
+| Timeout REMPLISSAGE_POUMON initial : 60s | 30s |
+| Timeout SOUS_ETAT_REMPLISSAGE : 60s fixe | Configurable NVS (`t_timeout_poumon_s`) |
+| ARRET_FINAL : cmd_reset manuel | Retour auto en VEILLE quand fin_de_course disparaît (opérateur déroule) |
+| ARRET_URGENCE : raison en RAM | Raison sauvegardée en NVS, affichée jusqu'au cmd_reset manuel |
+| TEMPO_ARRIVEE : pressostat ignoré | Pression perdue → EV1=OFF → ARRET_FINAL |
+| EN_COURS pression perdue : T_attente=0 | PAUSE (voir §11c) |
+
+#### Diagramme d'états complet
+
+```
+ETAT_VEILLE
+  ├─ cmd_start (cfg valide + pressostat ON)
+  │    ├─ tempo_depart > 0s → ETAT_TEMPO_DEPART
+  │    └─ sinon             → ETAT_REMPLISSAGE_POUMON
+  └─ (attente)
+
+ETAT_TEMPO_DEPART  [canon arrose en bout de champ avant enroulement]
+  EV1=ON, EV2=OFF
+  ├─ timer écoulé    → ETAT_REMPLISSAGE_POUMON
+  ├─ cmd_stop        → EV1=OFF → ETAT_ARRET_FINAL
+  └─ sécurité spires → EV1=OFF → ETAT_ARRET_URGENCE
+
+ETAT_REMPLISSAGE_POUMON  [1er remplissage — 1er avancement bobine]
+  EV1=ON, EV2=ON
+  ├─ contact_poumon_plein → EV2=OFF → ETAT_EN_COURS (SOUS_ETAT_VIDANGE ①)
+  ├─ timeout 30s          → EV1=OFF, EV2=OFF → ARRET_URGENCE ("Timeout remplissage poumon")
+  ├─ cmd_stop             → EV1=OFF, EV2=OFF → ARRET_FINAL
+  └─ sécurité spires      → EV1=OFF, EV2=OFF → ARRET_URGENCE
+
+ETAT_EN_COURS
+  EV1=ON
+  Physique : bobine avance pendant REMPLISSAGE (bras extend → cliquet avance).
+             Pendant VIDANGE (ressort retracte), cliquet revient à vide, bobine immobile.
+
+  Sous-états cycle poumon :
+
+    SOUS_ETAT_VIDANGE  ① ← ENTRÉE INITIALE
+      EV2=OFF, attend T_vidange_s (ressort retracte cliquet, bobine immobile)
+      → écoulé → SOUS_ETAT_ATTENTE
+
+    SOUS_ETAT_ATTENTE
+      EV2=OFF, attend T_attente_s
+      → écoulé → SOUS_ETAT_REMPLISSAGE
+
+    SOUS_ETAT_REMPLISSAGE
+      EV2=ON, reset compteur impulsions cycle
+      Attend contact_poumon_plein (bobine avance, impulsions comptées ici)
+      → contact détecté :
+          dist_cycle = impulsions_cycle × dist_pulse
+          T_remplissage = temps depuis EV2=ON
+          update_dist_par_cycle(dist_cycle)
+          T_attente = calcul_t_attente_s(dist_cycle, v_cible, T_rempl, T_vidange)
+          si n_cycles ≥ n_cycles_calib : T_attente = correction_vitesse(...)
+          EV2=OFF → SOUS_ETAT_VIDANGE
+      → timeout NVS (t_timeout_poumon_s) : EV1=OFF, EV2=OFF → ARRET_URGENCE ("Timeout poumon cycle")
+
+  Interruptions prioritaires (tout sous-état) :
+  ├─ sécurité spires → EV1=OFF, EV2=OFF → ARRET_URGENCE (priorité absolue)
+  ├─ fin de course   → EV2=OFF immédiat ②
+  │    ├─ tempo_arrivee > 0s → ETAT_TEMPO_ARRIVEE (EV1 reste ON)
+  │    └─ sinon              → EV1=OFF → ARRET_FINAL
+  ├─ pression perdue → PAUSE interne (voir §11c)
+  └─ cmd_stop        → EV1=OFF, EV2=OFF → ARRET_FINAL
+
+ETAT_TEMPO_ARRIVEE  [canon arrose sur place en fin de champ]
+  EV1=ON, EV2=OFF
+  ├─ timer écoulé    → EV1=OFF → ARRET_FINAL
+  ├─ cmd_stop        → EV1=OFF → ARRET_FINAL
+  ├─ pression perdue → EV1=OFF → ARRET_FINAL
+  └─ sécurité spires → EV1=OFF → ARRET_URGENCE
+
+ETAT_ARRET_FINAL
+  EV1=OFF, EV2=OFF
+  Calcul bilan (surface, dose, durée, volume), affichage UI
+  └─ fin_de_course disparaît ③ → remise à zéro compteurs → ETAT_VEILLE
+
+ETAT_ARRET_URGENCE
+  EV1=OFF, EV2=OFF (immédiat)
+  raison_arret → NVS + alerte UI (persiste après redémarrage)
+  └─ cmd_reset manuel → ETAT_VEILLE
+```
+
+**Notes :**
+① ETAT_EN_COURS entre en **SOUS_ETAT_VIDANGE** — poumon déjà plein (rempli par REMPLISSAGE_POUMON,
+  qui a déjà avancé la bobine d'un premier cran).
+② Fin de course : EV2=OFF immédiat quel que soit le sous-état courant.
+③ Fin de course disparaît = l'opérateur déroule le tuyau pour la session suivante.
+
+### 11c — Comportement pression perdue pendant ETAT_EN_COURS
+
+Pression insuffisante ≠ urgence. La machine se met en **PAUSE** jusqu'au retour de la pression :
+
+```
+Pression perdue (n'importe quel sous-état de EN_COURS)
+  → EV1=OFF, EV2=OFF immédiat
+  → flag s_pause_pression = true, chrono pause démarré
+  → UI : alerte "Pression insuffisante — pause depuis Xs"
+  → attente retour pression (pas de timeout)
+  → pression revenue :
+      s_pause_pression = false
+      EV1=ON
+      reprise à SOUS_ETAT_VIDANGE (cycle propre)
+```
+
+Implémenté comme flag interne dans EN_COURS (pas de nouvel état top-level).
+
+### 11d — Nouveaux paramètres NVS
+
+| Clé NVS | Type | Défaut | Description |
+|---|---|---|---|
+| `t_timeout_poumon` | float | 30.0 | Timeout remplissage poumon (s) — initial et cycles |
+| `n_cycles_calib` | int | 5 | Nb cycles avant activation correction vitesse (mis à jour de 3 → 5) |
+
+---
+
 *SPECS_MISEAJOUR.md — v1.0*
 *Basé sur : schéma bornier, fiche technique Structure 2 AT/P,*
 *tableau valeurs théoriques ST.1 Bis, discussion régulation poumon*

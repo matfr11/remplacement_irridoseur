@@ -2,14 +2,20 @@ set(SRCS
     "main.c"
     "gpio_handler.c"
     "state_machine.c"
+    "securites.c"
     "calculs_hydraulique.c"
     "calculs_mecanique.c"
+    "regulation.c"
     "config_nvs.c"
     "webserver.c"
     "telemetry.c"
+    "ota.c"
+    "machines/machines.c"
+    "machines/st1bis_82_330.c"
+    "abaques/abaques.c"
+    "abaques/sr150c.c"
 )
 
-# Les tests sont compilés uniquement si l'option est activée dans menuconfig
 if(CONFIG_IRRI_ENABLE_TESTS)
     list(APPEND SRCS
         "test/test_calculs_hydraulique.c"
@@ -33,4 +39,5 @@ idf_component_register(
         esp_timer
         lwip
         newlib
+        app_update
 )

@@ -2,13 +2,19 @@
 
 #include "esp_err.h"
 
-// Démarrage du serveur HTTP avec support WebSocket
-// Enregistre les handlers URI : GET / (web UI), WS /ws (WebSocket)
-esp_err_t webserver_start(void);
+// =============================================================================
+// webserver.h — WiFi AP + HTTP + WebSocket Irrifrance ESP32
+// Implémentation complète — PR-08 / PR-09
+// =============================================================================
 
-// Arrêt propre du serveur HTTP
+// Démarre le point d'accès WiFi et le serveur HTTP/WebSocket.
+// SSID : "IRRIDOSEUR-XXXX" (4 derniers octets MAC)
+// Web UI servie depuis webui.h (fichiers embarqués)
+esp_err_t webserver_init(void);
+
+// Diffuse le statut machine (machine_status_t) en JSON à tous les clients WS.
+// Appelé depuis la tâche telemetry toutes les 500ms.
+void webserver_broadcast_status(void);
+
+// Arrête proprement le serveur et le WiFi.
 void webserver_stop(void);
-
-// Sérialise machine_status_t en JSON et diffuse à tous les clients WebSocket connectés
-// Appelée depuis websocket_task() toutes les 500ms
-void ws_broadcast_status(void);

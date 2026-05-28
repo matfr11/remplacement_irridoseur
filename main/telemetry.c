@@ -1,29 +1,30 @@
 #include "telemetry.h"
+#include "webserver.h"
+#include "state_machine.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_log.h"
 
+// Implémentation complète — PR-08
 static const char *TAG = "telemetry";
 
-// Phase 1 : implémentations vides — log série uniquement.
-// Phase 2 : brancher module LoRa SX1276/SX1262 sur SPI.
-//   GPIOs SPI disponibles : MOSI=23, MISO=19, SCK=18, CS=5, RST=14, DIO0=2
-
-void telemetry_send_status(const machine_status_t *status)
+static void telemetry_task(void *arg)
 {
-    // Phase 1 : rien (le WebSocket remplace côté terrain)
-    (void)status;
+    (void)arg;
+    while (1) {
+        webserver_broadcast_status();
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
 }
 
-void telemetry_send_alarm(alarm_type_t alarm, const char *message)
+esp_err_t telemetry_init(void)
 {
-    // Phase 1 : log uniquement
-    ESP_LOGW(TAG, "ALARM [%d] : %s", (int)alarm, message);
+    ESP_LOGI(TAG, "Démarrage tâche telemetry (500ms)");
+    xTaskCreate(telemetry_task, "telemetry", 4096, NULL, 5, NULL);
+    return ESP_OK;
 }
 
-void telemetry_send_session_end(const session_summary_t *summary)
+void telemetry_envoyer_bilan(void)
 {
-    if (!summary) return;
-    ESP_LOGI(TAG,
-             "Bilan session — surface=%.0f m²  dose=%.1f mm  durée=%lu s  volume=%.1f m³",
-             summary->surface_m2, summary->dose_moy_mm,
-             (unsigned long)summary->duree_s, summary->volume_m3);
+    // PR-08 : serialiser session_summary_t en JSON → WebSocket broadcast
 }

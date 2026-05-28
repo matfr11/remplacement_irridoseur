@@ -1,78 +1,60 @@
-#include "test_calculs_hydraulique.h"
-#include "../calculs_hydraulique.h"
+#include "calculs_hydraulique.h"
+#include "abaques/abaques.h"
 #include "esp_log.h"
 #include <math.h>
+#include <assert.h>
 
-static const char *TAG = "test_hydro";
+// Tests unitaires — PR-03
+// Compilé uniquement si CONFIG_IRRI_ENABLE_TESTS=y
 
-#define EPSILON_V    0.2f   // Tolérance vitesse (m/h)
-#define EPSILON_PRES 0.05f  // Tolérance pression (bar)
+static const char *TAG = "test_hyd";
 
-static int s_ok = 0;
-static int s_total = 0;
+#define EPSILON 0.2f
 
-static void check_f(const char *nom, float attendu, float obtenu, float eps)
+static void assert_near(float attendu, float reel, const char *nom)
 {
-    s_total++;
-    if (fabsf(attendu - obtenu) <= eps) {
-        ESP_LOGI(TAG, "  [OK] %-48s attendu=%.3f obtenu=%.3f", nom, attendu, obtenu);
-        s_ok++;
+    if (fabsf(attendu - reel) > EPSILON) {
+        ESP_LOGE(TAG, "FAIL %s : attendu=%.3f reçu=%.3f", nom, attendu, reel);
     } else {
-        ESP_LOGE(TAG, "  [KO] %-48s attendu=%.3f obtenu=%.3f DELTA=%.3f",
-                 nom, attendu, obtenu, fabsf(attendu - obtenu));
+        ESP_LOGI(TAG, "PASS %s : %.3f ≈ %.3f", nom, attendu, reel);
     }
 }
 
 void test_calculs_hydraulique_run(void)
 {
-    s_ok = 0;
-    s_total = 0;
-    ESP_LOGI(TAG, "=== Tests calculs_hydraulique ===");
+    ESP_LOGI(TAG, "=== Tests calculs hydraulique ===");
+    const canon_abaque_t *ab = &ABAQUE_SR150C;
 
-    // --- calcul_pression_canon ---
-    // 7.0 - 2.5 (enrouleur) - 1.1 (330/300×1.0) - 0.0 = 3.4 bar
-    check_f("p_canon 7.0bar 330m plat",
-            3.4f, calcul_pression_canon(7.0f, 330.0f, 0.0f), EPSILON_PRES);
-
-    check_f("p_canon 6.0bar 330m plat",
-            2.4f, calcul_pression_canon(6.0f, 330.0f, 0.0f), EPSILON_PRES);
-
-    // 7.0 - 2.5 - 1.1 - (5/10×1.0) = 2.9 bar
-    check_f("p_canon 7.0bar 330m deniv+5m",
-            2.9f, calcul_pression_canon(7.0f, 330.0f, 5.0f), EPSILON_PRES);
-
-    // --- lookup_vitesse_cible — points exacts de la table ---
-    // Entrée 0 : 4.9 bar, 3.5mm, dose 20mm → 15.3 m/h, débit 23.0 m³/h
     float debit = 0.0f;
-    check_f("vtbl 4.9bar 3.5mm dose 20mm → 15.3m/h",
-            15.3f, lookup_vitesse_cible(4.9f, 3.5f, 20.0f, &debit), EPSILON_V);
-    check_f("vtbl 4.9bar 3.5mm débit → 23.0m3/h",
-            23.0f, debit, EPSILON_V);
 
-    // Entrée 6 : 7.7 bar, 4.0mm, dose 25mm → 28.1 m/h
-    check_f("vtbl 7.7bar 4.0mm dose 25mm → 28.1m/h",
-            28.1f, lookup_vitesse_cible(7.7f, 4.0f, 25.0f, NULL), EPSILON_V);
+    // entry 0 (p=4.9, buse=17.3mm), dose exacte 25mm → D25=15.3
+    float v = lookup_vitesse_cible(ab, 4.9f, 17.3f, 25.0f, &debit);
+    assert_near(15.3f, v,     "lookup p=4.9 b=17.3 d=25 vitesse");
+    assert_near(23.0f, debit, "lookup p=4.9 b=17.3 d=25 debit");
 
-    // Entrée 11 : 9.5 bar, 6.0mm, dose 10mm → 13.6 m/h
-    check_f("vtbl 9.5bar 6.0mm dose 10mm → 13.6m/h",
-            13.6f, lookup_vitesse_cible(9.5f, 6.0f, 10.0f, NULL), EPSILON_V);
+    // entry 6 (p=7.7, buse=22.9), dose exacte 20mm → D20=28.1
+    v = lookup_vitesse_cible(ab, 7.7f, 22.9f, 20.0f, NULL);
+    assert_near(28.1f, v, "lookup p=7.7 b=22.9 d=20");
 
-    // --- Interpolation linéaire dose ---
-    // Entrée 0 : dose 12.5mm → ½ entre 12.3 (15mm) et 9.6 (10mm)
-    // t = (12.5-10)/(15-10) = 0.5 → 9.6 + 0.5×(12.3-9.6) = 9.6 + 1.35 = 10.95 → ~11.0
-    check_f("vtbl 4.9bar 3.5mm dose 12.5mm (interpolation)",
-            10.95f, lookup_vitesse_cible(4.9f, 3.5f, 12.5f, NULL), EPSILON_V);
+    // entry 11 (p=9.5, buse=20.3), dose exacte 40mm → D40=13.6
+    v = lookup_vitesse_cible(ab, 9.5f, 20.3f, 40.0f, NULL);
+    assert_near(13.6f, v, "lookup p=9.5 b=20.3 d=40");
 
-    // --- Clampage dose hors bornes ---
-    check_f("vtbl dose < 10mm → colonne 10mm",
-            9.6f, lookup_vitesse_cible(4.9f, 3.5f, 5.0f, NULL), EPSILON_V);
-    check_f("vtbl dose > 30mm → colonne 30mm",
-            25.6f, lookup_vitesse_cible(4.9f, 3.5f, 40.0f, NULL), EPSILON_V);
+    // entry 0, dose 22.5mm — interpolation 25→20 : t=0.5 → 15.3+0.5×3.9=17.25
+    v = lookup_vitesse_cible(ab, 4.9f, 17.3f, 22.5f, NULL);
+    assert_near(17.25f, v, "lookup interp d=22.5");
 
-    // --- Nearest-neighbor : point proche de l'entrée 0 ---
-    // 5.0 bar / 3.6mm → doit sélectionner entrée 0 (4.9/3.5), dose 20mm → 15.3 m/h
-    check_f("vtbl 5.0bar 3.6mm dose 20mm (nearest entry 0)",
-            15.3f, lookup_vitesse_cible(5.0f, 3.6f, 20.0f, NULL), EPSILON_V);
+    // Clamp dose > 40mm → vitesse_mh[0] (plus lente)
+    v = lookup_vitesse_cible(ab, 4.9f, 17.3f, 50.0f, NULL);
+    assert_near(9.6f, v, "clamp dose>40mm");
 
-    ESP_LOGI(TAG, "=== Résultat : %d/%d tests OK ===", s_ok, s_total);
+    // Clamp dose < 15mm → vitesse_mh[4] (plus rapide)
+    v = lookup_vitesse_cible(ab, 4.9f, 17.3f, 5.0f, NULL);
+    assert_near(25.6f, v, "clamp dose<15mm");
+
+    // Nearest neighbor — p/buse légèrement décalés → entry 0
+    v = lookup_vitesse_cible(ab, 5.0f, 17.5f, 25.0f, NULL);
+    assert_near(15.3f, v, "nearest neighbor");
+
+    ESP_LOGI(TAG, "=== Fin tests hydraulique ===");
 }

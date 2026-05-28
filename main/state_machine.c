@@ -1,127 +1,390 @@
 #include "state_machine.h"
+#include "securites.h"
 #include "gpio_handler.h"
-#include "calculs_hydraulique.h"
-#include "calculs_mecanique.h"
+#include "gpio_config.h"
+#include "driver/gpio.h"
 #include "config_nvs.h"
-#include "telemetry.h"
+#include "regulation.h"
+#include "calculs_mecanique.h"
+#include "calculs_hydraulique.h"
+#include "machines/machines.h"
+#include "abaques/abaques.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_timer.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
 #include <string.h>
-#include <sys/time.h>
+#include <math.h>
 
+// Implémentation complète — PR-05 / PR-06
 static const char *TAG = "state_machine";
 
-static etat_machine_t    s_etat = ETAT_VEILLE;
-static machine_status_t  s_status;
+// ---------------------------------------------------------------------------
+// État interne
+// ---------------------------------------------------------------------------
 static SemaphoreHandle_t s_mutex;
-static uint64_t          s_entree_etat_us = 0;
 
-static config_machine_t   s_cfg_machine;
-static config_programme_t s_cfg_prog;
+static etat_machine_t       s_etat      = ETAT_VEILLE;
+static sous_etat_poumon_t   s_sous_etat = SOUS_VIDANGE;
+static machine_status_t     s_status;
 
-// --- Utilitaires internes ---
+static config_machine_t     s_cfg_machine;
+static config_programme_t   s_cfg_prog;
+static const machine_profile_t *s_profil  = NULL;
+static const canon_abaque_t    *s_abaque  = NULL;
+
+// Timers états (ms depuis entrée dans l'état)
+static int64_t  s_t_etat_ms          = 0;
+static int64_t  s_t_sous_etat_ms     = 0;
+
+// Session
+static int64_t  s_t_session_debut_ms = 0;
+static float    s_longueur_enroulee  = 0.0f;
+
+// Cycle poumon
+static int64_t  s_t_rempl_debut_ms   = 0;
+static float    s_t_remplissage_ms   = 0.0f;
+static float    s_t_attente_ms       = 0.0f;
+static int      s_nb_tentatives      = 0;
+
+// Pause pression
+static int64_t  s_t_pause_debut_ms   = 0;
+
+// Heure estimée arrivée
+static int64_t  s_heure_base_unix    = 0;
+static bool     s_heure_synchro      = false;
+
+static inline int64_t now_ms(void)
+{
+    return esp_timer_get_time() / 1000;
+}
 
 static void entrer_etat(etat_machine_t nouvel_etat)
 {
-    s_etat             = nouvel_etat;
-    s_entree_etat_us   = esp_timer_get_time();
-    s_status.etat      = nouvel_etat;
-    s_status.etat_code = (int)nouvel_etat;
-    ESP_LOGI(TAG, "→ État : %d", (int)nouvel_etat);
+    ESP_LOGI(TAG, "État : %d → %d", s_etat, nouvel_etat);
+    s_etat     = nouvel_etat;
+    s_t_etat_ms = now_ms();
 }
 
-// Mise à jour du champ gpio_raw depuis les données capteur et les entrées lues
-static void maj_gpio_raw(const entrees_t *entrees)
+static void entrer_sous_etat(sous_etat_poumon_t ss)
 {
-    s_status.gpio_raw.fin_course         = entrees->fin_course;
-    s_status.gpio_raw.securite_spires    = entrees->securite_spires;
-    s_status.gpio_raw.contact_poumon     = entrees->contact_poumon;
-    s_status.gpio_raw.pressostat         = entrees->pressostat;
-    s_status.gpio_raw.vitesse_impulsions = g_capteur_vitesse.nb_impulsions;
-    s_status.gpio_raw.vitesse_m_h        = s_status.vitesse_m_h;
-    s_status.gpio_raw.ev1                = s_status.ev1;
-    s_status.gpio_raw.ev2                = s_status.ev2;
+    s_sous_etat      = ss;
+    s_t_sous_etat_ms = now_ms();
 }
 
-// Calcul vitesse instantanée depuis le capteur 10 pastilles
-static void maj_vitesse(void)
-{
-    uint64_t now_us     = esp_timer_get_time();
-    uint32_t periode_us = g_capteur_vitesse.periode_us;
-    bool vitesse_valide = (now_us - g_capteur_vitesse.last_isr_us)
-                          < ((uint64_t)TIMEOUT_VITESSE_MS * 1000ULL);
-
-    if (vitesse_valide && periode_us > 0) {
-        int   etage   = (s_status.etage_courant > 0) ? s_status.etage_courant : 1;
-        float r_etage = calcul_rayon_etage(etage,
-                            s_cfg_machine.r_tambour_vide_m,
-                            s_cfg_machine.d_tuyau_ext_m);
-        float dist_m      = calcul_dist_pulse_m(r_etage);
-        float periode_min = (float)periode_us / (1000000.0f * 60.0f);
-        s_status.vitesse_m_h = (periode_min > 0.0f)
-                               ? (dist_m / periode_min) * 60.0f : 0.0f;
-    } else {
-        s_status.vitesse_m_h = 0.0f;
-    }
-}
-
-// --- API publique ---
-
+// ---------------------------------------------------------------------------
+// Initialisation
+// ---------------------------------------------------------------------------
 void state_machine_init(void)
 {
     s_mutex = xSemaphoreCreateMutex();
     memset(&s_status, 0, sizeof(s_status));
-    s_status.heure_arrivee_unix = -1;
 
-    // Chargement config pour calculs de vitesse dès le démarrage
     config_nvs_lire_machine(&s_cfg_machine);
-    s_status.nb_etages = s_cfg_machine.nb_etages;
+    int prog_idx = 0;
+    config_nvs_lire_prog_actif(&prog_idx);
+    config_nvs_lire_programme(prog_idx, &s_cfg_prog);
+
+    s_profil = machine_get(s_cfg_machine.machine_active);
+    s_abaque = abaque_get(s_profil->abaque_idx);
+
+    // Résolution double entrée profil
+    machine_profile_t profil_copy = *s_profil;
+    if (!machine_resoudre_double_entree(&profil_copy)) {
+        ESP_LOGE(TAG, "Profil machine invalide (largeur et spires tous les deux à 0)");
+    }
+
+    s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
+
+    // Raison urgence persistante depuis NVS
+    char raison_nvs[64] = "";
+    config_nvs_lire_urgence(raison_nvs, sizeof(raison_nvs));
+    if (raison_nvs[0] != '\0') {
+        ESP_LOGW(TAG, "Dernier arrêt urgence : %s", raison_nvs);
+        strncpy(s_status.raison_arret, raison_nvs, sizeof(s_status.raison_arret) - 1);
+    }
 
     gpio_all_ev_off();
-    s_status.ev1 = false;
-    s_status.ev2 = false;
-
     entrer_etat(ETAT_VEILLE);
-    ESP_LOGI(TAG, "Machine d'états initialisée — VEILLE, EV1=OFF EV2=OFF");
+    ESP_LOGI(TAG, "Machine d'états initialisée");
 }
 
+// ---------------------------------------------------------------------------
+// Tick principal — appelé toutes les 100ms depuis state_machine_task
+// ---------------------------------------------------------------------------
 void tick_state_machine(void)
 {
-    entrees_t entrees;
-    gpio_handler_lire_entrees(&entrees);
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
 
-    maj_vitesse();
-    s_status.pression_ok = entrees.pressostat;
+    // SEC priorité absolue — avant tout traitement état
+    securites_watchdog();
 
-    // Sécurité spires — priorité absolue, active dans TOUS les états y compris IRRITESTEUR
-    if (entrees.securite_spires && s_etat != ETAT_ARRET_URGENCE) {
-        gpio_all_ev_off();
-        s_status.ev1 = false;
-        s_status.ev2 = false;
-        strncpy(s_status.raison_arret,
-                "Sécurité spires — débordement bobine", 63);
-        entrer_etat(ETAT_ARRET_URGENCE);
-        telemetry_send_alarm(ALARM_SECURITE_SPIRES, s_status.raison_arret);
-        ESP_LOGE(TAG, "ARRÊT URGENCE : %s", s_status.raison_arret);
-        maj_gpio_raw(&entrees);
-        return;
+    entrees_t e;
+    gpio_handler_lire_entrees(&e);
+    int64_t t_dans_etat = now_ms() - s_t_etat_ms;
+
+    switch (s_etat) {
+
+    // -----------------------------------------------------------------------
+    case ETAT_VEILLE:
+        s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
+        if (e.pression_ok && !e.fin_course && s_status.cfg_valide) {
+            gpio_ev_canon_set(true);
+            entrer_etat(ETAT_OUVERTURE_CANON);
+        }
+        break;
+
+    // -----------------------------------------------------------------------
+    case ETAT_OUVERTURE_CANON: {
+        static int s_tick_pression_stable = 0;
+        if (e.pression_ok) {
+            s_tick_pression_stable++;
+        } else {
+            s_tick_pression_stable = 0;
+        }
+        if (s_tick_pression_stable >= 30) {  // 30 × 100ms = 3s
+            s_tick_pression_stable = 0;
+            s_t_session_debut_ms = now_ms();
+            regulation_reset_calibration();
+            s_longueur_enroulee = 0.0f;
+            if (s_cfg_prog.tempo_depart_on && s_cfg_prog.tempo_depart_s > 0) {
+                entrer_etat(ETAT_TEMPO_DEPART);
+            } else {
+                gpio_ev_poumon_set(true);
+                s_nb_tentatives = 0;
+                entrer_etat(ETAT_REMPLISSAGE_POUMON);
+            }
+        }
+        break;
     }
 
-    // En mode IRRITESTEUR, la machine est suspendue (sécurité spires gérée ci-dessus)
-    if (s_etat == ETAT_IRRITESTEUR) {
-        maj_gpio_raw(&entrees);
-        return;
+    // -----------------------------------------------------------------------
+    case ETAT_TEMPO_DEPART:
+        if (!e.pression_ok) {
+            gpio_ev_canon_set(false);
+            entrer_etat(ETAT_PAUSE_PRESSION);
+        } else if (t_dans_etat >= (int64_t)s_cfg_prog.tempo_depart_s * 1000) {
+            gpio_ev_poumon_set(true);
+            s_nb_tentatives = 0;
+            entrer_etat(ETAT_REMPLISSAGE_POUMON);
+        }
+        break;
+
+    // -----------------------------------------------------------------------
+    case ETAT_REMPLISSAGE_POUMON: {
+        bool canon_deja_ouvert = (s_nb_tentatives > 0) || (s_etat == ETAT_REMPLISSAGE_POUMON);
+        // EV_CANON=ON si re-remplissage pendant cycle (poumon déjà allumé depuis avant)
+        // EV_CANON=OFF au premier remplissage initial (sera mis ON en entrant EN_COURS)
+        (void)canon_deja_ouvert;
+
+        if (!e.pression_ok) {
+            gpio_all_ev_off();
+            entrer_etat(ETAT_PAUSE_PRESSION);
+        } else if (e.poumon_plein) {
+            gpio_ev_poumon_set(false);
+            gpio_ev_canon_set(true);
+            entrer_etat(ETAT_EN_COURS);
+            entrer_sous_etat(SOUS_VIDANGE);
+        } else if (t_dans_etat >= 20000) {  // timeout 20s tentative
+            gpio_ev_poumon_set(false);
+            s_nb_tentatives++;
+            if (s_nb_tentatives >= 2) {
+                gpio_ev_canon_set(false);
+                state_machine_declencher_urgence("Remplissage poumon echoue (2/2)");
+            } else {
+                // Attendre t_vidange puis retenter
+                entrer_etat(ETAT_REMPLISSAGE_POUMON);  // ré-entrée — t_vidange géré PR-05
+            }
+        }
+        break;
     }
 
-    maj_gpio_raw(&entrees);
+    // -----------------------------------------------------------------------
+    case ETAT_EN_COURS: {
+        if (!e.pression_ok) {
+            gpio_all_ev_off();
+            s_t_pause_debut_ms = now_ms();
+            entrer_etat(ETAT_PAUSE_PRESSION);
+            break;
+        }
 
-    // TODO PR-05 : implémenter toutes les transitions d'état
-    // Squelette — la logique complète est dans PR-05
-    (void)entrees;
+        // Fin de course : transition vers arrivée ou arrêt final
+        if (e.fin_course) {
+            gpio_ev_poumon_set(false);
+            if (s_cfg_prog.tempo_arrivee_on && s_cfg_prog.tempo_arrivee_s > 0) {
+                entrer_etat(ETAT_TEMPO_ARRIVEE);
+            } else {
+                gpio_ev_canon_set(false);
+                entrer_etat(ETAT_ARRET_FINAL);
+            }
+            break;
+        }
+
+        gpio_handler_tick_cycle();
+
+        switch (s_sous_etat) {
+
+        case SOUS_VIDANGE: {
+            int64_t t_vidange_ms = (int64_t)(s_cfg_machine.t_vidange_s * 1000.0f);
+            if (t_vidange_ms <= 0) t_vidange_ms = 1;  // sécurité minimum
+            if (now_ms() - s_t_sous_etat_ms >= t_vidange_ms) {
+                entrer_sous_etat(SOUS_ATTENTE);
+            }
+            break;
+        }
+
+        case SOUS_ATTENTE: {
+            int64_t t_attente_ms = (int64_t)s_t_attente_ms;
+            if (now_ms() - s_t_sous_etat_ms >= t_attente_ms) {
+                gpio_ev_poumon_set(true);
+                gpio_reset_impulsions_cycle();
+                s_t_rempl_debut_ms = now_ms();
+                s_nb_tentatives = 0;
+                entrer_sous_etat(SOUS_REMPLISSAGE);
+            }
+            break;
+        }
+
+        case SOUS_REMPLISSAGE: {
+            int64_t t_timeout_ms = (int64_t)(s_cfg_machine.t_rempl_fixe_s > 0
+                                              ? s_cfg_machine.t_rempl_fixe_s * 1000.0f
+                                              : 20000.0f);
+            bool fin_rempl = false;
+
+            if (s_cfg_machine.mode_deg_poumon) {
+                // Mode dégradé B : temporisé
+                fin_rempl = (now_ms() - s_t_rempl_debut_ms >= t_timeout_ms);
+            } else {
+                // Mode normal : contact poumon plein
+                if (e.poumon_plein) {
+                    fin_rempl = true;
+                } else if (now_ms() - s_t_rempl_debut_ms >= t_timeout_ms) {
+                    s_nb_tentatives++;
+                    if (s_nb_tentatives >= 2) {
+                        gpio_all_ev_off();
+                        state_machine_declencher_urgence("Timeout poumon cycle");
+                        break;
+                    }
+                    // Retour VIDANGE pour retenter
+                    gpio_ev_poumon_set(false);
+                    entrer_sous_etat(SOUS_VIDANGE);
+                    break;
+                }
+            }
+
+            if (fin_rempl) {
+                gpio_ev_poumon_set(false);
+                s_t_remplissage_ms = (float)(now_ms() - s_t_rempl_debut_ms);
+
+                // Auto-calibration dist_par_cycle
+                uint32_t impulsions = gpio_get_impulsions();
+                int etage = calcul_etage_courant(s_longueur_enroulee, s_profil);
+                float r    = calcul_rayon_etage(etage, s_profil);
+                float dpulse = calcul_dist_pulse_m(r) * s_cfg_machine.facteur_correction;
+                float dist_cycle = (float)impulsions * dpulse;
+
+                if (dist_cycle > 0.0f) {
+                    float dist_moy = regulation_update_dist_par_cycle(dist_cycle);
+                    s_longueur_enroulee += dist_cycle;
+
+                    // Recalcul T_attente feedforward
+                    float v_cible_m_h = lookup_vitesse_cible(
+                        s_abaque,
+                        s_cfg_prog.pression_bar,
+                        (float)s_cfg_prog.buse_mm,
+                        s_cfg_prog.dose_mm,
+                        NULL);
+                    float v_cible_m_s = v_cible_m_h / 3600.0f;
+                    bool alerte = false;
+                    float t_att = calcul_t_attente_s(
+                        dist_moy, v_cible_m_s,
+                        s_t_remplissage_ms / 1000.0f,
+                        s_cfg_machine.t_vidange_s,
+                        &alerte);
+
+                    // Correction Kp après n_cycles_calib
+                    if (regulation_get_nb_cycles() >= s_cfg_machine.n_cycles_calib) {
+                        float v_reel = gpio_get_vitesse_m_h(s_cfg_machine.facteur_correction);
+                        t_att = correction_vitesse(t_att, v_reel, v_cible_m_h, s_cfg_machine.kp_regulation);
+                    }
+
+                    s_t_attente_ms = t_att * 1000.0f;
+                    s_status.alerte_pression_insuff = alerte;
+                }
+
+                entrer_sous_etat(SOUS_VIDANGE);
+            }
+            break;
+        }
+        }  // switch sous_etat
+        break;
+    }
+
+    // -----------------------------------------------------------------------
+    case ETAT_PAUSE_PRESSION:
+        // Reprise automatique au retour pression
+        if (e.pression_ok) {
+            gpio_ev_canon_set(true);
+            entrer_etat(ETAT_EN_COURS);
+            entrer_sous_etat(SOUS_VIDANGE);
+        }
+        break;
+
+    // -----------------------------------------------------------------------
+    case ETAT_TEMPO_ARRIVEE:
+        if (!e.pression_ok) {
+            gpio_ev_canon_set(false);
+            entrer_etat(ETAT_ARRET_FINAL);
+        } else if (t_dans_etat >= (int64_t)s_cfg_prog.tempo_arrivee_s * 1000) {
+            gpio_ev_canon_set(false);
+            entrer_etat(ETAT_ARRET_FINAL);
+        }
+        break;
+
+    // -----------------------------------------------------------------------
+    case ETAT_ARRET_FINAL:
+        // Retour VEILLE automatique quand l'opérateur déroule (fin_course disparaît)
+        if (!e.fin_course) {
+            s_longueur_enroulee = 0.0f;
+            regulation_reset_calibration();
+            memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
+            entrer_etat(ETAT_VEILLE);
+        }
+        break;
+
+    // -----------------------------------------------------------------------
+    case ETAT_ARRET_URGENCE:
+        // Rien — cmd_reset manuel requis
+        break;
+
+    }  // switch etat
+
+    // Mise à jour statut diffusé
+    s_status.etat         = s_etat;
+    s_status.sous_etat    = s_sous_etat;
+    s_status.ev_canon     = gpio_get_level(PIN_EV_CANON)  != 0;
+    s_status.ev_poumon    = gpio_get_level(PIN_EV_POUMON) != 0;
+    s_status.pression_ok  = e.pression_ok;
+    s_status.fin_course   = e.fin_course;
+    s_status.secu_spires  = e.secu_spires;
+    s_status.poumon_plein = e.poumon_plein;
+    s_status.longueur_enroulee_m = s_longueur_enroulee;
+    if (s_t_session_debut_ms > 0) {
+        s_status.duree_s = (int32_t)((now_ms() - s_t_session_debut_ms) / 1000);
+    }
+    s_status.t_remplissage_ms = (int32_t)s_t_remplissage_ms;
+    s_status.t_attente_ms     = (int32_t)s_t_attente_ms;
+    s_status.cycles_total     = (uint32_t)regulation_get_nb_cycles();
+    s_status.facteur_correction = s_cfg_machine.facteur_correction;
+    s_status.heure_synchro    = s_heure_synchro;
+
+    xSemaphoreGive(s_mutex);
 }
 
+// ---------------------------------------------------------------------------
+// API publique
+// ---------------------------------------------------------------------------
 void state_machine_get_status(machine_status_t *status)
 {
     xSemaphoreTake(s_mutex, portMAX_DELAY);
@@ -129,120 +392,107 @@ void state_machine_get_status(machine_status_t *status)
     xSemaphoreGive(s_mutex);
 }
 
+etat_machine_t state_machine_get_etat(void)
+{
+    return s_etat;
+}
+
 void state_machine_cmd_start(void)
 {
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
     if (s_etat == ETAT_VEILLE) {
-        int idx = 0;
-        config_nvs_lire_prog_actif(&idx);
-        config_nvs_lire_programme(idx, &s_cfg_prog);
-        config_nvs_lire_machine(&s_cfg_machine);
-
-        s_status.nb_etages  = s_cfg_machine.nb_etages;
-        s_status.p_mano_bar = s_cfg_prog.p_borne_bar;
-        s_status.cfg_valide = config_machine_est_valide(&s_cfg_machine);
-
-        strncpy(s_status.prog_nom, s_cfg_prog.nom, 20);
-        s_status.prog_nom[20] = '\0';
-
-        ESP_LOGI(TAG, "Commande DÉMARRER — prog=%s cfg_valide=%d",
-                 s_status.prog_nom, s_status.cfg_valide);
-        // TODO PR-05 : transition vers TEMPO_DEPART ou REMPLISSAGE_POUMON
+        ESP_LOGI(TAG, "cmd_start reçu");
+        // Les conditions seront évaluées au prochain tick
     }
+    xSemaphoreGive(s_mutex);
 }
 
 void state_machine_cmd_stop(void)
 {
-    gpio_all_ev_off();
-    s_status.ev1 = false;
-    s_status.ev2 = false;
-    entrer_etat(ETAT_ARRET_FINAL);
-    ESP_LOGI(TAG, "Commande ARRÊT — EV1=OFF EV2=OFF");
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (s_etat != ETAT_VEILLE &&
+        s_etat != ETAT_ARRET_FINAL &&
+        s_etat != ETAT_ARRET_URGENCE) {
+        ESP_LOGI(TAG, "cmd_stop reçu depuis état %d", s_etat);
+        gpio_all_ev_off();
+        entrer_etat(ETAT_ARRET_FINAL);
+    }
+    xSemaphoreGive(s_mutex);
 }
 
 void state_machine_cmd_reset(void)
 {
-    if (s_etat == ETAT_ARRET_FINAL || s_etat == ETAT_ARRET_URGENCE) {
-        memset(&s_status, 0, sizeof(s_status));
-        s_status.heure_arrivee_unix = -1;
-        gpio_all_ev_off();
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (s_etat == ETAT_ARRET_URGENCE) {
+        ESP_LOGI(TAG, "cmd_reset — sortie urgence");
+        memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
+        config_nvs_sauver_urgence("");
+        s_longueur_enroulee = 0.0f;
+        regulation_reset_calibration();
         entrer_etat(ETAT_VEILLE);
-        ESP_LOGI(TAG, "RESET — retour VEILLE");
     }
+    xSemaphoreGive(s_mutex);
+}
+
+void state_machine_cmd_etalonner(float longueur_reelle_m)
+{
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    float facteur = 0.0f;
+    bool ok = calcul_facteur_etalonnage(
+        s_longueur_enroulee,
+        longueur_reelle_m,
+        (int)gpio_get_impulsions(),
+        &facteur);
+    if (ok) {
+        s_cfg_machine.facteur_correction = facteur;
+        config_nvs_sauver_machine(&s_cfg_machine);
+        ESP_LOGI(TAG, "Étalonnage sauvegardé : facteur=%.3f", facteur);
+    }
+    xSemaphoreGive(s_mutex);
 }
 
 void state_machine_set_time(int64_t timestamp_unix)
 {
-    struct timeval tv = { .tv_sec = (time_t)timestamp_unix, .tv_usec = 0 };
-    settimeofday(&tv, NULL);
-    s_status.heure_synchro = true;
-    ESP_LOGI(TAG, "Heure synchronisée : %lld", (long long)timestamp_unix);
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    s_heure_base_unix = timestamp_unix;
+    s_heure_synchro   = true;
+    xSemaphoreGive(s_mutex);
 }
 
-// --- Commandes IRRITESTEUR ---
-
-void state_machine_cmd_entrer_irritesteur(void)
+void state_machine_cmd_ev_canon_set(bool actif)
 {
-    if (s_etat != ETAT_VEILLE) {
-        ESP_LOGW(TAG, "IRRITESTEUR refusé — état courant non VEILLE (%d)", (int)s_etat);
-        return;
+    if (s_etat == ETAT_VEILLE) {
+        gpio_ev_canon_set(actif);
     }
+}
+
+void state_machine_cmd_ev_poumon_set(bool actif)
+{
+    if (s_etat == ETAT_VEILLE) {
+        gpio_ev_poumon_set(actif);
+    }
+}
+
+void state_machine_declencher_urgence(const char *raison)
+{
     gpio_all_ev_off();
-    s_status.ev1 = false;
-    s_status.ev2 = false;
-    entrer_etat(ETAT_IRRITESTEUR);
-    ESP_LOGI(TAG, "=== IRRITESTEUR activé — machine d'états suspendue ===");
+    ESP_LOGE(TAG, "ARRÊT URGENCE : %s", raison);
+    if (s_etat != ETAT_ARRET_URGENCE) {
+        entrer_etat(ETAT_ARRET_URGENCE);
+        strncpy(s_status.raison_arret, raison, sizeof(s_status.raison_arret) - 1);
+        config_nvs_sauver_urgence(raison);
+    }
 }
 
-void state_machine_cmd_quitter_irritesteur(void)
-{
-    if (s_etat != ETAT_IRRITESTEUR) {
-        return;
-    }
-    // Fail-safe : couper les électrovannes avant de rendre la main
-    gpio_all_ev_off();
-    s_status.ev1 = false;
-    s_status.ev2 = false;
-    entrer_etat(ETAT_VEILLE);
-    ESP_LOGI(TAG, "=== IRRITESTEUR désactivé — retour VEILLE, EV1=OFF EV2=OFF ===");
-}
-
-void state_machine_cmd_ev1_set(bool actif)
-{
-    if (s_etat != ETAT_IRRITESTEUR) {
-        ESP_LOGW(TAG, "cmd_ev1_set ignorée — pas en mode IRRITESTEUR");
-        return;
-    }
-    // Sécurité : ouverture EV interdite si pression détectée au pressostat
-    if (actif && s_status.pression_ok) {
-        ESP_LOGW(TAG, "IRRITESTEUR EV1 ON refusé — pression détectée au pressostat");
-        return;
-    }
-    gpio_ev1_set(actif);
-    s_status.ev1 = actif;
-    s_status.gpio_raw.ev1 = actif;
-    ESP_LOGI(TAG, "IRRITESTEUR EV1 = %s", actif ? "ON" : "OFF");
-}
-
-void state_machine_cmd_ev2_set(bool actif)
-{
-    if (s_etat != ETAT_IRRITESTEUR) {
-        ESP_LOGW(TAG, "cmd_ev2_set ignorée — pas en mode IRRITESTEUR");
-        return;
-    }
-    // Sécurité : ouverture EV interdite si pression détectée au pressostat
-    if (actif && s_status.pression_ok) {
-        ESP_LOGW(TAG, "IRRITESTEUR EV2 ON refusé — pression détectée au pressostat");
-        return;
-    }
-    gpio_ev2_set(actif);
-    s_status.ev2 = actif;
-    s_status.gpio_raw.ev2 = actif;
-    ESP_LOGI(TAG, "IRRITESTEUR EV2 = %s", actif ? "ON" : "OFF");
-}
-
+// ---------------------------------------------------------------------------
+// Hooks de test
+// ---------------------------------------------------------------------------
 #ifdef CONFIG_IRRI_ENABLE_TESTS
-void state_machine_test_set_pression(bool pression_ok)
+void state_machine_test_injecter_etat(etat_machine_t etat)
 {
-    s_status.pression_ok = pression_ok;
+    entrer_etat(etat);
 }
+void state_machine_test_set_pression(bool pression_ok)  { (void)pression_ok; }
+void state_machine_test_set_fin_course(bool active)      { (void)active; }
+void state_machine_test_set_secu_spires(bool active)     { (void)active; }
 #endif
