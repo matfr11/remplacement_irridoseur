@@ -1,19 +1,33 @@
 #include "calculs_hydraulique.h"
 #include "esp_log.h"
 #include <math.h>
+#include <stddef.h>
 
 static const char *TAG = "calcul_hydro";
 
-// Table débit canon (m³/h) — source : UASA46, "Choisir le bon diamètre de buse", 19/06/2025
-// Lignes  : pression canon 4.0 / 4.5 / 5.0 / 5.5 / 6.0 bar
-// Colonnes: diamètre buse 12 / 13 / 14 / 15 / 16 / 17 / 18 / 19 / 20 / 21 / 22 / 23 / 24 / 25 / 26 mm
-const float DEBIT_TABLE_M3H[5][15] = {
-    /* 4.0 bar */ {10.8f,12.7f,14.7f,16.9f,19.2f,21.7f,24.3f,27.1f,30.0f,33.1f,36.4f,39.8f,43.3f,47.0f,50.8f},
-    /* 4.5 bar */ {11.4f,13.4f,15.6f,17.9f,20.4f,23.0f,25.8f,28.8f,31.9f,35.1f,38.6f,42.2f,45.9f,49.8f,53.9f},
-    /* 5.0 bar */ {12.1f,14.2f,16.4f,18.9f,21.5f,24.3f,27.2f,30.3f,33.6f,37.1f,40.7f,44.5f,48.4f,52.5f,56.8f},
-    /* 5.5 bar */ {12.7f,14.9f,17.2f,19.8f,22.5f,25.5f,28.5f,31.8f,35.2f,38.9f,42.7f,46.6f,50.8f,55.1f,59.6f},
-    /* 6.0 bar */ {13.2f,15.5f,18.0f,20.7f,23.5f,26.6f,29.8f,33.2f,36.8f,40.6f,44.6f,48.7f,53.0f,57.5f,62.2f},
+const float CANON_DOSES_MM[CANON_N_DOSES] = {10.0f, 15.0f, 20.0f, 25.0f, 30.0f};
+
+// Table abaque constructeur Irrifrance — enrouleur Structure 1 bis, canon Nelson SR150
+// 13 configurations buse/pression fournies par Irrifrance pour cet ensemble spécifique
+const canon_entry_t CANON_TABLE[CANON_N_ENTRIES] = {
+    {4.9f,23.0f,3.5f,17.3f,60.0f, { 9.6f,12.3f,15.3f,19.2f,25.6f}},
+    {5.6f,24.6f,4.0f,17.3f,63.0f, { 9.8f,13.0f,15.6f,19.5f,26.0f}},
+    {5.7f,29.8f,3.5f,20.3f,63.0f, {11.8f,15.8f,18.9f,23.7f,31.5f}},
+    {6.5f,31.9f,4.0f,20.3f,66.0f, {12.1f,16.1f,19.3f,24.2f,32.2f}},
+    {6.8f,37.8f,3.5f,22.9f,66.0f, {14.3f,19.1f,22.9f,28.6f,38.2f}},
+    {6.9f,27.5f,5.0f,17.8f,66.0f, {10.4f,13.9f,16.7f,20.8f,27.8f}},
+    {7.7f,40.4f,4.0f,22.9f,72.0f, {14.0f,18.7f,22.4f,28.1f,37.4f}},
+    {8.0f,35.7f,5.0f,20.3f,72.0f, {12.4f,16.5f,19.8f,24.8f,33.1f}},
+    {8.2f,30.1f,6.0f,17.8f,66.0f, {11.4f,15.2f,18.2f,22.8f,30.4f}},
+    {8.4f,46.9f,3.5f,25.4f,72.0f, {16.3f,21.7f,26.1f,32.6f,43.4f}},
+    {9.4f,50.1f,4.0f,25.4f,78.0f, {16.1f,21.4f,25.7f,32.1f,42.8f}},
+    {9.5f,39.1f,6.0f,20.3f,72.0f, {13.6f,18.1f,21.7f,27.2f,36.2f}},
+    {9.5f,45.2f,5.0f,22.9f,78.0f, {14.5f,19.3f,23.2f,29.0f,38.6f}},
 };
+
+// Plages utilisées pour la normalisation de la distance euclidienne
+#define CANON_P_RANGE    4.6f   // 9.5 - 4.9 bar
+#define CANON_BUSE_RANGE 2.5f   // 6.0 - 3.5 mm
 
 float calcul_pression_canon(float p_mano_bar,
                              float longueur_tuyau_m,
@@ -24,60 +38,49 @@ float calcul_pression_canon(float p_mano_bar,
     float perte_denivele  = (denivele_m / 10.0f) * PERTE_DENIVELE_BAR_PAR_10M;
 
     float p_canon = p_mano_bar - perte_enrouleur - perte_tuyau - perte_denivele;
-
-    if (p_canon < ABAQUE_P_MIN_BAR) {
-        ESP_LOGW(TAG, "P_canon=%.2f bar < %.1f bar min (table abaque)", p_canon, ABAQUE_P_MIN_BAR);
-    } else if (p_canon > ABAQUE_P_MAX_BAR) {
-        ESP_LOGW(TAG, "P_canon=%.2f bar > %.1f bar max (table abaque)", p_canon, ABAQUE_P_MAX_BAR);
-    }
-
     return p_canon;
 }
 
-float calcul_debit_m3h(float p_canon_bar, int d_buse_mm)
+float lookup_vitesse_cible(float p_borne_bar, float buse_mm,
+                            float dose_mm, float *debit_m3h_out)
 {
-    if (d_buse_mm < ABAQUE_D_MIN_MM || d_buse_mm > ABAQUE_D_MAX_MM) {
-        ESP_LOGW(TAG, "Buse %dmm hors table [%d..%d] — clampée",
-                 d_buse_mm, ABAQUE_D_MIN_MM, ABAQUE_D_MAX_MM);
-        if (d_buse_mm < ABAQUE_D_MIN_MM) d_buse_mm = ABAQUE_D_MIN_MM;
-        if (d_buse_mm > ABAQUE_D_MAX_MM) d_buse_mm = ABAQUE_D_MAX_MM;
+    // Étape 1 : trouver l'entrée la plus proche par distance euclidienne normalisée
+    int   best_idx  = 0;
+    float best_dist = 1e30f;
+
+    for (int i = 0; i < CANON_N_ENTRIES; i++) {
+        float dp = (p_borne_bar - CANON_TABLE[i].p_borne_bar) / CANON_P_RANGE;
+        float db = (buse_mm     - CANON_TABLE[i].buse_mm)     / CANON_BUSE_RANGE;
+        float d2 = dp * dp + db * db;
+        if (d2 < best_dist) {
+            best_dist = d2;
+            best_idx  = i;
+        }
     }
 
-    // Clamp pression dans les bornes de la table
-    float p = p_canon_bar;
-    if (p < ABAQUE_P_MIN_BAR) p = ABAQUE_P_MIN_BAR;
-    if (p > ABAQUE_P_MAX_BAR) p = ABAQUE_P_MAX_BAR;
+    const canon_entry_t *e = &CANON_TABLE[best_idx];
+    ESP_LOGD(TAG, "lookup: nearest entry %d (p=%.1f buse=%.1f)", best_idx,
+             e->p_borne_bar, e->buse_mm);
 
-    // Index colonne (buse, pas 1mm, pas de fraction nécessaire)
-    int id = d_buse_mm - ABAQUE_D_MIN_MM;
-
-    // Index ligne et fraction pour interpolation linéaire sur la pression
-    float ip_f = (p - ABAQUE_P_MIN_BAR) / ABAQUE_P_PAS;
-    int   ip   = (int)ip_f;
-    float fp   = ip_f - (float)ip;
-
-    if (ip >= 4) {
-        ip = 4;
-        fp = 0.0f;
+    if (debit_m3h_out) {
+        *debit_m3h_out = e->debit_m3h;
     }
 
-    float debit = DEBIT_TABLE_M3H[ip][id] * (1.0f - fp);
-    if (ip < 4) {
-        debit += DEBIT_TABLE_M3H[ip + 1][id] * fp;
+    // Étape 2 : interpolation linéaire sur la dose
+    if (dose_mm <= CANON_DOSES_MM[0]) {
+        return e->vitesse_mh[0];
+    }
+    if (dose_mm >= CANON_DOSES_MM[CANON_N_DOSES - 1]) {
+        return e->vitesse_mh[CANON_N_DOSES - 1];
     }
 
-    return debit;
-}
-
-float calcul_vitesse_cible_m_min(float debit_L_min,
-                                  float largeur_m,
-                                  float dose_mm)
-{
-    if (largeur_m <= 0.0f || dose_mm <= 0.0f) {
-        ESP_LOGE(TAG, "Paramètres invalides : largeur=%.2fm dose=%.2fmm", largeur_m, dose_mm);
-        return 0.0f;
+    for (int d = 0; d < CANON_N_DOSES - 1; d++) {
+        if (dose_mm >= CANON_DOSES_MM[d] && dose_mm <= CANON_DOSES_MM[d + 1]) {
+            float t = (dose_mm - CANON_DOSES_MM[d])
+                      / (CANON_DOSES_MM[d + 1] - CANON_DOSES_MM[d]);
+            return e->vitesse_mh[d] + t * (e->vitesse_mh[d + 1] - e->vitesse_mh[d]);
+        }
     }
-    // dose_mm [L/m²] = débit_L_min / (largeur_m [m] × vitesse [m/min])
-    // → vitesse = débit / (largeur × dose)
-    return debit_L_min / (largeur_m * dose_mm);
+
+    return e->vitesse_mh[CANON_N_DOSES - 1];
 }

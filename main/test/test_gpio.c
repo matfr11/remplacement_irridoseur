@@ -2,6 +2,7 @@
 #include "../gpio_handler.h"
 #include "../state_machine.h"
 #include "esp_log.h"
+#include <stdbool.h>
 
 static const char *TAG = "test_gpio";
 
@@ -108,6 +109,43 @@ static void test_irritesteur_transitions(void)
     state_machine_cmd_reset();
 }
 
+// --- Sécurité pressostat en mode IRRITESTEUR ---
+static void test_irritesteur_securite_pressostat(void)
+{
+    ESP_LOGI(TAG, "-- Sécurité pressostat IRRITESTEUR --");
+
+    machine_status_t status;
+
+    // Entrer en IRRITESTEUR (on est en VEILLE après reset)
+    state_machine_cmd_entrer_irritesteur();
+    state_machine_get_status(&status);
+    check_etat("entrée IRRITESTEUR OK", ETAT_IRRITESTEUR, status.etat);
+
+    // Simuler pression présente au pressostat
+    state_machine_test_set_pression(true);
+
+    // EV1 ON doit être refusé
+    state_machine_cmd_ev1_set(true);
+    state_machine_get_status(&status);
+    check_bool("EV1 ON refusé si pression pressostat", false, status.ev1);
+
+    // EV2 ON doit être refusé
+    state_machine_cmd_ev2_set(true);
+    state_machine_get_status(&status);
+    check_bool("EV2 ON refusé si pression pressostat", false, status.ev2);
+
+    // Pression absente → EV1 ON doit être accepté
+    state_machine_test_set_pression(false);
+    state_machine_cmd_ev1_set(true);
+    state_machine_get_status(&status);
+    check_bool("EV1 ON accepté sans pression pressostat", true, status.ev1);
+
+    // Nettoyage
+    state_machine_cmd_ev1_set(false);
+    state_machine_cmd_quitter_irritesteur();
+    state_machine_cmd_reset();  // état peut être VEILLE, reset sans effet si déjà VEILLE
+}
+
 // --- Test compteur ISR ---
 static void test_compteur_isr(void)
 {
@@ -137,6 +175,7 @@ void test_gpio_run(void)
 
     test_logique_contact();
     test_irritesteur_transitions();
+    test_irritesteur_securite_pressostat();
     test_compteur_isr();
 
     ESP_LOGI(TAG, "=== Résultat PR-02 : %d/%d tests OK ===", s_ok, s_total);
