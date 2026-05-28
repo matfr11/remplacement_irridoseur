@@ -5,6 +5,54 @@ Format : [PR-XX] — date — description
 
 ---
 
+## [PR-03] — 2026-05-28 — Calculs hydrauliques — double interpolation abaque
+
+### calculs_hydraulique.h
+
+- `lookup_vitesse_cible()` : ajout paramètre `p_buse_out` (NULL si non souhaité) — interpolé avec les mêmes poids IDW que le débit
+
+### calculs_hydraulique.c
+
+**Correction UB pointeur struct**
+- `interpoler_dose()` : remplacement de `const float *v = &e->D40; v[d]` (UB) par array local explicite `{e->D40, e->D30, e->D25, e->D20, e->D15}`
+
+**Ranges de normalisation dynamiques**
+- Suppression des constantes hardcodées `CANON_P_RANGE=4.6` / `CANON_BUSE_RANGE=8.1`
+- `calc_ranges()` calcule min/max p et buse depuis les données de l'abaque à chaque appel
+- Compatible avec tout abaque futur sans modification du code
+
+**p_buse interpolé**
+- Ajout du calcul IDW sur `p_buse` en parallèle du débit
+
+### state_machine.c
+
+- Call site `lookup_vitesse_cible(... NULL)` → `... NULL, NULL` (nouveau paramètre p_buse_out)
+
+### test/test_calculs_hydraulique.c — 16 tests
+
+| # | Test | Ce qui est vérifié |
+|---|---|---|
+| 1 | `exact_entry0_d25` | Exact match + débit renvoyé |
+| 2 | `exact_entry6_d20` | Exact match entry intermédiaire |
+| 3 | `exact_entry11_d40` | Exact match D40 |
+| 4 | `interp_dose_22.5` | Interpolation linéaire entre D25 et D20 |
+| 5 | `clamp_dose_haute` | dose>40 → D40 (vitesse la plus lente) |
+| 6 | `clamp_dose_basse` | dose<15 → D15 (vitesse la plus rapide) |
+| 7 | `nearest_neighbor` | p/buse légèrement décalés → convergence vers entry0 |
+| 8 | `interp_deux_voisins` | Interpolation IDW entre entry2 et entry3 |
+| 9 | `p_buse_out_entry0` | p_buse=3.5 sur exact match |
+| 10 | `p_buse_out_entry6` | p_buse=4.0 sur exact match |
+| 11 | `abaque_null` | NULL → retourne 0, pas de crash |
+| 12 | `surface_100x60` | 100×60=6000 m² |
+| 13 | `surface_zero` | longueur=0 → 0 |
+| 14 | `dose_inst_25_15_60` | 25/(15×60)×1000=27.78mm |
+| 15 | `dose_inst_vitesse_zero` | vitesse=0 → 0 (pas de div/0) |
+| 16 | `dose_inst_largeur_zero` | largeur=0 → 0 (pas de div/0) |
+
+**Build** : 0 erreur, 0 nouveau warning — 89% flash libre
+
+---
+
 ## [PR-02] — 2026-05-28 — GPIO handler complet + ISR vitesse robuste + mode dégradé A
 
 ### gpio_handler.c/h

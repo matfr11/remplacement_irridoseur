@@ -9,51 +9,82 @@ static const char *TAG = "calculs_hyd";
 #define CANON_N_DOSES  5
 static const float CANON_DOSES_MM[CANON_N_DOSES] = {40.0f, 30.0f, 25.0f, 20.0f, 15.0f};
 
-// Plages de normalisation pour le nearest-neighbor (2 lignes les plus proches)
-#define CANON_P_RANGE     4.6f   // 9.5 - 4.9 bar
-#define CANON_BUSE_RANGE  8.1f   // 25.4 - 17.3 mm
-
-// Retourne la vitesse interpolée sur la dose pour une entrée donnée
+// =============================================================================
+// Interpolation dose — niveau 2
+// Retourne la vitesse interpolée sur la dose pour une entrée donnée.
+// Utilise un array local explicite (pas de pointer arithmetic sur struct).
+// =============================================================================
 static float interpoler_dose(const canon_entry_t *e, float dose_mm)
 {
-    const float *v = &e->D40;   // D40 est le premier champ vitesse dans la struct
+    const float vitesses[CANON_N_DOSES] = {e->D40, e->D30, e->D25, e->D20, e->D15};
 
     // Clamp haut — dose > 40mm → vitesse minimale (la plus lente)
     if (dose_mm >= CANON_DOSES_MM[0]) {
-        return v[0];
+        return vitesses[0];
     }
     // Clamp bas — dose < 15mm → vitesse maximale (la plus rapide)
     if (dose_mm <= CANON_DOSES_MM[CANON_N_DOSES - 1]) {
-        return v[CANON_N_DOSES - 1];
+        return vitesses[CANON_N_DOSES - 1];
     }
-    // Interpolation linéaire entre deux colonnes adjacentes (ordre décroissant)
+    // Interpolation linéaire entre deux colonnes adjacentes
     for (int d = 0; d < CANON_N_DOSES - 1; d++) {
         if (dose_mm <= CANON_DOSES_MM[d] && dose_mm >= CANON_DOSES_MM[d + 1]) {
             float t = (CANON_DOSES_MM[d] - dose_mm)
                     / (CANON_DOSES_MM[d] - CANON_DOSES_MM[d + 1]);
-            return v[d] + t * (v[d + 1] - v[d]);
+            return vitesses[d] + t * (vitesses[d + 1] - vitesses[d]);
         }
     }
-    return v[0];  // ne devrait pas arriver
+    return vitesses[0];
 }
 
-// Distance normalisée (p, buse) entre un point cible et une entrée de l'abaque
-static float distance_normalisee(const canon_entry_t *e, float p, float buse)
+// =============================================================================
+// Distance normalisée (p, buse) — niveau 1
+// Ranges calculés dynamiquement depuis l'abaque (robuste pour abaques futurs).
+// =============================================================================
+static float distance_normalisee(const canon_entry_t *e, float p, float buse,
+                                  float p_range, float buse_range)
 {
-    float dp = (p - e->p_enrouleur) / CANON_P_RANGE;
-    float db = (buse - e->buse_mm)  / CANON_BUSE_RANGE;
+    float dp = (p - e->p_enrouleur) / p_range;
+    float db = (buse - e->buse_mm)  / buse_range;
     return sqrtf(dp * dp + db * db);
 }
 
+// Calcule les ranges de normalisation depuis l'abaque
+static void calc_ranges(const canon_abaque_t *abaque,
+                         float *p_range_out, float *buse_range_out)
+{
+    float p_min = abaque->table[0].p_enrouleur;
+    float p_max = p_min;
+    float b_min = abaque->table[0].buse_mm;
+    float b_max = b_min;
+
+    for (int i = 1; i < abaque->nb_entrees; i++) {
+        float p = abaque->table[i].p_enrouleur;
+        float b = abaque->table[i].buse_mm;
+        if (p < p_min) p_min = p;
+        if (p > p_max) p_max = p;
+        if (b < b_min) b_min = b;
+        if (b > b_max) b_max = b;
+    }
+
+    *p_range_out    = (p_max - p_min > 1e-3f) ? (p_max - p_min) : 1.0f;
+    *buse_range_out = (b_max - b_min > 1e-3f) ? (b_max - b_min) : 1.0f;
+}
+
+// =============================================================================
+// Lookup principal — double interpolation
+// =============================================================================
 float lookup_vitesse_cible(const canon_abaque_t *abaque,
                             float p_enrouleur,
                             float buse_mm,
                             float dose_mm,
-                            float *debit_out)
+                            float *debit_out,
+                            float *p_buse_out)
 {
     if (!abaque || abaque->nb_entrees <= 0) {
         ESP_LOGE(TAG, "abaque NULL ou vide");
-        if (debit_out) *debit_out = 0.0f;
+        if (debit_out)  *debit_out  = 0.0f;
+        if (p_buse_out) *p_buse_out = 0.0f;
         return 0.0f;
     }
 
@@ -62,13 +93,18 @@ float lookup_vitesse_cible(const canon_abaque_t *abaque,
                  dose_mm, DOSE_MIN_MM, DOSE_MAX_MM);
     }
 
+    float p_range, buse_range;
+    calc_ranges(abaque, &p_range, &buse_range);
+
     // Trouver les 2 entrées les plus proches (nearest neighbor)
-    int idx0 = 0, idx1 = -1;
-    float d0 = distance_normalisee(&abaque->table[0], p_enrouleur, buse_mm);
-    float d1 = 1e9f;
+    int   idx0 = 0, idx1 = -1;
+    float d0   = distance_normalisee(&abaque->table[0], p_enrouleur, buse_mm,
+                                     p_range, buse_range);
+    float d1   = 1e9f;
 
     for (int i = 1; i < abaque->nb_entrees; i++) {
-        float d = distance_normalisee(&abaque->table[i], p_enrouleur, buse_mm);
+        float d = distance_normalisee(&abaque->table[i], p_enrouleur, buse_mm,
+                                      p_range, buse_range);
         if (d < d0) {
             d1 = d0; idx1 = idx0;
             d0 = d;  idx0 = i;
@@ -79,22 +115,27 @@ float lookup_vitesse_cible(const canon_abaque_t *abaque,
 
     float v0 = interpoler_dose(&abaque->table[idx0], dose_mm);
 
+    // Un seul voisin valide ou matchs quasi-identiques → retourner le plus proche
     if (idx1 < 0 || d0 + d1 < 1e-6f) {
-        if (debit_out) *debit_out = abaque->table[idx0].q_m3h;
+        if (debit_out)  *debit_out  = abaque->table[idx0].q_m3h;
+        if (p_buse_out) *p_buse_out = abaque->table[idx0].p_buse;
         return v0;
     }
 
     float v1 = interpoler_dose(&abaque->table[idx1], dose_mm);
 
-    // Interpolation pondérée par l'inverse des distances
+    // Interpolation pondérée par l'inverse des distances (IDW = interp linéaire pour 2 points)
     float w0 = 1.0f / (d0 + 1e-6f);
     float w1 = 1.0f / (d1 + 1e-6f);
-    float vitesse = (w0 * v0 + w1 * v1) / (w0 + w1);
+    float wt = w0 + w1;
+
+    float vitesse = (w0 * v0 + w1 * v1) / wt;
 
     if (debit_out) {
-        float q0 = abaque->table[idx0].q_m3h;
-        float q1 = abaque->table[idx1].q_m3h;
-        *debit_out = (w0 * q0 + w1 * q1) / (w0 + w1);
+        *debit_out  = (w0 * abaque->table[idx0].q_m3h  + w1 * abaque->table[idx1].q_m3h)  / wt;
+    }
+    if (p_buse_out) {
+        *p_buse_out = (w0 * abaque->table[idx0].p_buse + w1 * abaque->table[idx1].p_buse) / wt;
     }
 
     return vitesse;

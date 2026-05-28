@@ -294,7 +294,7 @@ void tick_state_machine(void)
                         s_cfg_prog.pression_bar,
                         (float)s_cfg_prog.buse_mm,
                         s_cfg_prog.dose_mm,
-                        NULL);
+                        NULL, NULL);
                     float v_cible_m_s = v_cible_m_h / 3600.0f;
                     bool alerte = false;
                     float t_att = calcul_t_attente_s(
