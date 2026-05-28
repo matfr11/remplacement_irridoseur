@@ -14,6 +14,7 @@
 #include "test/test_calculs_hydraulique.h"
 #include "test/test_calculs_mecanique.h"
 #include "test/test_state_machine.h"
+#include "test/test_gpio.h"
 #endif
 
 static const char *TAG = "irrifrance";
@@ -77,6 +78,7 @@ void app_main(void)
     ESP_LOGW(TAG, "=== MODE TEST ACTIVÉ (CONFIG_IRRI_ENABLE_TESTS) ===");
     test_calculs_hydraulique_run();
     test_calculs_mecanique_run();
+    test_gpio_run();
     test_state_machine_run();
     ESP_LOGW(TAG, "=== FIN DES TESTS — démarrage normal ===");
 #endif

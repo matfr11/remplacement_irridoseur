@@ -15,6 +15,7 @@ if(CONFIG_IRRI_ENABLE_TESTS)
         "test/test_calculs_hydraulique.c"
         "test/test_calculs_mecanique.c"
         "test/test_state_machine.c"
+        "test/test_gpio.c"
     )
 endif()
 
