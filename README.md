@@ -266,7 +266,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | **PR-02** | ✅ Fait | GPIO handler complet — ISR vitesse robuste — mode dégradé A — 9 tests unitaires |
 | **PR-03** | ✅ Fait | Calculs hydrauliques — double interpolation abaque — p_buse_out — 16 tests |
 | **PR-04** | ✅ Fait | Calculs mécaniques — profils machine — auto-calibration — étalonnage — 16 tests |
-| **PR-05** | 🔲 À faire | Watchdog sécurités — machine d'états complète — tests simulation |
+| **PR-05** | ✅ Fait | Watchdog sécurités — machine d'états complète — 11 tests simulation |
 | **PR-06** | 🔲 À faire | Régulation feedforward — modes dégradés — tests |
 | **PR-07** | 🔲 À faire | NVS config — 5 programmes — profils — abaques |
 | **PR-08** | 🔲 À faire | WiFi AP — WebSocket — sync heure — OTA |
