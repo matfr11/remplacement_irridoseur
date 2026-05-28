@@ -5,6 +5,31 @@ Format : [PR-XX] — date — description
 
 ---
 
+## [PR-06] — 2026-05-28 — Régulation feedforward — modes dégradés — tests
+
+### state_machine.c
+- Ajout mise à jour `s_cfg_machine.dist_cycle_nvs` en mémoire à chaque cycle
+  (conserve la dernière distance/cycle mesurée pour le mode dégradé A)
+- Ajout estimation vitesse mode dégradé A dans `tick_state_machine()` :
+  calcul depuis `dist_cycle_nvs` et durée cycle, appel `gpio_handler_set_vitesse_estimee()`
+- Ajout `config_nvs_sauver_machine()` en fin de session (`ETAT_ARRET_FINAL` et `cmd_reset`)
+
+### main.c
+- Câblage de tous les tests sous `CONFIG_IRRI_ENABLE_TESTS` :
+  `test_calculs_hydraulique_run`, `test_calculs_mecanique_run`, `test_gpio_run`,
+  `test_regulation_run`, `test_state_machine_run`
+
+### CMakeLists.txt
+- Ajout `test/test_regulation.c` dans le bloc conditionnel `IRRI_ENABLE_TESTS`
+
+### test/test_regulation.c — 10 tests unitaires (nouveau fichier)
+- T_attente nominal, T_att < 0 (alerte=true), T_att > 300s, inputs nuls
+- correction_vitesse : positive, clamp à 0, négative, v_cible=0
+- regulation_update_dist_par_cycle : moyenne glissante sur 5 valeurs
+- regulation_get_nb_cycles + regulation_reset_calibration
+
+---
+
 ## [PR-05] — 2026-05-28 — Machine d'états : stubs test + 11 tests simulation
 
 ### state_machine.c

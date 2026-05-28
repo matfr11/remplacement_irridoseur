@@ -267,7 +267,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | **PR-03** | ✅ Fait | Calculs hydrauliques — double interpolation abaque — p_buse_out — 16 tests |
 | **PR-04** | ✅ Fait | Calculs mécaniques — profils machine — auto-calibration — étalonnage — 16 tests |
 | **PR-05** | ✅ Fait | Watchdog sécurités — machine d'états complète — 11 tests simulation |
-| **PR-06** | 🔲 À faire | Régulation feedforward — modes dégradés — tests |
+| **PR-06** | ✅ Fait | Régulation feedforward — modes dégradés — 10 tests — câblage tests dans main.c |
 | **PR-07** | 🔲 À faire | NVS config — 5 programmes — profils — abaques |
 | **PR-08** | 🔲 À faire | WiFi AP — WebSocket — sync heure — OTA |
 | **PR-09** | 🔲 À faire | Web UI mobile embarquée — 3 onglets |
