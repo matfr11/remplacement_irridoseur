@@ -79,3 +79,8 @@ void state_machine_cmd_entrer_irritesteur(void);
 void state_machine_cmd_quitter_irritesteur(void);
 void state_machine_cmd_ev1_set(bool actif);  // uniquement en ETAT_IRRITESTEUR
 void state_machine_cmd_ev2_set(bool actif);  // uniquement en ETAT_IRRITESTEUR
+
+#ifdef CONFIG_IRRI_ENABLE_TESTS
+// Injection de l'état pressostat pour les tests unitaires (ne pas utiliser en prod)
+void state_machine_test_set_pression(bool pression_ok);
+#endif

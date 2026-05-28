@@ -212,6 +212,11 @@ void state_machine_cmd_ev1_set(bool actif)
         ESP_LOGW(TAG, "cmd_ev1_set ignorée — pas en mode IRRITESTEUR");
         return;
     }
+    // Sécurité : ouverture EV interdite si pression détectée au pressostat
+    if (actif && s_status.pression_ok) {
+        ESP_LOGW(TAG, "IRRITESTEUR EV1 ON refusé — pression détectée au pressostat");
+        return;
+    }
     gpio_ev1_set(actif);
     s_status.ev1 = actif;
     s_status.gpio_raw.ev1 = actif;
@@ -224,8 +229,20 @@ void state_machine_cmd_ev2_set(bool actif)
         ESP_LOGW(TAG, "cmd_ev2_set ignorée — pas en mode IRRITESTEUR");
         return;
     }
+    // Sécurité : ouverture EV interdite si pression détectée au pressostat
+    if (actif && s_status.pression_ok) {
+        ESP_LOGW(TAG, "IRRITESTEUR EV2 ON refusé — pression détectée au pressostat");
+        return;
+    }
     gpio_ev2_set(actif);
     s_status.ev2 = actif;
     s_status.gpio_raw.ev2 = actif;
     ESP_LOGI(TAG, "IRRITESTEUR EV2 = %s", actif ? "ON" : "OFF");
 }
+
+#ifdef CONFIG_IRRI_ENABLE_TESTS
+void state_machine_test_set_pression(bool pression_ok)
+{
+    s_status.pression_ok = pression_ok;
+}
+#endif

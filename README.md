@@ -36,7 +36,7 @@ Suite à une panne irréparable, ce projet remplace la carte d'origine par un **
 
 | Paramètre | Valeur |
 |---|---|
-| Modèle | Irrifrance Structure 1 bis |
+| Modèle | Irrifrance Structure 1 bis — Canon Nelson SR150 |
 | Tuyau PE | Ø82mm intérieur — épaisseur 6mm — 330m |
 | Diamètre extérieur tuyau | 94mm |
 | Rayon tambour nu | 648mm (calculé fiche technique) |
@@ -260,8 +260,8 @@ Les autres paramètres sont configurables depuis l'onglet **⚙️ Config** de l
 | PR | Statut | Contenu |
 |---|---|---|
 | **PR-01** | ✅ Fait | Structure projet, CMakeLists, sdkconfig, squelettes modules |
-| **PR-02** | 🔲 À faire | GPIO handler complet, ISR vitesse, mode IRRITESTEUR |
-| **PR-03** | 🔲 À faire | Table débit constructeur, lookup vitesse cible |
+| **PR-02** | ✅ Fait | GPIO handler complet, ISR vitesse, mode IRRITESTEUR |
+| **PR-03** | ✅ Fait | Table constructeur Irrifrance 13 entrées, lookup vitesse cible |
 | **PR-04** | 🔲 À faire | Calculs mécaniques, auto-calibration, T_attente feedforward |
 | **PR-05** | 🔲 À faire | Machine d'états complète, sous-états poumon, fail-safe |
 | **PR-06** | 🔲 À faire | NVS complet, 5 programmes, paramètres machine |
