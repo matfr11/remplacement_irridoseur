@@ -5,6 +5,50 @@ Format : [PR-XX] — date — description
 
 ---
 
+## [PR-02] — 2026-05-28 — GPIO handler complet + ISR vitesse robuste + mode dégradé A
+
+### gpio_handler.c/h
+
+**Calcul vitesse complet**
+- `gpio_get_vitesse_m_h(float facteur_correction)` : implémenté — fenêtre glissante N impulsions
+  - Formule : `vitesse_m_h = (N × dist_pulse_m × facteur_correction) / dt_s × 3600`
+  - Retourne 0 si fenêtre < 2 pulses, si dist_pulse non initialisée, ou si timeout cycles atteint
+
+**Nouveaux setters runtime**
+- `gpio_handler_set_dist_pulse_m(float)` — mise à jour par state_machine à chaque changement d'étage
+- `gpio_handler_set_params(int fenetre, int max_cycles_si)` — depuis NVS à l'init
+- `gpio_handler_set_mode_degrade_a(bool)` — activation mode dégradé A
+- `gpio_handler_set_vitesse_estimee(float)` — vitesse fournie par state_machine en mode A
+
+**Mode dégradé A**
+- Quand activé, `gpio_get_vitesse_m_h()` retourne la vitesse estimée depuis cycles poumon
+- Alimentation par state_machine chaque tick : `dist_par_cycle_nvs × cycles_par_min × 60`
+
+**Hooks test**
+- `gpio_handler_test_injecter_pulse(int64_t)` et `gpio_handler_test_reset()` — `#ifdef CONFIG_IRRI_ENABLE_TESTS`
+
+**Corrections**
+- Lecture de `s_cycles_sans_impulsion` déplacée dans la section critique (évite race condition)
+- Double `portENTER_CRITICAL` consolidé en un seul appel dans `gpio_get_vitesse_m_h`
+
+### test/test_gpio.c — 9 tests unitaires
+
+| # | Test | Ce qui est vérifié |
+|---|---|---|
+| 1 | `vitesse_nominale` | Calcul vitesse correct (5 pulses × 1m, dt=4s → 4500 m/h) |
+| 2 | `facteur_correction` | Facteur 0.5 divise la vitesse par 2 |
+| 3 | `vitesse_sans_dist_pulse` | Retourne 0 si dist_pulse non initialisée |
+| 4 | `fenetre_insuffisante` | Retourne 0 si < 2 pulses en mémoire |
+| 5 | `timeout_cycles` | Retourne 0 après max_cycles_si ticks sans pulse |
+| 6 | `mode_degrade_a` | Retourne la vitesse estimée injectée |
+| 7 | `mode_degrade_a_desactive` | Retour au calcul ISR après désactivation mode A |
+| 8 | `compteur_impulsions` | Comptage brut + reset |
+| 9 | `lire_entrees_no_crash` | Appel sans crash (valeurs matériel) |
+
+**Build** : 0 erreur, 0 nouveau warning — `irrifrance-esp32.bin` ~214 Ko — **89% flash libre**
+
+---
+
 ## [Rewrite v3] — 2026-05-28 — Repartition de zéro, SPECS_FINAL_v3
 
 Réécriture complète depuis zéro selon `SPECS_FINAL_v3.md`.
