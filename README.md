@@ -263,7 +263,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | PR | Statut | Contenu |
 |---|---|---|
 | **PR-01** | ✅ Fait | Structure projet, CMakeLists, partitions OTA, tous les squelettes SPECS_FINAL_v3 |
-| **PR-02** | 🔲 À faire | GPIO handler complet — ISR vitesse robuste — mode IRRITESTEUR |
+| **PR-02** | ✅ Fait | GPIO handler complet — ISR vitesse robuste — mode dégradé A — 9 tests unitaires |
 | **PR-03** | 🔲 À faire | Calculs hydrauliques — double interpolation abaque |
 | **PR-04** | 🔲 À faire | Calculs mécaniques — profils machine — auto-calibration — étalonnage |
 | **PR-05** | 🔲 À faire | Watchdog sécurités — machine d'états complète — tests simulation |
