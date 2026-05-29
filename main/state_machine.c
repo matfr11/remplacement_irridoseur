@@ -139,8 +139,11 @@ void state_machine_init(void)
     char raison_nvs[64] = "";
     config_nvs_lire_urgence(raison_nvs, sizeof(raison_nvs));
     if (raison_nvs[0] != '\0') {
-        ESP_LOGW(TAG, "Dernier arrêt urgence : %s", raison_nvs);
+        ESP_LOGW(TAG, "Dernier arret urgence : %s", raison_nvs);
         strncpy(s_status.raison_arret, raison_nvs, sizeof(s_status.raison_arret) - 1);
+        s_demarrage_autorise = false;  // reboot après urgence : démarrage explicite requis
+    } else {
+        s_demarrage_autorise = true;   // démarrage auto dès mise en pression
     }
 
     gpio_all_ev_off();
@@ -672,11 +675,14 @@ int  state_machine_test_get_nb_tentatives(void)          { return s_nb_tentative
 
 void state_machine_test_reset(void)
 {
-    s_etat              = ETAT_VEILLE;
-    s_sous_etat         = SOUS_VIDANGE;
-    s_longueur_enroulee = 0.0f;
-    s_nb_tentatives     = 0;
-    s_bilan_envoye      = false;
+    s_etat               = ETAT_VEILLE;
+    s_sous_etat          = SOUS_VIDANGE;
+    s_longueur_enroulee  = 0.0f;
+    s_longueur_session_m = 0.0f;
+    s_longueur_deroule_m = 0.0f;
+    s_nb_tentatives      = 0;
+    s_bilan_envoye       = false;
+    s_demarrage_autorise = true;
     gpio_ev_canon_set(false);
     gpio_ev_poumon_set(false);
 }
