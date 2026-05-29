@@ -70,7 +70,7 @@ void gpio_handler_init(void)
 {
     gpio_config_t out_cfg = {
         .pin_bit_mask = (1ULL << PIN_EV_CANON) | (1ULL << PIN_EV_POUMON),
-        .mode         = GPIO_MODE_OUTPUT,
+        .mode         = GPIO_MODE_INPUT_OUTPUT,  // INPUT_OUTPUT active le buffer lecture → gpio_get_level() reflète la sortie
         .pull_up_en   = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type    = GPIO_INTR_DISABLE,

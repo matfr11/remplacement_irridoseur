@@ -500,7 +500,7 @@ function updateUI() {
   const btnReset = document.getElementById('btn-reset');
   if (btnStart) btnStart.disabled = !s.cfg_valide || s.etat_code !== ETAT_VEILLE;
   show('btn-reset', arret);
-  show('btn-stop', !arret || urgence);
+  show('btn-stop', !arret && !veille);
 
   // Stats
   txt('s-surface', s.surface_m2 != null ? s.surface_m2.toFixed(0) : '--');

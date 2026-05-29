@@ -20,14 +20,12 @@ static void telemetry_task(void *arg)
 esp_err_t telemetry_init(void)
 {
     ESP_LOGI(TAG, "Démarrage tâche telemetry (500ms)");
-    xTaskCreate(telemetry_task, "telemetry", 6144, NULL, 5, NULL);
+    xTaskCreate(telemetry_task, "telemetry", 8192, NULL, 5, NULL);
     return ESP_OK;
 }
 
-void telemetry_envoyer_bilan(void)
+void telemetry_envoyer_bilan(const session_summary_t *b)
 {
-    session_summary_t b;
-    state_machine_get_session_summary(&b);
     char json[256];
     snprintf(json, sizeof(json),
         "{\"type\":\"bilan\","
@@ -38,14 +36,14 @@ void telemetry_envoyer_bilan(void)
         "\"duree_s\":%d,"
         "\"nb_cycles\":%u,"
         "\"duree_pause_s\":%d}",
-        b.longueur_m,
-        b.surface_m2,
-        b.dose_moy_mm,
-        b.volume_m3,
-        (int)b.duree_s,
-        (unsigned int)b.nb_cycles,
-        (int)b.duree_pause_pression_s);
+        b->longueur_m,
+        b->surface_m2,
+        b->dose_moy_mm,
+        b->volume_m3,
+        (int)b->duree_s,
+        (unsigned int)b->nb_cycles,
+        (int)b->duree_pause_pression_s);
     webserver_broadcast_raw(json);
-    ESP_LOGI("telemetry", "Bilan session envoyé : %.1fm / %.1fm2 / %ds",
-             b.longueur_m, b.surface_m2, (int)b.duree_s);
+    ESP_LOGI("telemetry", "Bilan session envoye : %.1fm / %.1fm2 / %ds",
+             b->longueur_m, b->surface_m2, (int)b->duree_s);
 }
