@@ -143,6 +143,30 @@ esp_err_t config_nvs_lire_urgence(char *raison, size_t len)
     return ret;
 }
 
+esp_err_t config_nvs_sauver_longueur(float longueur_m)
+{
+    nvs_handle_t h;
+    esp_err_t ret = nvs_open(NS_STATE, NVS_READWRITE, &h);
+    if (ret != ESP_OK) return ret;
+    ret = nvs_set_blob(h, "longueur_m", &longueur_m, sizeof(float));
+    if (ret == ESP_OK) ret = nvs_commit(h);
+    nvs_close(h);
+    return ret;
+}
+
+esp_err_t config_nvs_lire_longueur(float *longueur_m)
+{
+    *longueur_m = 0.0f;
+    nvs_handle_t h;
+    esp_err_t ret = nvs_open(NS_STATE, NVS_READONLY, &h);
+    if (ret != ESP_OK) return ESP_OK;
+    size_t sz = sizeof(float);
+    ret = nvs_get_blob(h, "longueur_m", longueur_m, &sz);
+    nvs_close(h);
+    if (ret == ESP_ERR_NVS_NOT_FOUND) return ESP_OK;
+    return ret;
+}
+
 bool config_programme_est_valide(const config_programme_t *prog)
 {
     return prog->dose_mm > 0.0f  &&

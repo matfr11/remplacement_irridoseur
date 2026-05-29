@@ -126,6 +126,7 @@ void state_machine_cmd_start(void);
 void state_machine_cmd_stop(void);
 void state_machine_cmd_reset(void);
 void state_machine_cmd_etalonner(float longueur_reelle_m);
+void state_machine_cmd_set_longueur(float longueur_m);
 void state_machine_set_time(int64_t timestamp_unix);
 
 // Mode IRRITESTEUR (panel Config — hors cycle uniquement)
@@ -150,3 +151,4 @@ void state_machine_test_set_secu_spires(bool active);
 int  state_machine_test_get_nb_tentatives(void);
 void state_machine_test_reset(void);
 #endif
+

@@ -64,7 +64,7 @@ void gpio_handler_set_vitesse_estimee(float vitesse_m_h);
 // Hooks de test (CONFIG_IRRI_ENABLE_TESTS uniquement)
 // Permettent l'injection de timestamps d'impulsion sans matériel
 // -----------------------------------------------------------------------------
-#ifdef CONFIG_IRRI_ENABLE_TESTS
+#if defined(CONFIG_IRRI_ENABLE_TESTS) || defined(CONFIG_IRRI_TEST_MODE)
 void gpio_handler_test_injecter_pulse(int64_t timestamp_us);
 void gpio_handler_test_reset(void);
 #endif

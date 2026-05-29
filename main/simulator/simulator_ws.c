@@ -53,6 +53,7 @@ static void apply_sim_key(const char *key, int val)
     else if (strcmp(key, "secu_spires")  == 0) sim_gpio_set_level(PIN_SECU_SPIRES,  val);
     else if (strcmp(key, "poumon_plein") == 0) sim_gpio_set_level(PIN_POUMON_PLEIN, val);
     else if (strcmp(key, "vitesse_auto") == 0) sim_set_vitesse_auto((float)val);
+    else if (strcmp(key, "longueur")     == 0) state_machine_cmd_set_longueur((float)val);
     else ESP_LOGW(TAG, "Clé inconnue: %s", key);
 }
 
@@ -61,7 +62,7 @@ static void run_scenario(int n)
     ESP_LOGI(TAG, "Scénario %d", n);
     switch (n) {
     case 1:  // cycle normal — reset + pression ok
-        state_machine_test_reset();
+        state_machine_cmd_reset();
         sim_gpio_set_level(PIN_PRESSOSTAT, 0);
         sim_gpio_set_level(PIN_FIN_COURSE, 0);
         sim_gpio_set_level(PIN_SECU_SPIRES, 0);

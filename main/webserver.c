@@ -256,6 +256,11 @@ static void handle_ws_command(const char *data, size_t len)
         json_parse_float(data, "longueur_m", &longueur_m);
         state_machine_cmd_etalonner(longueur_m);
 
+    } else if (strstr(data, "\"cmd\":\"set_longueur\"")) {
+        float longueur_m = 0.0f;
+        json_parse_float(data, "longueur_m", &longueur_m);
+        state_machine_cmd_set_longueur(longueur_m);
+
     } else if (strstr(data, "\"cmd\":\"save_programme\"")) {
         config_programme_t prog;
         memset(&prog, 0, sizeof(prog));

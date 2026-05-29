@@ -243,7 +243,7 @@ void gpio_handler_tick_cycle(void)
 // Hooks de test
 // =============================================================================
 
-#ifdef CONFIG_IRRI_ENABLE_TESTS
+#if defined(CONFIG_IRRI_ENABLE_TESTS) || defined(CONFIG_IRRI_TEST_MODE)
 
 void gpio_handler_test_injecter_pulse(int64_t timestamp_us)
 {
@@ -269,4 +269,4 @@ void gpio_handler_test_reset(void)
     portEXIT_CRITICAL(&s_mux);
 }
 
-#endif // CONFIG_IRRI_ENABLE_TESTS
+#endif // CONFIG_IRRI_ENABLE_TESTS || CONFIG_IRRI_TEST_MODE

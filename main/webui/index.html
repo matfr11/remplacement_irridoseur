@@ -345,10 +345,10 @@ details>summary::-webkit-details-marker{display:none}
 <!-- Modal étalonnage -->
 <div id="modal-overlay">
   <div class="modal-box">
-    <div class="modal-title">Étalonnage longueur</div>
+    <div class="modal-title">Corriger longueur déroulée</div>
     <div class="field">
-      <label>Longueur réelle déroulée (m)</label>
-      <input id="etal-input" type="number" min="1" max="500" step="0.5" placeholder="ex: 330">
+      <label>Longueur actuelle déroulée (m)</label>
+      <input id="etal-input" type="number" min="0" max="500" step="1" placeholder="ex: 150">
     </div>
     <div class="modal-btns">
       <button style="background:var(--card2);color:var(--text)" onclick="closeModal()">Annuler</button>
@@ -694,8 +694,8 @@ function closeModal() {
 }
 function validerEtalonnage() {
   const v = parseFloat(document.getElementById('etal-input').value);
-  if (!v || v <= 0) { alert('Entrer une longueur valide'); return; }
-  sendCmd({cmd: 'etalonner', longueur_m: v});
+  if (v == null || isNaN(v) || v < 0) { alert('Entrer une longueur valide (0 ou plus)'); return; }
+  sendCmd({cmd: 'set_longueur', longueur_m: v});
   closeModal();
 }
 document.getElementById('modal-overlay').addEventListener('click', e => {

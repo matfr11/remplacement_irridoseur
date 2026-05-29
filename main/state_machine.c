@@ -40,8 +40,9 @@ static int64_t  s_t_etat_ms          = 0;
 static int64_t  s_t_sous_etat_ms     = 0;
 
 // Session
-static int64_t  s_t_session_debut_ms = 0;
-static float    s_longueur_enroulee  = 0.0f;
+static int64_t  s_t_session_debut_ms        = 0;
+static float    s_longueur_enroulee         = 0.0f;
+static float    s_longueur_derniere_nvs     = 0.0f;  // seuil dernière sauvegarde NVS
 
 // Cycle poumon
 static int64_t  s_t_rempl_debut_ms   = 0;
@@ -98,6 +99,11 @@ void state_machine_init(void)
     int prog_idx = 0;
     config_nvs_lire_prog_actif(&prog_idx);
     config_nvs_lire_programme(prog_idx, &s_cfg_prog);
+    config_nvs_lire_longueur(&s_longueur_enroulee);
+    s_longueur_derniere_nvs = s_longueur_enroulee;
+    if (s_longueur_enroulee > 0.0f) {
+        ESP_LOGW(TAG, "Longueur restauree depuis NVS : %.1fm", s_longueur_enroulee);
+    }
 
     s_profil = machine_get(s_cfg_machine.machine_active);
     s_abaque = abaque_get(s_profil->abaque_idx);
@@ -310,6 +316,10 @@ void tick_state_machine(void)
                     float dist_moy = regulation_update_dist_par_cycle(dist_cycle);
                     s_cfg_machine.dist_cycle_nvs = dist_moy;
                     s_longueur_enroulee += dist_cycle;
+                    if (s_longueur_enroulee - s_longueur_derniere_nvs >= 5.0f) {
+                        config_nvs_sauver_longueur(s_longueur_enroulee);
+                        s_longueur_derniere_nvs = s_longueur_enroulee;
+                    }
 
                     // Recalcul T_attente feedforward
                     float v_cible_m_h = lookup_vitesse_cible(
@@ -382,6 +392,8 @@ void tick_state_machine(void)
         // Retour VEILLE automatique quand l'opérateur déroule (fin_course disparaît)
         if (!e.fin_course) {
             s_longueur_enroulee = 0.0f;
+            s_longueur_derniere_nvs = 0.0f;
+            config_nvs_sauver_longueur(0.0f);
             regulation_reset_calibration();
             config_nvs_sauver_machine(&s_cfg_machine);
             memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
@@ -486,9 +498,27 @@ void state_machine_cmd_reset(void)
         memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
         config_nvs_sauver_urgence("");
         s_longueur_enroulee = 0.0f;
+        s_longueur_derniere_nvs = 0.0f;
+        config_nvs_sauver_longueur(0.0f);
         regulation_reset_calibration();
         config_nvs_sauver_machine(&s_cfg_machine);
         entrer_etat(ETAT_VEILLE);
+    }
+    xSemaphoreGive(s_mutex);
+}
+
+void state_machine_cmd_set_longueur(float longueur_m)
+{
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (s_etat == ETAT_VEILLE ||
+        s_etat == ETAT_ARRET_FINAL ||
+        s_etat == ETAT_ARRET_URGENCE) {
+        s_longueur_enroulee     = longueur_m;
+        s_longueur_derniere_nvs = longueur_m;
+        config_nvs_sauver_longueur(longueur_m);
+        ESP_LOGI(TAG, "Longueur forcee : %.1fm", longueur_m);
+    } else {
+        ESP_LOGW(TAG, "cmd_set_longueur ignoree en etat %d", s_etat);
     }
     xSemaphoreGive(s_mutex);
 }
@@ -601,3 +631,4 @@ void state_machine_test_reset(void)
     gpio_ev_poumon_set(false);
 }
 #endif
+

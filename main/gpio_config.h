@@ -18,7 +18,7 @@
 #define PIN_EV_POUMON   26      // TODO : identifier canal MOSFET OUT2 sur carte Quad MOS
 
 #warning "PIN_EV_CANON et PIN_EV_POUMON sont des valeurs provisoires (GPIO 25/26)."
-#warning "Vérifier sur le schéma de la carte Quad MOS avant toute mise sous tension."
+#warning "Verifier sur le schema de la carte Quad MOS avant toute mise sous tension."
 
 // -----------------------------------------------------------------------------
 // ENTRÉES — Capteurs et contacts
