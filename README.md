@@ -269,7 +269,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | **PR-05** | ✅ Fait | Watchdog sécurités — machine d'états complète — 11 tests simulation |
 | **PR-06** | ✅ Fait | Régulation feedforward — modes dégradés — 10 tests — câblage tests dans main.c |
 | **PR-07** | ✅ Fait | NVS config — 5 programmes — fix namespace prog_actif — 10 tests |
-| **PR-08** | 🔲 À faire | WiFi AP — WebSocket — sync heure — OTA |
+| **PR-08** | ✅ Fait | WiFi AP — WebSocket broadcast + 10 cmds — OTA — sync heure |
 | **PR-09** | 🔲 À faire | Web UI mobile embarquée — 3 onglets |
 | **PR-10** | 🔲 À faire | Intégration complète — README GitHub — documentation |
 
