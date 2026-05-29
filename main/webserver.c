@@ -345,8 +345,8 @@ static esp_err_t root_handler(httpd_req_t *req)
 typedef struct {
     httpd_handle_t server;
     int            fd;
-    char           json[JSON_BUF_SIZE];
     size_t         len;
+    char           json[];   // flexible array — taille exacte allouée
 } ws_send_arg_t;
 
 static void ws_send_work_cb(void *arg)
@@ -358,6 +358,9 @@ static void ws_send_work_cb(void *arg)
         .len     = a->len,
         .final   = true,
     };
+    // Ignorer l'erreur d'envoi : httpd nettoie la session via le recv path (ECONNRESET)
+    // Ne pas appeler httpd_sess_trigger_close ici — double-close possible si recv path
+    // ferme déjà la session en parallèle dans la queue httpd.
     httpd_ws_send_frame_async(a->server, a->fd, &frame);
     free(a);
 }
@@ -370,13 +373,13 @@ static void broadcast_json(const char *json, size_t len)
     if (httpd_get_client_list(s_server, &nb, fds) != ESP_OK) return;
     for (size_t i = 0; i < nb; i++) {
         if (httpd_ws_get_fd_info(s_server, fds[i]) != HTTPD_WS_CLIENT_WEBSOCKET) continue;
-        ws_send_arg_t *arg = malloc(sizeof(ws_send_arg_t));
+        size_t copy_len = len < JSON_BUF_SIZE - 1 ? len : JSON_BUF_SIZE - 1;
+        ws_send_arg_t *arg = malloc(sizeof(ws_send_arg_t) + copy_len + 1);
         if (!arg) continue;
         arg->server = s_server;
         arg->fd     = fds[i];
-        size_t copy_len = len < JSON_BUF_SIZE ? len : JSON_BUF_SIZE - 1;
+        arg->len    = copy_len;
         memcpy(arg->json, json, copy_len);
-        arg->len = copy_len;
         if (httpd_queue_work(s_server, ws_send_work_cb, arg) != ESP_OK) {
             free(arg);
         }
@@ -408,7 +411,9 @@ esp_err_t webserver_init(void)
     wifi_ap_init();
 
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
-    cfg.max_open_sockets = MAX_WS_CLIENTS + 2;
+    cfg.max_open_sockets  = MAX_WS_CLIENTS + 2;
+    cfg.lru_purge_enable  = true;   // évince les connexions périmées automatiquement
+    cfg.stack_size        = 8192;   // callbacks WS + traitement commandes
 
     esp_err_t ret = httpd_start(&s_server, &cfg);
     if (ret != ESP_OK) {

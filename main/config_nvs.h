@@ -79,9 +79,13 @@ esp_err_t config_nvs_sauver_prog_actif(int idx);
 esp_err_t config_nvs_sauver_urgence(const char *raison);
 esp_err_t config_nvs_lire_urgence(char *raison, size_t len);
 
-// Longueur déroulée persistante — survie au reboot (namespace irri_state)
+// Longueur persistante session — survie au reboot (namespace irri_state)
+// longueur_m = position absolue interne (calculs mécaniques)
+// deroule_m  = longueur déployée en champ (affichage session)
 esp_err_t config_nvs_sauver_longueur(float longueur_m);
 esp_err_t config_nvs_lire_longueur(float *longueur_m);
+esp_err_t config_nvs_sauver_deroule(float deroule_m);
+esp_err_t config_nvs_lire_deroule(float *deroule_m);
 
 // Valide qu'un programme est utilisable (dose, largeur, buse, pression > 0)
 bool config_programme_est_valide(const config_programme_t *prog);

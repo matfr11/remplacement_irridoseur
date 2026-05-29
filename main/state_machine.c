@@ -41,8 +41,10 @@ static int64_t  s_t_sous_etat_ms     = 0;
 
 // Session
 static int64_t  s_t_session_debut_ms        = 0;
-static float    s_longueur_enroulee         = 0.0f;
-static float    s_longueur_derniere_nvs     = 0.0f;  // seuil dernière sauvegarde NVS
+static float    s_longueur_enroulee         = 0.0f;  // position absolue interne (calculs mécaniques)
+static float    s_longueur_derniere_nvs     = 0.0f;
+static float    s_longueur_deroule_m        = 0.0f;  // longueur déployée en champ — constante pendant session (affiché "Déroulé")
+static float    s_longueur_session_m        = 0.0f;  // progression depuis début session — croît de 0 à déroulée (affiché "Enroulé")
 
 // Cycle poumon
 static int64_t  s_t_rempl_debut_ms   = 0;
@@ -57,6 +59,9 @@ static int32_t  s_duree_pause_ms     = 0;
 // Bilan de session
 static session_summary_t s_session;
 static bool              s_bilan_envoye = false;
+
+// Doit être true pour que VEILLE puisse démarrer (protège contre redémarrage auto après stop/urgence)
+static bool              s_demarrage_autorise = false;
 
 #ifdef CONFIG_IRRI_ENABLE_TESTS
 static bool s_sim_active      = false;
@@ -100,9 +105,23 @@ void state_machine_init(void)
     config_nvs_lire_prog_actif(&prog_idx);
     config_nvs_lire_programme(prog_idx, &s_cfg_prog);
     config_nvs_lire_longueur(&s_longueur_enroulee);
+    config_nvs_lire_deroule(&s_longueur_deroule_m);
     s_longueur_derniere_nvs = s_longueur_enroulee;
-    if (s_longueur_enroulee > 0.0f) {
-        ESP_LOGW(TAG, "Longueur restauree depuis NVS : %.1fm", s_longueur_enroulee);
+
+    if (s_longueur_deroule_m > 0.0f) {
+        // Reboot mid-session : recalcul progression depuis position absolue
+        float total = (s_profil && s_profil->longueur_tuyau_m > 0.0f) ? s_profil->longueur_tuyau_m : 0.0f;
+        float abs_start = total - s_longueur_deroule_m;
+        s_longueur_session_m = s_longueur_enroulee - abs_start;
+        if (s_longueur_session_m < 0.0f) s_longueur_session_m = 0.0f;
+        ESP_LOGW(TAG, "Reboot mid-session restaure : deroule=%.1fm enroule_session=%.1fm",
+                 s_longueur_deroule_m, s_longueur_session_m);
+    } else if (s_longueur_enroulee > 0.0f) {
+        // Ancien format NVS (pas de clé deroule) : initialisation conservative
+        float total = (s_profil && s_profil->longueur_tuyau_m > 0.0f) ? s_profil->longueur_tuyau_m : 0.0f;
+        s_longueur_deroule_m = total;
+        s_longueur_session_m = s_longueur_enroulee;
+        ESP_LOGW(TAG, "Longueur restauree (ancien NVS) : enroule=%.1fm", s_longueur_enroulee);
     }
 
     s_profil = machine_get(s_cfg_machine.machine_active);
@@ -155,7 +174,8 @@ void tick_state_machine(void)
     // -----------------------------------------------------------------------
     case ETAT_VEILLE:
         s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
-        if (e.pression_ok && !e.fin_course && s_status.cfg_valide) {
+        if (s_demarrage_autorise && e.pression_ok && !e.fin_course && s_status.cfg_valide) {
+            s_demarrage_autorise = false;
             gpio_ev_canon_set(true);
             entrer_etat(ETAT_OUVERTURE_CANON);
         }
@@ -175,7 +195,7 @@ void tick_state_machine(void)
             s_duree_pause_ms = 0;
             s_bilan_envoye   = false;
             regulation_reset_calibration();
-            s_longueur_enroulee = 0.0f;
+            // s_longueur_enroulee conservée : NVS=0 après fin normale, NVS=position après reboot
             if (s_cfg_prog.tempo_depart_on && s_cfg_prog.tempo_depart_s > 0) {
                 entrer_etat(ETAT_TEMPO_DEPART);
             } else {
@@ -315,7 +335,8 @@ void tick_state_machine(void)
                 if (dist_cycle > 0.0f) {
                     float dist_moy = regulation_update_dist_par_cycle(dist_cycle);
                     s_cfg_machine.dist_cycle_nvs = dist_moy;
-                    s_longueur_enroulee += dist_cycle;
+                    s_longueur_enroulee  += dist_cycle;   // interne, calculs mécaniques
+                    s_longueur_session_m += dist_cycle;   // affiché "Enroulé"
                     if (s_longueur_enroulee - s_longueur_derniere_nvs >= 5.0f) {
                         config_nvs_sauver_longueur(s_longueur_enroulee);
                         s_longueur_derniere_nvs = s_longueur_enroulee;
@@ -386,17 +407,20 @@ void tick_state_machine(void)
             s_session.duree_s                 = s_status.duree_s;
             s_session.nb_cycles               = (uint32_t)regulation_get_nb_cycles();
             s_session.duree_pause_pression_s  = s_duree_pause_ms / 1000;
-            telemetry_envoyer_bilan();
+            telemetry_envoyer_bilan(&s_session);
             s_bilan_envoye = true;
         }
         // Retour VEILLE automatique quand l'opérateur déroule (fin_course disparaît)
         if (!e.fin_course) {
-            s_longueur_enroulee = 0.0f;
+            s_longueur_enroulee     = 0.0f;
             s_longueur_derniere_nvs = 0.0f;
+            s_longueur_session_m    = 0.0f;
+            // s_longueur_deroule_m conservée : l'opérateur redéploiera la même longueur
             config_nvs_sauver_longueur(0.0f);
             regulation_reset_calibration();
             config_nvs_sauver_machine(&s_cfg_machine);
             memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
+            s_demarrage_autorise = true;  // fin normale : prochain cycle auto
             entrer_etat(ETAT_VEILLE);
         }
         break;
@@ -427,7 +451,8 @@ void tick_state_machine(void)
     s_status.fin_course   = e.fin_course;
     s_status.secu_spires  = e.secu_spires;
     s_status.poumon_plein = e.poumon_plein;
-    s_status.longueur_enroulee_m = s_longueur_enroulee;
+    s_status.longueur_enroulee_m  = s_longueur_session_m;   // progression session 0→déroulée
+    s_status.longueur_deroulee_m  = s_longueur_deroule_m;   // longueur déployée, constante session
     if (s_t_session_debut_ms > 0) {
         s_status.duree_s = (int32_t)((now_ms() - s_t_session_debut_ms) / 1000);
     }
@@ -471,8 +496,10 @@ void state_machine_cmd_start(void)
 {
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     if (s_etat == ETAT_VEILLE) {
-        ESP_LOGI(TAG, "cmd_start reçu");
-        // Les conditions seront évaluées au prochain tick
+        ESP_LOGI(TAG, "cmd_start recu - demarrage autorise");
+        s_demarrage_autorise = true;
+    } else {
+        ESP_LOGI(TAG, "cmd_start ignore (etat=%d)", s_etat);
     }
     xSemaphoreGive(s_mutex);
 }
@@ -483,9 +510,12 @@ void state_machine_cmd_stop(void)
     if (s_etat != ETAT_VEILLE &&
         s_etat != ETAT_ARRET_FINAL &&
         s_etat != ETAT_ARRET_URGENCE) {
-        ESP_LOGI(TAG, "cmd_stop reçu depuis état %d", s_etat);
+        ESP_LOGI(TAG, "cmd_stop recu depuis etat %d", s_etat);
+        s_demarrage_autorise = false;
         gpio_all_ev_off();
         entrer_etat(ETAT_ARRET_FINAL);
+    } else {
+        ESP_LOGI(TAG, "cmd_stop ignore (etat=%d)", s_etat);
     }
     xSemaphoreGive(s_mutex);
 }
@@ -494,32 +524,53 @@ void state_machine_cmd_reset(void)
 {
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     if (s_etat == ETAT_ARRET_URGENCE) {
-        ESP_LOGI(TAG, "cmd_reset — sortie urgence");
+        ESP_LOGI(TAG, "cmd_reset - sortie urgence");
+        s_demarrage_autorise = false;
         memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
         config_nvs_sauver_urgence("");
-        s_longueur_enroulee = 0.0f;
+        s_longueur_enroulee     = 0.0f;
         s_longueur_derniere_nvs = 0.0f;
+        s_longueur_session_m    = 0.0f;
         config_nvs_sauver_longueur(0.0f);
         regulation_reset_calibration();
         config_nvs_sauver_machine(&s_cfg_machine);
         entrer_etat(ETAT_VEILLE);
+    } else if (s_etat == ETAT_ARRET_FINAL) {
+        ESP_LOGI(TAG, "cmd_reset - sortie arret final (manuel)");
+        s_demarrage_autorise = false;
+        s_longueur_enroulee     = 0.0f;
+        s_longueur_derniere_nvs = 0.0f;
+        s_longueur_session_m    = 0.0f;
+        config_nvs_sauver_longueur(0.0f);
+        regulation_reset_calibration();
+        config_nvs_sauver_machine(&s_cfg_machine);
+        memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
+        entrer_etat(ETAT_VEILLE);
+    } else {
+        ESP_LOGI(TAG, "cmd_reset ignore (etat=%d)", s_etat);
     }
     xSemaphoreGive(s_mutex);
 }
 
-void state_machine_cmd_set_longueur(float longueur_m)
+void state_machine_cmd_set_longueur(float longueur_deroule_m)
 {
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    if (s_etat == ETAT_VEILLE ||
-        s_etat == ETAT_ARRET_FINAL ||
-        s_etat == ETAT_ARRET_URGENCE) {
-        s_longueur_enroulee     = longueur_m;
-        s_longueur_derniere_nvs = longueur_m;
-        config_nvs_sauver_longueur(longueur_m);
-        ESP_LOGI(TAG, "Longueur forcee : %.1fm", longueur_m);
-    } else {
-        ESP_LOGW(TAG, "cmd_set_longueur ignoree en etat %d", s_etat);
-    }
+    float total = (s_profil && s_profil->longueur_tuyau_m > 0.0f)
+                  ? s_profil->longueur_tuyau_m : 0.0f;
+    if (longueur_deroule_m < 0.0f) longueur_deroule_m = 0.0f;
+    if (total > 0.0f && longueur_deroule_m > total) longueur_deroule_m = total;
+
+    // Position absolue interne pour les calculs d'étage/rayon
+    float abs_enroulee = (total > 0.0f) ? total - longueur_deroule_m : 0.0f;
+
+    s_longueur_deroule_m    = longueur_deroule_m;  // affiché "Déroulé" — constant session
+    s_longueur_session_m    = 0.0f;                // progression repart de 0
+    s_longueur_enroulee     = abs_enroulee;        // interne, calculs mécaniques
+    s_longueur_derniere_nvs = abs_enroulee;
+    config_nvs_sauver_longueur(abs_enroulee);
+    config_nvs_sauver_deroule(longueur_deroule_m);
+    ESP_LOGI(TAG, "Longueur forcee : deroule=%.1fm session=0 (abs=%.1fm etat=%d)",
+             longueur_deroule_m, abs_enroulee, s_etat);
     xSemaphoreGive(s_mutex);
 }
 
@@ -565,8 +616,8 @@ void state_machine_cmd_ev_poumon_set(bool actif)
 void state_machine_declencher_urgence(const char *raison)
 {
     gpio_all_ev_off();
-    ESP_LOGE(TAG, "ARRÊT URGENCE : %s", raison);
     if (s_etat != ETAT_ARRET_URGENCE) {
+        ESP_LOGE(TAG, "ARRET URGENCE : %s", raison);
         entrer_etat(ETAT_ARRET_URGENCE);
         strncpy(s_status.raison_arret, raison, sizeof(s_status.raison_arret) - 1);
         config_nvs_sauver_urgence(raison);
