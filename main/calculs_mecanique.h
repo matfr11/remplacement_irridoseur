@@ -19,6 +19,12 @@ float calcul_rayon_etage(int n, const machine_profile_t *profil);
 float calcul_dist_pulse_m(float r_etage_m);
 
 /**
+ * Distance enroulée par cycle poumon à l'étage donné.
+ * dist = (2π × r_etage) / cycles_par_tour
+ */
+float calcul_dist_cycle_m(float r_etage_m, float cycles_par_tour);
+
+/**
  * Étage courant depuis longueur enroulée.
  * Accumule longueur_etage = spires_par_etage × 2π × R_n jusqu'au bon étage.
  * Retourne 1 au minimum.

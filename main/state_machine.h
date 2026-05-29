@@ -20,6 +20,7 @@ typedef enum {
     ETAT_TEMPO_ARRIVEE,       // EV_CANON=ON EV_POUMON=OFF, arrosage final
     ETAT_ARRET_FINAL,         // EV_CANON=OFF EV_POUMON=OFF, bilan session
     ETAT_ARRET_URGENCE,       // EV_CANON=OFF EV_POUMON=OFF, incident matériel
+    ETAT_DEROULE,             // Mesure longueur déployée par pastilles (avant session)
 } etat_machine_t;
 
 // Sous-états cycle poumon (ETAT_EN_COURS uniquement)
@@ -40,6 +41,16 @@ typedef struct {
     char            prog_nom[21];
     char            machine_nom[32];
     char            abaque_nom[32];
+
+    // Programme actif — valeurs courantes (pour affichage UI)
+    float           prog_dose_mm;
+    float           prog_largeur_m;
+    int             prog_buse_mm;
+    float           prog_pression_bar;
+    bool            prog_tempo_depart_on;
+    int             prog_tempo_depart_s;
+    bool            prog_tempo_arrivee_on;
+    int             prog_tempo_arrivee_s;
 
     // Longueurs
     float           longueur_deroulee_m;    // Longueur totale tuyau
@@ -74,6 +85,9 @@ typedef struct {
     bool            secu_spires;
     bool            poumon_plein;
 
+    // Déroulement (ETAT_DEROULE)
+    float           mesure_deroule_m;
+
     // Régulation poumon
     int32_t         t_remplissage_ms;
     int32_t         t_attente_ms;
@@ -84,9 +98,17 @@ typedef struct {
 
     // Modes dégradés / alertes
     bool            alerte_pression_insuff;
-    bool            mode_degrade_vitesse;
     bool            mode_degrade_poumon;
+    bool            mode_degrade_spires;
     float           facteur_correction;
+
+    // Campagne (cumulatif NVS)
+    float           camp_surface_ha;
+    float           camp_volume_m3;
+    float           camp_dose_moy_mm;
+    float           camp_vitesse_moy_m_h;
+    uint32_t        camp_nb_sessions;
+    float           camp_duree_h;
 
     // Validité config
     bool            cfg_valide;
@@ -134,6 +156,12 @@ void state_machine_set_time(int64_t timestamp_unix);
 void state_machine_cmd_ev_canon_set(bool actif);
 void state_machine_cmd_ev_poumon_set(bool actif);
 
+// Reprise session interrompue (ARRET_URGENCE/FINAL → VEILLE, longueurs préservées)
+void state_machine_cmd_resume(void);
+
+// Déclenchement manuel ETAT_DEROULE (si fin_course déjà false en entrée VEILLE)
+void state_machine_cmd_start_deroule(void);
+
 // Déclenchement urgence (appelé par securites.c)
 void state_machine_declencher_urgence(const char *raison);
 
@@ -143,6 +171,13 @@ void state_machine_recharger_config(void);
 
 // Expose le bilan de la dernière session terminée.
 void state_machine_get_session_summary(session_summary_t *out);
+
+// Remise à zéro stats campagne NVS.
+void state_machine_cmd_reset_campagne(void);
+
+// Calcul vitesse cible (lookup abaque) — utilisé par endpoint HTTP /api/vitesse.
+float state_machine_calc_vitesse(float pression_bar, float buse_mm, float dose_mm,
+                                  float *debit_out, float *p_buse_out);
 
 #ifdef CONFIG_IRRI_ENABLE_TESTS
 void state_machine_test_injecter_etat(etat_machine_t etat);

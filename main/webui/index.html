@@ -147,15 +147,32 @@ details>summary::-webkit-details-marker{display:none}
             <div><span class="tile-val" id="duree-val">--</span></div>
           </div>
         </div>
-        <div id="arrivee-row" style="margin-top:8px;font-size:13px;color:var(--muted);display:none">
-          Arrivée estimée : <strong id="arrivee-txt"></strong>
+        <div id="arrivee-row" style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;display:none">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Estimation arrivée</div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+            <span style="font-size:13px;color:var(--muted)">Durée enroulement</span>
+            <strong id="arrivee-duree" style="font-size:16px">--</strong>
+          </div>
+          <div id="arrivee-heure-row" style="display:none;justify-content:space-between;align-items:baseline">
+            <span style="font-size:13px;color:var(--muted)">Arrivée prévue</span>
+            <strong id="arrivee-txt" style="font-size:16px"></strong>
+          </div>
         </div>
       </div>
 
       <div id="alert-urgence" class="alert" style="display:none"><strong>ARRET URGENCE :</strong> <span id="raison-txt"></span></div>
       <div id="alert-pression" class="alert alert-warn" style="display:none">Pression insuffisante</div>
-      <div id="alert-deg-vitesse" class="alert alert-warn" style="display:none">Mode dégradé : capteur vitesse</div>
       <div id="alert-deg-poumon" class="alert alert-warn" style="display:none">Mode dégradé : contact poumon</div>
+      <div id="alert-deg-spires" class="alert" style="display:none;background:#5a1a1a;border-color:#c62828">&#9888; SECURITE SPIRES DESACTIVEE — risque débordement bobine</div>
+
+      <!-- Panneau ETAT_DEROULE -->
+      <div id="panel-deroule" class="card" style="display:none">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--muted)">Mesure déroulement en cours&hellip;</div>
+        <div class="gpio-row" style="font-size:16px">
+          <span>Déployé mesuré</span>
+          <span><strong id="deroule-mesure">0</strong> m <button class="tile-edit" onclick="openDerouleCorrection()" title="Corriger la longueur mesurée">&#9998;</button></span>
+        </div>
+      </div>
 
       <div class="card">
         <div class="gpio-row">
@@ -176,15 +193,22 @@ details>summary::-webkit-details-marker{display:none}
         </div>
       </div>
 
-      <button id="btn-start" class="btn btn-green" onclick="sendCmd({cmd:'start'})">▶ DEMARRER</button>
+      <button id="btn-start" class="btn btn-green" onclick="sendCmd({cmd:'start'})">&#9654; DEMARRER</button>
       <button id="btn-stop" class="btn btn-red" onclick="sendCmd({cmd:'stop'})">&#9632; ARRET URGENCE</button>
       <button id="btn-reset" class="btn btn-orange" style="display:none" onclick="sendCmd({cmd:'reset'})">&#8635; RESET</button>
+      <button id="btn-resume" class="btn btn-orange" style="display:none" onclick="sendCmd({cmd:'resume'})">&#8617; REPRENDRE SESSION</button>
+      <button id="btn-deroule" class="btn" style="display:none;background:var(--card2);border:1px solid var(--border)" onclick="sendCmd({cmd:'start_deroule'})">&#9654; Mesurer déroulement</button>
     </div>
 
     <!-- TAB 2 : Stats -->
     <div id="tab-stats" class="tab">
-      <div class="card">
-        <div class="stat-row"><span class="stat-lbl">Surface arrosée</span><span class="stat-val"><span id="s-surface">--</span> m²</span></div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button id="sttab-session" class="btn btn-blue" style="margin:0;padding:10px;flex:1;font-size:14px" onclick="showStatTab('session')">Session</button>
+        <button id="sttab-campagne" class="btn btn-gray" style="margin:0;padding:10px;flex:1;font-size:14px" onclick="showStatTab('campagne')">Campagne</button>
+      </div>
+
+      <div id="stpanel-session" class="card">
+        <div class="stat-row"><span class="stat-lbl">Surface arrosée</span><span class="stat-val"><span id="s-surface">--</span> ha</span></div>
         <div class="stat-row"><span class="stat-lbl">Dose instantanée</span><span class="stat-val"><span id="s-dose">--</span> mm</span></div>
         <div class="stat-row"><span class="stat-lbl">Débit calculé</span><span class="stat-val"><span id="s-debit">--</span> m³/h</span></div>
         <div class="stat-row"><span class="stat-lbl">P. enrouleur / buse</span><span class="stat-val"><span id="s-penr">--</span> / <span id="s-pbuse">--</span> bar</span></div>
@@ -197,6 +221,16 @@ details>summary::-webkit-details-marker{display:none}
         <div class="stat-row"><span class="stat-lbl">T. attente</span><span class="stat-val"><span id="s-tattente">--</span> s</span></div>
         <div class="stat-row"><span class="stat-lbl">Facteur correction</span><span class="stat-val"><span id="s-fcorr">--</span></span></div>
         <div class="stat-row"><span class="stat-lbl">Cycles total</span><span class="stat-val"><span id="s-cycles">--</span></span></div>
+      </div>
+
+      <div id="stpanel-campagne" class="card" style="display:none">
+        <div class="stat-row"><span class="stat-lbl">Sessions</span><span class="stat-val"><span id="c-sessions">--</span></span></div>
+        <div class="stat-row"><span class="stat-lbl">Surface totale</span><span class="stat-val"><span id="c-surface">--</span> ha</span></div>
+        <div class="stat-row"><span class="stat-lbl">Volume total</span><span class="stat-val"><span id="c-volume">--</span> m³</span></div>
+        <div class="stat-row"><span class="stat-lbl">Dose moyenne</span><span class="stat-val"><span id="c-dose">--</span> mm</span></div>
+        <div class="stat-row"><span class="stat-lbl">Vitesse moyenne</span><span class="stat-val"><span id="c-vitesse">--</span> m/h</span></div>
+        <div class="stat-row"><span class="stat-lbl">Durée totale</span><span class="stat-val"><span id="c-duree">--</span> h</span></div>
+        <button class="btn btn-red" style="margin-top:12px" onclick="if(confirm('Reinitialiser les stats campagne ?')) sendCmd({cmd:'reset_campagne'})">Reinitialiser campagne</button>
       </div>
     </div>
 
@@ -218,12 +252,15 @@ details>summary::-webkit-details-marker{display:none}
             <button class="prog-rename" onclick="renameProg()" title="Renommer">✏</button>
           </div>
           <div class="field-row">
-            <div class="field"><label>Dose (mm)</label><input id="p-dose" type="number" min="10" max="50" step="1"></div>
+            <div class="field"><label>Dose (mm)</label><input id="p-dose" type="number" min="10" max="50" step="1" oninput="debouncePrevVitesse()"></div>
             <div class="field"><label>Largeur (m)</label><input id="p-larg" type="number" min="1" max="100" step="0.5"></div>
           </div>
           <div class="field-row">
-            <div class="field"><label>Buse (mm)</label><input id="p-buse" type="number" min="10" max="30" step="1"></div>
-            <div class="field"><label>Pression (bar)</label><input id="p-pres" type="number" min="1" max="20" step="0.5"></div>
+            <div class="field"><label>Buse (mm)</label><input id="p-buse" type="number" min="10" max="30" step="1" oninput="debouncePrevVitesse()"></div>
+            <div class="field"><label>Pression (bar)</label><input id="p-pres" type="number" min="1" max="20" step="0.5" oninput="debouncePrevVitesse()"></div>
+          </div>
+          <div id="p-vitesse-preview" style="font-size:13px;color:var(--muted);padding:6px 0 2px;display:none">
+            Vitesse est. : <strong id="p-vitesse-val">--</strong> m/h &bull; Débit : <strong id="p-debit-val">--</strong> m³/h
           </div>
           <div class="toggle-row">
             <label>Tempo départ</label>
@@ -253,10 +290,10 @@ details>summary::-webkit-details-marker{display:none}
           <div class="field"><label>Dénivelé (m)</label><input id="m-denivele" type="number" min="-50" max="50" step="0.5"></div>
           <div class="field"><label>Gain Kp</label><input id="m-kp" type="number" min="0" max="2" step="0.01"></div>
           <div class="field-row">
-            <div class="field"><label>Cycles calibration</label><input id="m-ncalib" type="number" min="1" max="20" step="1"></div>
-            <div class="field"><label>Fenetre vitesse</label><input id="m-fenetre" type="number" min="2" max="20" step="1"></div>
+            <div class="field"><label>Cycles avant correction vitesse</label><input id="m-ncalib" type="number" min="1" max="20" step="1" title="Nombre de cycles poumon mesurés avant d'activer la correction de vitesse par Kp"></div>
+            <div class="field"><label>Impulsions fenêtre vitesse</label><input id="m-fenetre" type="number" min="2" max="20" step="1" title="Nombre d'impulsions capteur utilisées pour calculer la vitesse moyenne glissante"></div>
           </div>
-          <div class="field"><label>Max cycles sans impulsion</label><input id="m-maxcyc" type="number" min="5" max="60" step="1"></div>
+          <div class="field"><label>Cycles poumon sans impulsion → vitesse=0</label><input id="m-maxcyc" type="number" min="5" max="60" step="1" title="Si la bobine ne tourne pas pendant N cycles poumon consécutifs, la vitesse affichée passe à 0"></div>
           <button class="btn btn-gray" style="margin-bottom:8px" onclick="resetEtalonnage()">&#8635; Reset étalonnage (facteur = 1.0)</button>
           <button class="btn btn-blue" onclick="saveMachine()">Enregistrer parametres</button>
         </div>
@@ -267,20 +304,20 @@ details>summary::-webkit-details-marker{display:none}
         <summary>Modes dégradés</summary>
         <div class="detail-body">
           <div class="toggle-row">
-            <label>Mode dégradé capteur vitesse</label>
-            <label class="tgl"><input type="checkbox" id="m-mdv" onchange="toggleModeA()"><span class="tgl-slider"></span></label>
-          </div>
-          <div class="toggle-row">
             <label>Mode dégradé contact poumon</label>
             <label class="tgl"><input type="checkbox" id="m-mdp" onchange="toggleModeB()"><span class="tgl-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <label>Bypass sécurité spires <span style="color:#ef9a9a;font-size:11px">(capteur défaillant)</span></label>
+            <label class="tgl"><input type="checkbox" id="m-mds" onchange="saveMachine()"><span class="tgl-slider"></span></label>
           </div>
           <div class="field" id="m-trempl-wrap" style="display:none">
             <label>T. remplissage fixe (s)</label>
             <input id="m-trempl" type="number" min="0" max="60" step="0.5">
           </div>
-          <div class="field" id="m-cyclestour-wrap" style="display:none">
+          <div class="field" id="m-cyclestour-wrap">
             <label>Cycles poumon / tour bobine</label>
-            <input id="m-cyclestour" type="number" min="0" max="100" step="0.5" title="Marquer le tambour, compter les cycles poumon pour 1 tour complet">
+            <input id="m-cyclestour" type="number" min="0" max="200" step="1" title="Marquer le tambour, compter les cycles poumon pour 1 tour complet">
           </div>
         </div>
       </details>
@@ -408,7 +445,8 @@ function showTab(t) {
 // ============================================================
 const ETAT_VEILLE = 0, ETAT_OUVERTURE_CANON = 1, ETAT_TEMPO_DEPART = 2,
       ETAT_REMPLISSAGE_POUMON = 3, ETAT_EN_COURS = 4, ETAT_PAUSE_PRESSION = 5,
-      ETAT_TEMPO_ARRIVEE = 6, ETAT_ARRET_FINAL = 7, ETAT_ARRET_URGENCE = 8;
+      ETAT_TEMPO_ARRIVEE = 6, ETAT_ARRET_FINAL = 7, ETAT_ARRET_URGENCE = 8,
+      ETAT_DEROULE = 9;
 
 const BADGE_CFG = {
   'VEILLE':             ['#616161', 'En attente'],
@@ -420,6 +458,7 @@ const BADGE_CFG = {
   'TEMPO_ARRIVEE':      ['#FB8C00', 'Arrosage arrivée'],
   'ARRET_FINAL':        ['#1976D2', 'Arrêt final'],
   'ARRET_URGENCE':      ['#E53935', 'ARRET URGENCE'],
+  'DEROULE':            ['#7B1FA2', 'Déploiement en cours'],
 };
 
 function txt(id, val) {
@@ -469,21 +508,33 @@ function updateUI() {
   txt('vitesse-val', s.vitesse_m_h != null ? s.vitesse_m_h.toFixed(1) : '--');
   txt('duree-val', s.duree_s != null ? fmtDuree(s.duree_s) : '--');
 
-  // Arrivée
-  const showArrivee = s.heure_arrivee_unix && s.heure_synchro && s.etat_code >= ETAT_EN_COURS && s.etat_code <= ETAT_ARRET_FINAL;
+  // Arrivée estimée — visible depuis DEROULE jusqu'à fin d'enroulement
+  const activeEnroulement = s.etat_code === ETAT_DEROULE ||
+    (s.etat_code >= ETAT_OUVERTURE_CANON && s.etat_code <= ETAT_TEMPO_ARRIVEE);
+  const showArrivee = activeEnroulement && s.heure_arrivee_relative_s > 0;
   show('arrivee-row', showArrivee);
   if (showArrivee) {
     const rel = s.heure_arrivee_relative_s;
-    const h2 = Math.floor(Math.abs(rel) / 3600), m2 = Math.floor((Math.abs(rel) % 3600) / 60);
-    txt('arrivee-txt', fmtHeure(s.heure_arrivee_unix) + ' (+' + h2 + 'h' + String(m2).padStart(2,'0') + ')');
+    const hh = Math.floor(rel / 3600), mm = Math.floor((rel % 3600) / 60);
+    txt('arrivee-duree', hh + 'h' + String(mm).padStart(2,'0') + 'min');
+    const showHeure = !!(s.heure_arrivee_unix && s.heure_synchro);
+    const row = document.getElementById('arrivee-heure-row');
+    if (row) row.style.display = showHeure ? 'flex' : 'none';
+    if (showHeure) {
+      const d = new Date(s.heure_arrivee_unix * 1000);
+      const jours = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
+      const hhmm = String(d.getHours()).padStart(2,'0') + 'h' + String(d.getMinutes()).padStart(2,'0');
+      const jour = d.getDay() !== new Date().getDay() ? ' (' + jours[d.getDay()] + ')' : '';
+      txt('arrivee-txt', hhmm + jour);
+    }
   }
 
   // Alertes
   show('alert-urgence', s.etat === 'ARRET_URGENCE');
   if (s.etat === 'ARRET_URGENCE') txt('raison-txt', s.raison_arret || '');
   show('alert-pression', s.alerte_pression_insuff);
-  show('alert-deg-vitesse', s.mode_degrade_vitesse);
   show('alert-deg-poumon', s.mode_degrade_poumon);
+  show('alert-deg-spires', s.mode_degrade_spires);
 
   // GPIO
   dotStyle('dot-canon', s.ev_canon, false);
@@ -496,18 +547,22 @@ function updateUI() {
   txt('txt-fdc', s.fin_course ? 'ACTIF' : 'Normal');
 
   // Boutons principaux
-  const veille = s.etat_code === ETAT_VEILLE;
+  const veille  = s.etat_code === ETAT_VEILLE;
+  const deroule = s.etat_code === ETAT_DEROULE;
   const urgence = s.etat === 'ARRET_URGENCE';
-  const arret = s.etat === 'ARRET_FINAL' || urgence;
+  const arret   = s.etat === 'ARRET_FINAL' || urgence;
   const btnStart = document.getElementById('btn-start');
-  const btnStop = document.getElementById('btn-stop');
-  const btnReset = document.getElementById('btn-reset');
-  if (btnStart) btnStart.disabled = !s.cfg_valide || s.etat_code !== ETAT_VEILLE;
+  if (btnStart) btnStart.disabled = !s.cfg_valide || (!veille && !deroule);
   show('btn-reset', arret);
-  show('btn-stop', !arret && !veille);
+  show('btn-resume', arret && s.longueur_enroulee_m > 0);
+  show('btn-stop', !arret && !veille && !deroule);
+  show('btn-deroule', veille && !s.fin_course);   // déploiement manuel si fin_course déjà libéré
+  // Panneau déroulement
+  show('panel-deroule', deroule);
+  if (deroule) txt('deroule-mesure', s.mesure_deroule_m != null ? s.mesure_deroule_m.toFixed(0) : '0');
 
-  // Stats
-  txt('s-surface', s.surface_m2 != null ? s.surface_m2.toFixed(0) : '--');
+  // Stats session
+  txt('s-surface', s.surface_m2 != null ? (s.surface_m2 / 10000).toFixed(3) : '--');
   txt('s-dose', s.dose_inst_mm != null ? s.dose_inst_mm.toFixed(1) : '--');
   txt('s-debit', s.debit_m3h != null ? s.debit_m3h.toFixed(1) : '--');
   txt('s-penr', s.p_enrouleur_bar != null ? s.p_enrouleur_bar.toFixed(1) : '--');
@@ -524,6 +579,13 @@ function updateUI() {
   txt('s-tattente', s.t_attente_ms != null ? (s.t_attente_ms / 1000).toFixed(1) : '--');
   txt('s-fcorr', s.facteur_correction != null ? s.facteur_correction.toFixed(4) : '--');
   txt('s-cycles', s.cycles_total != null ? s.cycles_total : '--');
+  // Stats campagne
+  txt('c-sessions', s.camp_nb_sessions != null ? s.camp_nb_sessions : '--');
+  txt('c-surface', s.camp_surface_ha != null ? s.camp_surface_ha.toFixed(3) : '--');
+  txt('c-volume', s.camp_volume_m3 != null ? s.camp_volume_m3.toFixed(1) : '--');
+  txt('c-dose', s.camp_dose_moy_mm != null ? s.camp_dose_moy_mm.toFixed(1) : '--');
+  txt('c-vitesse', s.camp_vitesse_moy_m_h != null ? s.camp_vitesse_moy_m_h.toFixed(1) : '--');
+  txt('c-duree', s.camp_duree_h != null ? s.camp_duree_h.toFixed(1) : '--');
 
   // IRRITESTEUR entrées
   txt('irri-fdc', s.fin_course ? 'ACTIF' : 'Normal');
@@ -553,7 +615,7 @@ function updateUI() {
 // ============================================================
 // Config — chargement depuis statut
 // ============================================================
-let progData = [{nom:'Prog 1',dose_mm:25,largeur_m:18,buse_mm:18,pression_bar:7,tempo_depart_on:false,tempo_depart_s:120,tempo_arrivee_on:false,tempo_arrivee_s:0},{nom:'Prog 2'},{nom:'Prog 3'},{nom:'Prog 4'},{nom:'Prog 5'}];
+let progData = [{nom:'Prog 1'},{nom:'Prog 2'},{nom:'Prog 3'},{nom:'Prog 4'},{nom:'Prog 5'}];
 let currentProg = 0;
 
 function loadConfigFromStatus() {
@@ -571,36 +633,46 @@ function loadConfigFromStatus() {
   if (s.cfg_denivele_m != null)      setField('m-denivele', s.cfg_denivele_m);
   if (s.cfg_machine_active != null)  setField('m-machine', s.cfg_machine_active);
   if (s.cfg_cycles_par_tour != null) setField('m-cyclestour', s.cfg_cycles_par_tour);
-  if (s.mode_degrade_vitesse != null) {
-    setCheck('m-mdv', s.mode_degrade_vitesse);
-    show('m-cyclestour-wrap', s.mode_degrade_vitesse);
-  }
+  show('m-cyclestour-wrap', true);  // toujours visible
   if (s.mode_degrade_poumon != null) {
     setCheck('m-mdp', s.mode_degrade_poumon);
     show('m-trempl-wrap', s.mode_degrade_poumon);
+  }
+  if (s.mode_degrade_spires != null) setCheck('m-mds', s.mode_degrade_spires);
+
+  // Champs programme actif depuis JSON statut (prog_* fields)
+  if (s.prog_dose_mm != null)         setField('p-dose', s.prog_dose_mm || '');
+  if (s.prog_largeur_m != null)       setField('p-larg', s.prog_largeur_m || '');
+  if (s.prog_buse_mm != null)         setField('p-buse', s.prog_buse_mm || '');
+  if (s.prog_pression_bar != null)    setField('p-pres', s.prog_pression_bar || '');
+  if (s.prog_tempo_depart_on != null) {
+    setCheck('p-td-on', s.prog_tempo_depart_on);
+    toggleTempo('td');
+  }
+  if (s.prog_tempo_depart_s != null)  setField('p-td-s', s.prog_tempo_depart_s);
+  if (s.prog_tempo_arrivee_on != null) {
+    setCheck('p-ta-on', s.prog_tempo_arrivee_on);
+    toggleTempo('ta');
+  }
+  if (s.prog_tempo_arrivee_s != null) setField('p-ta-s', s.prog_tempo_arrivee_s);
+  if (s.prog_nom != null && s.prog_nom !== '') {
+    const idx = currentProg;
+    progData[idx] = progData[idx] || {};
+    progData[idx].nom = s.prog_nom;
+    const sel = document.getElementById('prog-idx');
+    if (sel && sel.options[idx]) sel.options[idx].text = s.prog_nom;
   }
 }
 
 function onSelectProg() {
   const idx = parseInt(document.getElementById('prog-idx').value);
   currentProg = idx;
+  // Vider les champs avant la réponse WS pour éviter affichage valeurs programme précédent
+  ['p-dose','p-larg','p-buse','p-pres','p-td-s','p-ta-s'].forEach(id => setField(id, ''));
+  setCheck('p-td-on', false); toggleTempo('td');
+  setCheck('p-ta-on', false); toggleTempo('ta');
   sendCmd({cmd: 'select_programme', idx: idx});
-  // mettre à jour les champs depuis progData si disponible
-  const p = progData[idx];
-  if (p && p.dose_mm) {
-    setField('p-dose', p.dose_mm);
-    setField('p-larg', p.largeur_m);
-    setField('p-buse', p.buse_mm);
-    setField('p-pres', p.pression_bar);
-    setCheck('p-td-on', p.tempo_depart_on);
-    setField('p-td-s', p.tempo_depart_s);
-    setCheck('p-ta-on', p.tempo_arrivee_on);
-    setField('p-ta-s', p.tempo_arrivee_s);
-    toggleTempo('td'); toggleTempo('ta');
-  }
-  // mise à jour dropdown label
-  const sel = document.getElementById('prog-idx');
-  if (p && p.nom) sel.options[idx].text = p.nom;
+  // Les champs seront remplis par loadConfigFromStatus() lors de la prochaine mise à jour WS
 }
 
 function setField(id, val) {
@@ -615,12 +687,6 @@ function setCheck(id, val) {
 function toggleTempo(which) {
   const on = document.getElementById('p-' + which + '-on').checked;
   show('p-' + which + '-wrap', on);
-}
-
-function toggleModeA() {
-  const on = document.getElementById('m-mdv').checked;
-  show('m-cyclestour-wrap', on);
-  saveMachine();
 }
 
 function toggleModeB() {
@@ -671,8 +737,8 @@ function saveMachine() {
     n_cycles_calib: parseInt(document.getElementById('m-ncalib').value) || 3,
     fenetre_vitesse: parseInt(document.getElementById('m-fenetre').value) || 5,
     max_cycles_si: parseInt(document.getElementById('m-maxcyc').value) || 15,
-    mode_deg_vitesse: document.getElementById('m-mdv').checked,
     mode_deg_poumon: document.getElementById('m-mdp').checked,
+    mode_deg_spires: document.getElementById('m-mds').checked,
     t_rempl_fixe_s: parseFloat(document.getElementById('m-trempl').value) || 0,
     denivele_m: parseFloat(document.getElementById('m-denivele').value) || 0,
     cycles_par_tour: parseFloat(document.getElementById('m-cyclestour').value) || 0
@@ -689,12 +755,43 @@ function resetEtalonnage() {
     n_cycles_calib: parseInt(document.getElementById('m-ncalib').value) || 3,
     fenetre_vitesse: parseInt(document.getElementById('m-fenetre').value) || 5,
     max_cycles_si: parseInt(document.getElementById('m-maxcyc').value) || 15,
-    mode_deg_vitesse: document.getElementById('m-mdv').checked,
     mode_deg_poumon: document.getElementById('m-mdp').checked,
+    mode_deg_spires: document.getElementById('m-mds').checked,
     t_rempl_fixe_s: parseFloat(document.getElementById('m-trempl').value) || 0,
     denivele_m: parseFloat(document.getElementById('m-denivele').value) || 0,
     cycles_par_tour: parseFloat(document.getElementById('m-cyclestour').value) || 0
   });
+}
+
+function openDerouleCorrection() {
+  const measured = st.mesure_deroule_m || 0;
+  const val = prompt('Longueur réelle déployée (m) :', measured.toFixed(0));
+  if (val === null) return;
+  const reelle = parseFloat(val);
+  if (isNaN(reelle) || reelle < 0) { alert('Valeur invalide'); return; }
+  const fc = st.facteur_correction || 1.0;
+  const diff = measured > 0 ? Math.abs(reelle - measured) / measured : 1;
+  if (diff > 0.01 && measured > 0) {
+    const fc_nouveau = (reelle / measured) * fc;
+    if (confirm('Ajuster le facteur de correction ?\n(actuel : ' + fc.toFixed(3) + ' → proposé : ' + fc_nouveau.toFixed(3) + ')')) {
+      sendCmd({cmd:'save_machine',
+        facteur_correction: fc_nouveau,
+        machine_active: st.cfg_machine_active || 0,
+        t_vidange_s: st.cfg_t_vidange_s || 0,
+        kp_regulation: st.cfg_kp_regulation || 0.1,
+        n_cycles_calib: st.cfg_n_cycles_calib || 3,
+        fenetre_vitesse: st.cfg_fenetre_vitesse || 5,
+        max_cycles_si: st.cfg_max_cycles_si || 15,
+        mode_deg_poumon: st.mode_degrade_poumon || false,
+        mode_deg_spires: st.mode_degrade_spires || false,
+        t_rempl_fixe_s: st.cfg_t_rempl_fixe_s || 0,
+        denivele_m: st.cfg_denivele_m || 0,
+        cycles_par_tour: st.cfg_cycles_par_tour || 0
+      });
+      return;
+    }
+  }
+  sendCmd({cmd:'set_longueur', longueur_m: reelle});
 }
 
 // ============================================================
@@ -801,6 +898,50 @@ function showBilan(b) {
   const content = document.getElementById('tab-home');
   content.insertBefore(el, content.firstChild);
   setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 15000);
+}
+
+// ============================================================
+// Sous-onglets Stats
+// ============================================================
+function showStatTab(t) {
+  const session = t === 'session';
+  show('stpanel-session', session);
+  show('stpanel-campagne', !session);
+  const btnS = document.getElementById('sttab-session');
+  const btnC = document.getElementById('sttab-campagne');
+  btnS.style.background = session ? 'var(--accent)' : 'var(--card2)';
+  btnS.style.color = session ? '#fff' : 'var(--text)';
+  btnC.style.background = session ? 'var(--card2)' : 'var(--accent)';
+  btnC.style.color = session ? 'var(--text)' : '#fff';
+}
+
+// ============================================================
+// Vitesse preview dans formulaire programme
+// ============================================================
+let prevVitesseTimer = null;
+function debouncePrevVitesse() {
+  clearTimeout(prevVitesseTimer);
+  prevVitesseTimer = setTimeout(fetchPrevVitesse, 400);
+}
+async function fetchPrevVitesse() {
+  const p = parseFloat(document.getElementById('p-pres').value);
+  const b = parseFloat(document.getElementById('p-buse').value);
+  const d = parseFloat(document.getElementById('p-dose').value);
+  if (!p || !b || !d || p <= 0 || b <= 0 || d <= 0) {
+    show('p-vitesse-preview', false); return;
+  }
+  try {
+    const r = await fetch('/api/vitesse?p=' + p + '&b=' + b + '&d=' + d);
+    if (!r.ok) { show('p-vitesse-preview', false); return; }
+    const j = await r.json();
+    if (j.vitesse_m_h > 0) {
+      document.getElementById('p-vitesse-val').textContent = j.vitesse_m_h.toFixed(1);
+      document.getElementById('p-debit-val').textContent = j.debit_m3h.toFixed(2);
+      show('p-vitesse-preview', true);
+    } else {
+      show('p-vitesse-preview', false);
+    }
+  } catch(_) { show('p-vitesse-preview', false); }
 }
 
 // marquer dirty quand l'user édite un champ config

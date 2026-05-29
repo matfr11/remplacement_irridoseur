@@ -24,8 +24,8 @@ typedef struct {
     int     n_cycles_calib;         // Cycles avant activation correction
     int     fenetre_vitesse;        // Nb impulsions fenêtre vitesse
     int     max_cycles_si;          // Cycles sans impulsion → v=0
-    bool    mode_deg_vitesse;       // Mode dégradé capteur vitesse
     bool    mode_deg_poumon;        // Mode dégradé contact poumon
+    bool    mode_deg_spires;        // Bypass SEC-2 spires (capteur défaillant)
     float   t_rempl_fixe_s;         // Durée remplissage fixe (mode dégradé B)
     float   denivele_m;             // Dénivelé terrain (0 = plat)
     float   cycles_par_tour;        // Nb cycles poumon par tour de bobine (0 = non renseigné)
@@ -56,8 +56,8 @@ typedef struct {
     .n_cycles_calib    = 3,     \
     .fenetre_vitesse   = 5,     \
     .max_cycles_si     = 15,    \
-    .mode_deg_vitesse  = false, \
     .mode_deg_poumon   = false, \
+    .mode_deg_spires   = false, \
     .t_rempl_fixe_s    = 0.0f,  \
     .denivele_m        = 0.0f,  \
     .cycles_par_tour   = 0.0f,  \
@@ -91,3 +91,19 @@ esp_err_t config_nvs_lire_deroule(float *deroule_m);
 
 // Valide qu'un programme est utilisable (dose, largeur, buse, pression > 0)
 bool config_programme_est_valide(const config_programme_t *prog);
+
+// -----------------------------------------------------------------------------
+// Stats campagne cumulatives (namespace irri_stats)
+// -----------------------------------------------------------------------------
+typedef struct {
+    float    total_surface_ha;
+    float    total_volume_m3;
+    float    dose_moy_mm;
+    float    vitesse_moy_m_h;
+    uint32_t nb_sessions;
+    float    total_duree_h;
+} config_stats_t;
+
+esp_err_t config_nvs_lire_stats(config_stats_t *stats);
+esp_err_t config_nvs_sauver_stats(const config_stats_t *stats);
+esp_err_t config_nvs_reset_stats(void);

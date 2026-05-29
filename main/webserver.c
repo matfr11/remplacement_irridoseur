@@ -21,7 +21,7 @@
 static const char *TAG = "webserver";
 
 #define MAX_WS_CLIENTS  4
-#define JSON_BUF_SIZE   2048
+#define JSON_BUF_SIZE   3072
 
 static httpd_handle_t s_server = NULL;
 
@@ -72,6 +72,7 @@ static const char *etat_to_str(etat_machine_t etat)
         case ETAT_TEMPO_ARRIVEE:      return "TEMPO_ARRIVEE";
         case ETAT_ARRET_FINAL:        return "ARRET_FINAL";
         case ETAT_ARRET_URGENCE:      return "ARRET_URGENCE";
+        case ETAT_DEROULE:            return "DEROULE";
         default:                      return "INCONNU";
     }
 }
@@ -106,8 +107,9 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         "\"cycles_par_min_reel\":%.2f,"
         "\"cycles_total\":%u,"
         "\"alerte_pression_insuff\":%s,"
-        "\"mode_degrade_vitesse\":%s,"
+        "\"mesure_deroule_m\":%.1f,"
         "\"mode_degrade_poumon\":%s,"
+        "\"mode_degrade_spires\":%s,"
         "\"facteur_correction\":%.4f,"
         "\"raison_arret\":\"%s\","
         "\"cfg_valide\":%s,"
@@ -118,7 +120,22 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         "\"cfg_max_cycles_si\":%d,"
         "\"cfg_t_rempl_fixe_s\":%.1f,"
         "\"cfg_denivele_m\":%.1f,"
-        "\"cfg_machine_active\":%d"
+        "\"cfg_machine_active\":%d,"
+        "\"cfg_cycles_par_tour\":%.1f,"
+        "\"prog_dose_mm\":%.1f,"
+        "\"prog_largeur_m\":%.1f,"
+        "\"prog_buse_mm\":%d,"
+        "\"prog_pression_bar\":%.2f,"
+        "\"prog_tempo_depart_on\":%s,"
+        "\"prog_tempo_depart_s\":%d,"
+        "\"prog_tempo_arrivee_on\":%s,"
+        "\"prog_tempo_arrivee_s\":%d,"
+        "\"camp_surface_ha\":%.3f,"
+        "\"camp_volume_m3\":%.2f,"
+        "\"camp_dose_moy_mm\":%.2f,"
+        "\"camp_vitesse_moy_m_h\":%.2f,"
+        "\"camp_nb_sessions\":%u,"
+        "\"camp_duree_h\":%.2f"
         "}",
         etat_to_str(s->etat), (int)s->etat,
         s->prog_nom,
@@ -147,8 +164,9 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         s->cycles_par_min_reel,
         (unsigned int)s->cycles_total,
         s->alerte_pression_insuff ? "true" : "false",
-        s->mode_degrade_vitesse   ? "true" : "false",
+        s->mesure_deroule_m,
         s->mode_degrade_poumon    ? "true" : "false",
+        s->mode_degrade_spires    ? "true" : "false",
         s->facteur_correction,
         s->raison_arret,
         s->cfg_valide           ? "true" : "false",
@@ -159,7 +177,22 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         s->cfg_max_cycles_si,
         s->cfg_t_rempl_fixe_s,
         s->cfg_denivele_m,
-        s->cfg_machine_active
+        s->cfg_machine_active,
+        s->cfg_cycles_par_tour,
+        s->prog_dose_mm,
+        s->prog_largeur_m,
+        s->prog_buse_mm,
+        s->prog_pression_bar,
+        s->prog_tempo_depart_on  ? "true" : "false",
+        s->prog_tempo_depart_s,
+        s->prog_tempo_arrivee_on ? "true" : "false",
+        s->prog_tempo_arrivee_s,
+        s->camp_surface_ha,
+        s->camp_volume_m3,
+        s->camp_dose_moy_mm,
+        s->camp_vitesse_moy_m_h,
+        (unsigned int)s->camp_nb_sessions,
+        s->camp_duree_h
     );
 }
 
@@ -227,6 +260,12 @@ static void handle_ws_command(const char *data, size_t len)
     } else if (strstr(data, "\"cmd\":\"reset\"")) {
         state_machine_cmd_reset();
 
+    } else if (strstr(data, "\"cmd\":\"resume\"")) {
+        state_machine_cmd_resume();
+
+    } else if (strstr(data, "\"cmd\":\"reset_campagne\"")) {
+        state_machine_cmd_reset_campagne();
+
     } else if (strstr(data, "\"cmd\":\"set_time\"")) {
         const char *p = strstr(data, "\"ts\":");
         if (p) {
@@ -244,6 +283,9 @@ static void handle_ws_command(const char *data, size_t len)
         bool actif = false;
         json_parse_bool(data, "actif", &actif);
         state_machine_cmd_ev_poumon_set(actif);
+
+    } else if (strstr(data, "\"cmd\":\"start_deroule\"")) {
+        state_machine_cmd_start_deroule();
 
     } else if (strstr(data, "\"cmd\":\"select_programme\"")) {
         int idx = 0;
@@ -291,8 +333,8 @@ static void handle_ws_command(const char *data, size_t len)
         if (json_parse_float(data, "t_vidange_s",        &f)) cfg.t_vidange_s         = f;
         if (json_parse_float(data, "t_rempl_fixe_s",     &f)) cfg.t_rempl_fixe_s      = f;
         if (json_parse_float(data, "denivele_m",         &f)) cfg.denivele_m          = f;
-        if (json_parse_bool (data, "mode_deg_vitesse",   &b)) cfg.mode_deg_vitesse    = b;
         if (json_parse_bool (data, "mode_deg_poumon",    &b)) cfg.mode_deg_poumon     = b;
+        if (json_parse_bool (data, "mode_deg_spires",    &b)) cfg.mode_deg_spires     = b;
         if (json_parse_int  (data, "machine_active",     &n)) cfg.machine_active      = n;
         if (json_parse_float(data, "cycles_par_tour",    &f)) cfg.cycles_par_tour     = f;
         config_nvs_sauver_machine(&cfg);
@@ -336,6 +378,33 @@ static esp_err_t root_handler(httpd_req_t *req)
     httpd_resp_set_type(req, "text/html");
     httpd_resp_send(req, (const char *)webui_html_start,
                     webui_html_end - webui_html_start);
+    return ESP_OK;
+}
+
+// =============================================================================
+// HTTP GET /api/vitesse?p=X&b=Y&d=Z — preview vitesse pour formulaire programme
+// =============================================================================
+
+static esp_err_t vitesse_handler(httpd_req_t *req)
+{
+    char buf[128] = {0};
+    size_t len = httpd_req_get_url_query_len(req);
+    float p = 0.0f, b = 0.0f, d = 0.0f;
+    if (len > 0 && len < sizeof(buf)) {
+        httpd_req_get_url_query_str(req, buf, sizeof(buf));
+        char val[32];
+        if (httpd_query_key_value(buf, "p", val, sizeof(val)) == ESP_OK) sscanf(val, "%f", &p);
+        if (httpd_query_key_value(buf, "b", val, sizeof(val)) == ESP_OK) sscanf(val, "%f", &b);
+        if (httpd_query_key_value(buf, "d", val, sizeof(val)) == ESP_OK) sscanf(val, "%f", &d);
+    }
+    float debit = 0.0f, p_buse = 0.0f;
+    float v = state_machine_calc_vitesse(p, b, d, &debit, &p_buse);
+    char resp[128];
+    int n = snprintf(resp, sizeof(resp),
+        "{\"vitesse_m_h\":%.2f,\"debit_m3h\":%.2f,\"p_buse_bar\":%.2f}",
+        v, debit, p_buse);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, resp, n);
     return ESP_OK;
 }
 
@@ -434,8 +503,15 @@ esp_err_t webserver_init(void)
         .handler = root_handler,
     };
 
+    static const httpd_uri_t uri_vitesse = {
+        .uri     = "/api/vitesse",
+        .method  = HTTP_GET,
+        .handler = vitesse_handler,
+    };
+
     httpd_register_uri_handler(s_server, &uri_ws);
     httpd_register_uri_handler(s_server, &uri_root);
+    httpd_register_uri_handler(s_server, &uri_vitesse);
     ota_register_handler(s_server);
 #ifdef CONFIG_IRRI_TEST_MODE
     simulator_ws_register(s_server);

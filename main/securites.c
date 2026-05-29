@@ -3,6 +3,16 @@
 #include "gpio_handler.h"
 #include "state_machine.h"
 #include "driver/gpio.h"
+#include "esp_log.h"
+
+static const char *TAG = "securites";
+
+static bool s_bypass_spires = false;
+
+void securites_set_bypass_spires(bool bypass)
+{
+    s_bypass_spires = bypass;
+}
 
 // Implémentation — PR-05
 void securites_watchdog(void)
@@ -12,9 +22,13 @@ void securites_watchdog(void)
 
     // SEC-2 : débordement spires — priorité absolue, tout état sans exception
     if (e.secu_spires) {
-        gpio_all_ev_off();
-        state_machine_declencher_urgence("Debordement bobine");
-        return;
+        if (s_bypass_spires) {
+            ESP_LOGW(TAG, "SEC-2 spires active — IGNOREE (mode degrade spires ON)");
+        } else {
+            gpio_all_ev_off();
+            state_machine_declencher_urgence("Debordement bobine");
+            return;
+        }
     }
 
     etat_machine_t etat = state_machine_get_etat();

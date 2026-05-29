@@ -20,6 +20,12 @@ float calcul_dist_pulse_m(float r_etage_m)
     return (2.0f * (float)M_PI * r_etage_m) / (float)NB_PASTILLES;
 }
 
+float calcul_dist_cycle_m(float r_etage_m, float cycles_par_tour)
+{
+    if (cycles_par_tour <= 0.0f) return 0.0f;
+    return (2.0f * (float)M_PI * r_etage_m) / cycles_par_tour;
+}
+
 float calcul_longueur_etage_m(int n, const machine_profile_t *profil)
 {
     float r = calcul_rayon_etage(n, profil);

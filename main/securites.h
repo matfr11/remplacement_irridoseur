@@ -15,3 +15,7 @@
 // Lit l'état courant via state_machine_get_etat(), pilote les GPIO,
 // appelle state_machine_declencher_urgence() si nécessaire.
 void securites_watchdog(void);
+
+// Active/désactive le bypass SEC-2 spires (mode dégradé capteur défaillant).
+// Appelé par state_machine lors du rechargement config.
+void securites_set_bypass_spires(bool bypass);

@@ -91,7 +91,7 @@ static void test_machine_roundtrip(void)
     cfg_out.facteur_correction = 1.23f;
     cfg_out.kp_regulation      = 0.42f;
     cfg_out.fenetre_vitesse    = 7;
-    cfg_out.mode_deg_vitesse   = true;
+    cfg_out.cycles_par_tour    = 40.0f;
 
     esp_err_t ret = config_nvs_sauver_machine(&cfg_out);
     if (ret != ESP_OK) { FAIL("machine_roundtrip_save", "err=%d", ret); return; }
@@ -100,10 +100,10 @@ static void test_machine_roundtrip(void)
     ret = config_nvs_lire_machine(&cfg_in);
     if (ret != ESP_OK) { FAIL("machine_roundtrip_load", "err=%d", ret); return; }
 
-    assert_near(1.23f, cfg_in.facteur_correction, EPSILON, "machine_roundtrip_facteur");
-    assert_near(0.42f, cfg_in.kp_regulation,      EPSILON, "machine_roundtrip_kp");
-    assert_int_eq(7,   cfg_in.fenetre_vitesse,             "machine_roundtrip_fenetre");
-    assert_bool(true,  cfg_in.mode_deg_vitesse,            "machine_roundtrip_mode_deg");
+    assert_near(1.23f,  cfg_in.facteur_correction, EPSILON, "machine_roundtrip_facteur");
+    assert_near(0.42f,  cfg_in.kp_regulation,      EPSILON, "machine_roundtrip_kp");
+    assert_int_eq(7,    cfg_in.fenetre_vitesse,             "machine_roundtrip_fenetre");
+    assert_near(40.0f,  cfg_in.cycles_par_tour,    EPSILON, "machine_roundtrip_cycles_par_tour");
 }
 
 // =============================================================================

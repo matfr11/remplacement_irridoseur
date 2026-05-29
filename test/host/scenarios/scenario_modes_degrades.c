@@ -17,15 +17,15 @@ static void avancer(int n)
     }
 }
 
-static void config_set_mode_degrade(bool vitesse, bool poumon, float t_rempl)
+static void config_set_mode_degrade(bool poumon, float t_rempl)
 {
     config_machine_t m = CFG_MACHINE_DEFAUT;
     m.machine_active   = 0;
     m.t_vidange_s      = 2.0f;  // 2s vidange pour tests plus courts
-    m.mode_deg_vitesse = vitesse;
     m.mode_deg_poumon  = poumon;
     m.t_rempl_fixe_s   = t_rempl;
     m.dist_cycle_nvs   = 0.5f;
+    m.cycles_par_tour  = 40.0f; // requis pour calcul distance par cycle
     config_nvs_sauver_machine(&m);
 
     config_programme_t p = {
@@ -50,27 +50,10 @@ static void local_setUp(void)
 
 static void local_tearDown(void) { state_machine_test_reset(); }
 
-// Scénario 11 — mode dégradé A : vitesse estimée, flag reflété dans statut
-static void test_scenario_mode_degrade_a(void)
-{
-    config_set_mode_degrade(true, false, 0.0f);
-    state_machine_init();
-
-    state_machine_test_injecter_etat(ETAT_EN_COURS);
-    avancer(1);
-
-    machine_status_t st;
-    state_machine_get_status(&st);
-    TEST_ASSERT_TRUE(st.mode_degrade_vitesse);
-    TEST_ASSERT_FALSE(st.mode_degrade_poumon);
-
-    state_machine_cmd_stop();
-}
-
 // Scénario 12 — mode dégradé B : remplissage temporisé (t_rempl_fixe_s=2s)
 static void test_scenario_mode_degrade_b(void)
 {
-    config_set_mode_degrade(false, true, 2.0f);
+    config_set_mode_degrade(true, 2.0f);
     state_machine_init();
 
     // Aller en EN_COURS via injection
@@ -95,7 +78,7 @@ static void test_scenario_mode_degrade_b(void)
 // Scénario 13 — mode dégradé B : remplissage initial (ETAT_REMPLISSAGE_POUMON) via timer
 static void test_scenario_mode_degrade_b_initial(void)
 {
-    config_set_mode_degrade(false, true, 2.0f);
+    config_set_mode_degrade(true, 2.0f);
     state_machine_init();
 
     // VEILLE → OUVERTURE_CANON (1 tick)
@@ -120,28 +103,9 @@ static void test_scenario_mode_degrade_b_initial(void)
     state_machine_cmd_stop();
 }
 
-// Scénario 14 — mode A+B : les deux flags actifs simultanément
-static void test_scenario_mode_degrade_ab(void)
-{
-    config_set_mode_degrade(true, true, 2.0f);
-    state_machine_init();
-
-    state_machine_test_injecter_etat(ETAT_EN_COURS);
-    avancer(1);
-
-    machine_status_t st;
-    state_machine_get_status(&st);
-    TEST_ASSERT_TRUE(st.mode_degrade_vitesse);
-    TEST_ASSERT_TRUE(st.mode_degrade_poumon);
-
-    state_machine_cmd_stop();
-}
-
 void suite_scenario_modes_degrades(void)
 {
     unity_suite_setup(local_setUp, local_tearDown);
-    RUN_TEST(test_scenario_mode_degrade_a);
     RUN_TEST(test_scenario_mode_degrade_b);
     RUN_TEST(test_scenario_mode_degrade_b_initial);
-    RUN_TEST(test_scenario_mode_degrade_ab);
 }

@@ -200,3 +200,39 @@ bool config_programme_est_valide(const config_programme_t *prog)
            prog->buse_mm > 0      &&
            prog->pression_bar > 0.0f;
 }
+
+#define NS_STATS "irri_stats"
+
+esp_err_t config_nvs_lire_stats(config_stats_t *stats)
+{
+    memset(stats, 0, sizeof(*stats));
+    nvs_handle_t h;
+    esp_err_t ret = nvs_open(NS_STATS, NVS_READONLY, &h);
+    if (ret != ESP_OK) return ESP_OK;
+    size_t sz = sizeof(config_stats_t);
+    ret = nvs_get_blob(h, "camp", stats, &sz);
+    nvs_close(h);
+    if (ret == ESP_ERR_NVS_NOT_FOUND || ret == ESP_ERR_NVS_INVALID_LENGTH) {
+        memset(stats, 0, sizeof(*stats));
+        return ESP_OK;
+    }
+    return ret;
+}
+
+esp_err_t config_nvs_sauver_stats(const config_stats_t *stats)
+{
+    nvs_handle_t h;
+    esp_err_t ret = nvs_open(NS_STATS, NVS_READWRITE, &h);
+    if (ret != ESP_OK) return ret;
+    ret = nvs_set_blob(h, "camp", stats, sizeof(config_stats_t));
+    if (ret == ESP_OK) ret = nvs_commit(h);
+    nvs_close(h);
+    return ret;
+}
+
+esp_err_t config_nvs_reset_stats(void)
+{
+    config_stats_t z;
+    memset(&z, 0, sizeof(z));
+    return config_nvs_sauver_stats(&z);
+}
