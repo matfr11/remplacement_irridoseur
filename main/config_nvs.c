@@ -99,7 +99,7 @@ esp_err_t config_nvs_lire_prog_actif(int *idx)
 {
     nvs_handle_t h;
     *idx = 0;
-    esp_err_t ret = nvs_open(NS_MACHINE, NVS_READONLY, &h);
+    esp_err_t ret = nvs_open(NS_STATE, NVS_READONLY, &h);
     if (ret != ESP_OK) return ESP_OK;
     int32_t val = 0;
     ret = nvs_get_i32(h, "prog_actif", &val);
@@ -112,7 +112,7 @@ esp_err_t config_nvs_lire_prog_actif(int *idx)
 esp_err_t config_nvs_sauver_prog_actif(int idx)
 {
     nvs_handle_t h;
-    esp_err_t ret = nvs_open(NS_MACHINE, NVS_READWRITE, &h);
+    esp_err_t ret = nvs_open(NS_STATE, NVS_READWRITE, &h);
     if (ret != ESP_OK) return ret;
     ret = nvs_set_i32(h, "prog_actif", (int32_t)idx);
     if (ret == ESP_OK) ret = nvs_commit(h);

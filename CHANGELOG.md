@@ -5,6 +5,30 @@ Format : [PR-XX] — date — description
 
 ---
 
+## [PR-07] — 2026-05-28 — NVS config — 5 programmes — tests
+
+### config_nvs.c
+- Fix bug namespace : `prog_actif` lu/écrit dans `irri_state` (était `irri_machine` par erreur,
+  SPECS_FINAL_v3 §11 place cette clé dans `irri_state`)
+
+### test/test_config_nvs.c — 10 tests unitaires (nouveau fichier)
+- T01-T03 : `config_programme_est_valide()` — vide/complet/buse_zero
+- T04 : roundtrip config_machine_t (facteur_correction, kp_regulation, fenetre_vitesse, mode_deg)
+- T05-T06 : roundtrip programme idx=0 et idx=4 (nom, dose, largeur, buse, tempo)
+- T07-T08 : indices invalides (-1, 5) → ESP_ERR_INVALID_ARG
+- T09 : roundtrip prog_actif
+- T10 : roundtrip raison urgence
+
+### main.c
+- Déplacement de `config_nvs_init()` avant le bloc `CONFIG_IRRI_ENABLE_TESTS`
+  (les tests NVS nécessitent que NVS flash soit initialisé)
+- Ajout `extern void test_config_nvs_run(void)` et appel dans le bloc tests
+
+### CMakeLists.txt
+- Ajout `"test/test_config_nvs.c"` dans le bloc conditionnel `IRRI_ENABLE_TESTS`
+
+---
+
 ## [PR-06] — 2026-05-28 — Régulation feedforward — modes dégradés — tests
 
 ### state_machine.c
