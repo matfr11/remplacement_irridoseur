@@ -1,6 +1,10 @@
 #include "webserver.h"
 #include "webui.h"
 #include "ota.h"
+#ifdef CONFIG_IRRI_TEST_MODE
+  #include "simulator/simulator.h"
+  #include "simulator/simulator_ws.h"
+#endif
 #include "state_machine.h"
 #include "config_nvs.h"
 #include "esp_wifi.h"
@@ -422,6 +426,9 @@ esp_err_t webserver_init(void)
     httpd_register_uri_handler(s_server, &uri_ws);
     httpd_register_uri_handler(s_server, &uri_root);
     ota_register_handler(s_server);
+#ifdef CONFIG_IRRI_TEST_MODE
+    simulator_ws_register(s_server);
+#endif
 
     ESP_LOGI(TAG, "Serveur HTTP/WebSocket demarre — http://192.168.4.1");
     return ESP_OK;

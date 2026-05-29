@@ -62,3 +62,12 @@ void regulation_reset_calibration(void);
  * Nombre de cycles de calibration effectués.
  */
 int regulation_get_nb_cycles(void);
+
+/**
+ * Convertit une vitesse d'enroulement en cycles poumon par minute.
+ *
+ * @param v_m_h              Vitesse en m/h
+ * @param dist_par_cycle_m   Distance avancée par cycle poumon (m)
+ * @return Cycles par minute (0 si dist_par_cycle_m <= 0)
+ */
+float calcul_cycles_par_min(float v_m_h, float dist_par_cycle_m);

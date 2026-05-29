@@ -147,4 +147,6 @@ void state_machine_test_injecter_etat(etat_machine_t etat);
 void state_machine_test_set_pression(bool pression_ok);
 void state_machine_test_set_fin_course(bool active);
 void state_machine_test_set_secu_spires(bool active);
+int  state_machine_test_get_nb_tentatives(void);
+void state_machine_test_reset(void);
 #endif
