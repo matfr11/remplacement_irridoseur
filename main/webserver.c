@@ -1,4 +1,5 @@
 #include "webserver.h"
+#include "webui.h"
 #include "ota.h"
 #include "state_machine.h"
 #include "config_nvs.h"
@@ -298,21 +299,14 @@ static esp_err_t ws_handler(httpd_req_t *req)
 }
 
 // =============================================================================
-// HTTP root — placeholder Web UI (PR-09)
+// HTTP root — Web UI embarquée
 // =============================================================================
 
 static esp_err_t root_handler(httpd_req_t *req)
 {
-    const char *html =
-        "<html><head><meta charset='utf-8'>"
-        "<meta name='viewport' content='width=device-width,initial-scale=1'></head>"
-        "<body style='font-family:sans-serif;padding:2em'>"
-        "<h2>Irrifrance ESP32</h2>"
-        "<p>Web UI disponible en PR-09.</p>"
-        "<p>WebSocket : <code>ws://192.168.4.1/ws</code></p>"
-        "</body></html>";
     httpd_resp_set_type(req, "text/html");
-    httpd_resp_send(req, html, strlen(html));
+    httpd_resp_send(req, (const char *)webui_html_start,
+                    webui_html_end - webui_html_start);
     return ESP_OK;
 }
 
