@@ -54,3 +54,9 @@ const char* batterie_etat_str(batt_etat_t etat);
 
 // Couleur CSS associee a l'etat (pour web UI).
 const char* batterie_etat_couleur(batt_etat_t etat);
+
+// Simulation (CONFIG_IRRI_TEST_MODE uniquement)
+// Injecte une tension fixe ; 0.0 = desactive, utilise l'ADC reel.
+#ifdef CONFIG_IRRI_TEST_MODE
+void batterie_sim_set_voltage(float v);
+#endif

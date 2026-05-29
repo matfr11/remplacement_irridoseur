@@ -13,6 +13,11 @@ static bool                      s_cali_ok     = false;
 static float s_warn_v = BATT_V_FAIBLE_MIN;
 static float s_crit_v = BATT_V_CRITIQUE_MIN;
 
+#ifdef CONFIG_IRRI_TEST_MODE
+static float s_sim_voltage = 0.0f;
+void batterie_sim_set_voltage(float v) { s_sim_voltage = v; }
+#endif
+
 esp_err_t batterie_init(void)
 {
     adc_oneshot_unit_init_cfg_t unit_cfg = {
@@ -48,6 +53,9 @@ esp_err_t batterie_init(void)
 
 float batterie_lire_voltage(void)
 {
+#ifdef CONFIG_IRRI_TEST_MODE
+    if (s_sim_voltage > 0.0f) return s_sim_voltage;
+#endif
     int raw_sum = 0;
     for (int i = 0; i < BATT_ADC_NB_SAMPLES; i++) {
         int raw = 0;

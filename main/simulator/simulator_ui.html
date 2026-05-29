@@ -19,6 +19,7 @@ button:active{background:#113388}
 .scen-btn{background:#554400;margin:4px 4px 0 0}
 #status{font-size:.82em;color:#888;margin-top:4px}
 #etat{font-size:1.2em;font-weight:bold;color:#4af}
+input[type=range]{width:200px;accent-color:#4af}
 </style>
 </head>
 <body>
@@ -83,6 +84,22 @@ button:active{background:#113388}
 </div>
 
 <div class="section">
+  <h2>Tension batterie</h2>
+  <div class="row">
+    <label>Simuler tension</label>
+    <span>
+      <input type="range" id="batt-slider" min="100" max="145" step="1" value="125"
+             oninput="updateBattSlider(this.value)">
+      &nbsp;<strong id="batt-vval">12.5</strong> V
+    </span>
+  </div>
+  <div class="row">
+    <label id="batt-etat-lbl" style="color:#aaa">Pleine</label>
+    <button onclick="disableBattSim()">ADC reel</button>
+  </div>
+</div>
+
+<div class="section">
   <h2>Scenarios rapides</h2>
   <button class="scen-btn" onclick="scenario(1)">1 Cycle normal</button>
   <button class="scen-btn" onclick="scenario(3)">3 Perte pression</button>
@@ -122,6 +139,30 @@ function updateBadge(key) {
   if (!el) return;
   el.className = 'badge ' + (badges[key] ? 'on' : 'off');
   el.textContent = badges[key] ? 'ON' : 'OFF';
+}
+
+var BATT_ETATS = ['En charge','Pleine','Correcte','Faible','Critique'];
+var BATT_COLORS = ['#3b82f6','#22c55e','#eab308','#f97316','#ef4444'];
+function battEtatFromV(v) {
+  if (v >= 13.5) return 0;
+  if (v >= 12.4) return 1;
+  if (v >= 11.8) return 2;
+  if (v >= 11.5) return 3;
+  return 4;
+}
+function updateBattSlider(raw) {
+  var v = raw / 10;
+  document.getElementById('batt-vval').textContent = v.toFixed(1);
+  var idx = battEtatFromV(v);
+  var lbl = document.getElementById('batt-etat-lbl');
+  lbl.textContent = BATT_ETATS[idx];
+  lbl.style.color = BATT_COLORS[idx];
+  send('batt_v', parseInt(raw));
+}
+function disableBattSim() {
+  document.getElementById('batt-etat-lbl').textContent = 'ADC reel actif';
+  document.getElementById('batt-etat-lbl').style.color = '#888';
+  send('batt_v', 0);
 }
 
 // Recuperer le statut depuis le WS principal /ws
