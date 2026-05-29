@@ -8,6 +8,7 @@
 ![Plateforme](https://img.shields.io/badge/plateforme-ESP32-red)
 ![Licence](https://img.shields.io/badge/licence-MIT-green)
 ![Statut](https://img.shields.io/badge/statut-en%20développement-orange)
+![Tests PC](https://github.com/matfr11/remplacement_irridoseur/actions/workflows/tests.yml/badge.svg)
 
 ---
 
@@ -148,17 +149,25 @@ main/
 ├── calculs_mecanique.c/h   — rayon étage, dist/pulse, étage courant, étalonnage
 ├── regulation.c/h          — feedforward T_attente, correction Kp, moyenne dist_cycle
 ├── config_nvs.c/h          — NVS 3 namespaces, 5 programmes, raison urgence persistante
-├── webserver.c/h           — HTTP + WebSocket (implémenté PR-08)
-├── ota.c/h                 — mise à jour firmware OTA (implémenté PR-08)
+├── webserver.c/h           — HTTP + WebSocket
+├── ota.c/h                 — mise à jour firmware OTA
 ├── telemetry.c/h           — broadcast WebSocket 500ms
-├── webui.h                 — HTML/CSS/JS embarqué (implémenté PR-09)
+├── webui.h                 — HTML/CSS/JS embarqué (3 onglets)
+├── simulator/              — simulateur web interactif (CONFIG_IRRI_TEST_MODE)
 ├── machines/
 │   ├── machines.h          — profils machine (machine_profile_t)
 │   └── st1bis_82_330.c     — Irrifrance ST1 Bis Ø82-330m (profil référence)
 ├── abaques/
 │   ├── abaques.h           — abaques constructeur (canon_abaque_t)
 │   └── sr150c.c            — Nelson SR 150C — 13 entrées
-└── test/                   — tests unitaires (activés via CONFIG_IRRI_ENABLE_TESTS)
+└── test/                   — tests unitaires embarqués (CONFIG_IRRI_ENABLE_TESTS)
+
+test/host/                  — tests unitaires PC (Unity/CMake, sans matériel)
+├── CMakeLists.txt          — build natif Linux/macOS/Windows
+├── mock/                   — stubs ESP-IDF (GPIO, NVS, FreeRTOS, log, timer)
+├── helpers/                — helpers de test (config NVS valide/invalide)
+├── scenarios/              — scénarios d'intégration (cycle complet, urgences, modes dégradés)
+└── test_*.c                — 47 tests unitaires (47/47 verts en CI)
 ```
 
 ### Tâches FreeRTOS
@@ -236,12 +245,32 @@ python -m esptool --chip esp32 -b 460800 --before default_reset --after hard_res
     0x10000 build\irrifrance-esp32.bin
 ```
 
-### Activer les tests unitaires
+### Tests unitaires PC (sans matériel)
+
+Exécutés automatiquement sur GitHub Actions à chaque push.
+
+```bash
+cd test/host
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j4
+./build/irrifrance_tests
+```
+
+### Activer les tests unitaires embarqués
 
 ```bash
 idf.py menuconfig
 # → Irrifrance ESP32 → [x] Activer les tests unitaires embarqués
 idf.py build flash monitor
+```
+
+### Build simulateur web interactif
+
+```bash
+idf.py menuconfig
+# → Irrifrance ESP32 → [x] Activer le simulateur web interactif
+idf.py build flash
+# → http://192.168.4.1/test
 ```
 
 ---
@@ -272,6 +301,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | **PR-08** | ✅ Fait | WiFi AP — WebSocket broadcast + 10 cmds — OTA — sync heure |
 | **PR-09** | ✅ Fait | Web UI mobile embarquée — 3 onglets (dark theme, WebSocket, OTA) |
 | **PR-10** | ✅ Fait | Intégration complète — rechargement config live, bilan session, UI Config initialisée |
+| **PR-11** | ✅ Fait | Tests unitaires PC Unity/CMake (47 tests, CI GitHub Actions) + simulateur web `/test` |
 
 ---
 
