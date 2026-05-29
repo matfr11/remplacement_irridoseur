@@ -19,6 +19,7 @@ static inline const char *esp_err_to_name(esp_err_t e) {
 #define ESP_ERR_NVS_NEW_VERSION_FOUND  (-3)
 #define ESP_ERR_NVS_NOT_FOUND          (-4)
 #define ESP_ERR_INVALID_ARG            (-5)
+#define ESP_ERR_NVS_INVALID_LENGTH     (-6)
 
 // NVS types
 typedef void *nvs_handle_t;

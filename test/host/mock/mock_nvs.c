@@ -161,7 +161,7 @@ esp_err_t nvs_get_blob(nvs_handle_t h, const char *k, void *out, size_t *len)
     nvs_entry_t *e = find_entry((nvs_ns_t *)h, k);
     if (!e || e->val_len == 0) return ESP_ERR_NVS_NOT_FOUND;
     if (out == NULL) { if (len) *len = e->val_len; return ESP_OK; }
-    if (len && *len < e->val_len) return ESP_FAIL;
+    if (len && *len != e->val_len) return ESP_ERR_NVS_INVALID_LENGTH;
     memcpy(out, e->val, e->val_len);
     if (len) *len = e->val_len;
     return ESP_OK;
