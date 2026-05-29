@@ -57,6 +57,13 @@ static int32_t  s_duree_pause_ms     = 0;
 static session_summary_t s_session;
 static bool              s_bilan_envoye = false;
 
+#ifdef CONFIG_IRRI_ENABLE_TESTS
+static bool s_sim_active      = false;
+static bool s_sim_pression    = true;
+static bool s_sim_fin_course  = false;
+static bool s_sim_secu_spires = false;
+#endif
+
 // Heure estimée arrivée
 static int64_t  s_heure_base_unix    = 0;
 static bool     s_heure_synchro      = false;
@@ -568,11 +575,6 @@ void state_machine_get_session_summary(session_summary_t *out)
 // Hooks de test
 // ---------------------------------------------------------------------------
 #ifdef CONFIG_IRRI_ENABLE_TESTS
-static bool s_sim_active      = false;
-static bool s_sim_pression    = true;
-static bool s_sim_fin_course  = false;
-static bool s_sim_secu_spires = false;
-
 void state_machine_test_injecter_etat(etat_machine_t etat)
 {
     s_sim_active      = true;
