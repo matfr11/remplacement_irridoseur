@@ -5,6 +5,43 @@ Format : [PR-XX] — date — description
 
 ---
 
+## [PR-09] — 2026-05-29 — Web UI mobile embarquée — 3 onglets
+
+### main/webui/index.html (nouveau)
+- HTML/CSS/JS inline en un seul fichier (~38 KB) — zéro dépendance externe
+- Dark theme, responsive mobile 390px, boutons/textes min 48px
+- **Onglet Accueil** : badge état coloré (9 états), tuiles longueur/vitesse/durée,
+  heure d'arrivée estimée, états GPIO en temps réel, boutons DÉMARRER/ARRÊT/RESET,
+  modal étalonnage (`{"cmd":"etalonner","longueur_m":x}`), alertes modes dégradés
+- **Onglet Stats** : 13 métriques temps réel (surface, dose, débit, pression, étage,
+  cycles, timings poumon, facteur correction) — lecture seule, mise à jour 500ms
+- **Onglet Config** — 5 sections dépliables :
+  - Programme actif : 5 programmes, dropdown + renommer, tous les champs,
+    `{"cmd":"save_programme",...}`
+  - Profil machine : dropdowns machine/abaque, t_vidange, Kp, cycles calibration,
+    reset étalonnage, `{"cmd":"save_machine",...}`
+  - Modes dégradés : checkboxes mode_deg_vitesse/poumon, t_rempl_fixe_s conditionnel
+  - Mise à jour firmware : upload .bin `POST /ota/update`, barre de progression XHR
+  - IRRITESTEUR : boutons EV_CANON/EV_POUMON ON/OFF + lecture entrées temps réel
+    (visible uniquement à ETAT_VEILLE)
+
+### main/webui.h
+- Correction symboles asm : `_binary_index_html_start/end`
+  (nom généré par ESP-IDF depuis le nom de fichier `index.html`)
+
+### main/CMakeLists.txt
+- Ajout `EMBED_FILES "webui/index.html"` dans `idf_component_register`
+
+### main/webserver.c
+- `root_handler()` : retourne le HTML embarqué via `webui_html_start/end`
+  (remplace le placeholder texte de PR-08)
+- Ajout `#include "webui.h"`
+
+### Taille firmware
+- 0xd7d70 bytes (~863 KB) — **55% flash libre** (+38 KB vs PR-08 pour l'UI)
+
+---
+
 ## [PR-08] — 2026-05-29 — WiFi AP + WebSocket + OTA
 
 ### webserver.c — Implémentation complète

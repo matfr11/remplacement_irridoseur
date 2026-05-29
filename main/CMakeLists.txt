@@ -30,6 +30,7 @@ endif()
 idf_component_register(
     SRCS ${SRCS}
     INCLUDE_DIRS "."
+    EMBED_FILES "webui/index.html"
     REQUIRES
         driver
         freertos
