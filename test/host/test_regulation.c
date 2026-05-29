@@ -1,8 +1,8 @@
 #include "unity.h"
+#include "unity_suite.h"
 #include "regulation.h"
 
-void setUp(void) { regulation_reset_calibration(); }
-void tearDown(void) {}
+static void local_setUp(void) { regulation_reset_calibration(); }
 
 // 1 — T_attente nominal : dist=1m, v=0.5m/s, t_rempl=0.8s, t_vidange=0.5s → 0.7s
 static void test_t_attente_nominal(void)
@@ -47,6 +47,7 @@ static void test_cycles_par_min(void)
 
 void suite_regulation(void)
 {
+    unity_suite_setup(local_setUp, NULL);
     RUN_TEST(test_t_attente_nominal);
     RUN_TEST(test_t_attente_negatif);
     RUN_TEST(test_correction_positive);

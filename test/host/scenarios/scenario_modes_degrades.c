@@ -1,5 +1,7 @@
 #include "unity.h"
+#include "unity_suite.h"
 #include "state_machine.h"
+#include "gpio_handler.h"
 #include "gpio_config.h"
 #include "mock_gpio.h"
 #include "mock_nvs.h"
@@ -37,7 +39,7 @@ static void config_set_mode_degrade(bool vitesse, bool poumon, float t_rempl)
     config_nvs_sauver_prog_actif(0);
 }
 
-void setUp(void)
+static void local_setUp(void)
 {
     mock_nvs_reset();
     mock_time_reset();
@@ -46,7 +48,7 @@ void setUp(void)
     gpio_handler_test_reset();
 }
 
-void tearDown(void) { state_machine_test_reset(); }
+static void local_tearDown(void) { state_machine_test_reset(); }
 
 // Scénario 11 — mode dégradé A : vitesse estimée, flag reflété dans statut
 static void test_scenario_mode_degrade_a(void)
@@ -109,6 +111,7 @@ static void test_scenario_mode_degrade_ab(void)
 
 void suite_scenario_modes_degrades(void)
 {
+    unity_suite_setup(local_setUp, local_tearDown);
     RUN_TEST(test_scenario_mode_degrade_a);
     RUN_TEST(test_scenario_mode_degrade_b);
     RUN_TEST(test_scenario_mode_degrade_ab);

@@ -1,12 +1,14 @@
 #include "unity.h"
+#include "unity_suite.h"
 #include "state_machine.h"
+#include "gpio_handler.h"
 #include "mock_nvs.h"
 #include "mock_timer.h"
 #include "mock_gpio.h"
 #include "mock_log.h"
 #include "test_helpers.h"
 
-void setUp(void)
+static void local_setUp(void)
 {
     mock_nvs_reset();
     mock_time_reset();
@@ -17,7 +19,7 @@ void setUp(void)
     state_machine_init();
 }
 
-void tearDown(void) {}
+static void local_tearDown(void) { state_machine_test_reset(); }
 
 // 1 — état initial = VEILLE
 static void test_etat_initial(void)
@@ -161,6 +163,7 @@ static void test_get_nb_tentatives_init(void)
 
 void suite_state_machine(void)
 {
+    unity_suite_setup(local_setUp, local_tearDown);
     RUN_TEST(test_etat_initial);
     RUN_TEST(test_urgence_depuis_veille);
     RUN_TEST(test_reset_apres_urgence);

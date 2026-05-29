@@ -1,5 +1,7 @@
 #include "unity.h"
+#include "unity_suite.h"
 #include "state_machine.h"
+#include "gpio_handler.h"
 #include "gpio_config.h"
 #include "mock_gpio.h"
 #include "mock_nvs.h"
@@ -27,7 +29,7 @@ static void avancer(int n)
     }
 }
 
-void setUp(void)
+static void local_setUp(void)
 {
     mock_nvs_reset();
     mock_time_reset();
@@ -38,7 +40,7 @@ void setUp(void)
     state_machine_init();
 }
 
-void tearDown(void) { state_machine_test_reset(); }
+static void local_tearDown(void) { state_machine_test_reset(); }
 
 // Scénario 5 — SEC-2 (secu_spires) depuis EN_COURS → ARRET_URGENCE
 static void test_scenario_sec2_en_cours(void)
@@ -96,6 +98,7 @@ static void test_scenario_urgence_depuis_pause(void)
 
 void suite_scenario_urgences(void)
 {
+    unity_suite_setup(local_setUp, local_tearDown);
     RUN_TEST(test_scenario_sec2_en_cours);
     RUN_TEST(test_scenario_sec1_ouverture_canon);
     RUN_TEST(test_scenario_sec1_en_cours);

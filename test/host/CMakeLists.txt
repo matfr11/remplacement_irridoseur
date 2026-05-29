@@ -24,6 +24,7 @@ set(PROD_SRCS
 
 add_executable(irrifrance_tests
   main_test.c
+  unity_setup.c
   mock/mock_timer.c
   mock/mock_gpio.c
   mock/mock_nvs.c
@@ -42,6 +43,7 @@ add_executable(irrifrance_tests
 )
 
 target_include_directories(irrifrance_tests PRIVATE
+  .
   mock
   helpers
   ../../main

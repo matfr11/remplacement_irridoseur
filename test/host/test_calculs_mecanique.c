@@ -1,10 +1,8 @@
 #include "unity.h"
+#include "unity_suite.h"
 #include "calculs_mecanique.h"
 #include "machines/machines.h"
 #include <math.h>
-
-void setUp(void) {}
-void tearDown(void) {}
 
 static machine_profile_t s_profil;
 
@@ -70,6 +68,7 @@ static void test_etalonnage(void)
 
 void suite_calculs_mecanique(void)
 {
+    unity_suite_setup(NULL, NULL);
     RUN_TEST(test_rayon_etage4);
     RUN_TEST(test_rayon_etage1);
     RUN_TEST(test_largeur_bobine_auto);

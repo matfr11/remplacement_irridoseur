@@ -1,5 +1,7 @@
 #include "unity.h"
+#include "unity_suite.h"
 #include "state_machine.h"
+#include "gpio_handler.h"
 #include "gpio_config.h"
 #include "mock_gpio.h"
 #include "mock_nvs.h"
@@ -23,7 +25,7 @@ static void avancer(int n)
     }
 }
 
-void setUp(void)
+static void local_setUp(void)
 {
     mock_nvs_reset();
     mock_time_reset();
@@ -34,7 +36,7 @@ void setUp(void)
     state_machine_init();
 }
 
-void tearDown(void) { state_machine_test_reset(); }
+static void local_tearDown(void) { state_machine_test_reset(); }
 
 // Scénario 3 — perte pression en EN_COURS → PAUSE_PRESSION → reprise → EN_COURS
 static void test_scenario_pause_reprise(void)
@@ -74,6 +76,7 @@ static void test_scenario_perte_pendant_remplissage(void)
 
 void suite_scenario_perte_pression(void)
 {
+    unity_suite_setup(local_setUp, local_tearDown);
     RUN_TEST(test_scenario_pause_reprise);
     RUN_TEST(test_scenario_perte_pendant_remplissage);
 }

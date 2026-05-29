@@ -1,5 +1,7 @@
 #include "unity.h"
+#include "unity_suite.h"
 #include "state_machine.h"
+#include "gpio_handler.h"
 #include "gpio_config.h"
 #include "mock_gpio.h"
 #include "mock_nvs.h"
@@ -7,7 +9,7 @@
 #include "mock_log.h"
 #include "test_helpers.h"
 
-void setUp(void)
+static void local_setUp(void)
 {
     mock_nvs_reset();
     mock_time_reset();
@@ -18,7 +20,7 @@ void setUp(void)
     state_machine_init();
 }
 
-void tearDown(void) { state_machine_test_reset(); }
+static void local_tearDown(void) { state_machine_test_reset(); }
 
 // Avance jusqu'à REMPLISSAGE_POUMON (via OUVERTURE_CANON, 32 ticks max)
 static int avancer_vers_remplissage(void)
@@ -122,6 +124,7 @@ static void test_scenario_cycle_avec_tempo(void)
 
 void suite_scenario_cycle_normal(void)
 {
+    unity_suite_setup(local_setUp, local_tearDown);
     RUN_TEST(test_scenario_cycle_sans_tempo);
     RUN_TEST(test_scenario_cycle_avec_tempo);
 }

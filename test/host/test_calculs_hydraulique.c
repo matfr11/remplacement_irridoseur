@@ -1,10 +1,8 @@
 #include "unity.h"
+#include "unity_suite.h"
 #include "calculs_hydraulique.h"
 #include "abaques/abaques.h"
 #include <math.h>
-
-void setUp(void) {}
-void tearDown(void) {}
 
 // 1 — entrée exacte entry0 (p=4.9, buse=17.3), dose=25 → 15.3 m/h
 static void test_exact_entry0_d25(void)
@@ -69,6 +67,7 @@ static void test_dose_inst(void)
 
 void suite_calculs_hydraulique(void)
 {
+    unity_suite_setup(NULL, NULL);
     RUN_TEST(test_exact_entry0_d25);
     RUN_TEST(test_exact_entry6_d20);
     RUN_TEST(test_interp_dose);
