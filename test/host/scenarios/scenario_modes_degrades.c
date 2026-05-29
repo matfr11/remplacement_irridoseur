@@ -92,7 +92,35 @@ static void test_scenario_mode_degrade_b(void)
     state_machine_cmd_stop();
 }
 
-// Scénario 13 — mode A+B : les deux flags actifs simultanément
+// Scénario 13 — mode dégradé B : remplissage initial (ETAT_REMPLISSAGE_POUMON) via timer
+static void test_scenario_mode_degrade_b_initial(void)
+{
+    config_set_mode_degrade(false, true, 2.0f);
+    state_machine_init();
+
+    // VEILLE → OUVERTURE_CANON (1 tick)
+    tick_state_machine();
+    mock_time_advance_ms(100);
+    TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
+
+    // Pression stable 30 ticks → REMPLISSAGE_POUMON
+    for (int i = 0; i < 31; i++) {
+        tick_state_machine();
+        mock_time_advance_ms(100);
+    }
+    TEST_ASSERT_EQUAL_INT(ETAT_REMPLISSAGE_POUMON, state_machine_get_etat());
+
+    // 20 ticks (2s) sans gpio poumon_plein → doit transitionner vers EN_COURS
+    for (int i = 0; i < 21; i++) {
+        tick_state_machine();
+        mock_time_advance_ms(100);
+    }
+    TEST_ASSERT_EQUAL_INT(ETAT_EN_COURS, state_machine_get_etat());
+
+    state_machine_cmd_stop();
+}
+
+// Scénario 14 — mode A+B : les deux flags actifs simultanément
 static void test_scenario_mode_degrade_ab(void)
 {
     config_set_mode_degrade(true, true, 2.0f);
@@ -114,5 +142,6 @@ void suite_scenario_modes_degrades(void)
     unity_suite_setup(local_setUp, local_tearDown);
     RUN_TEST(test_scenario_mode_degrade_a);
     RUN_TEST(test_scenario_mode_degrade_b);
+    RUN_TEST(test_scenario_mode_degrade_b_initial);
     RUN_TEST(test_scenario_mode_degrade_ab);
 }

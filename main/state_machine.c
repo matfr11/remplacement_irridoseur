@@ -93,6 +93,26 @@ static void entrer_sous_etat(sous_etat_poumon_t ss)
 }
 
 // ---------------------------------------------------------------------------
+// Rechargement config depuis NVS — appelé sans mutex (dans contexte tick ou init)
+// ---------------------------------------------------------------------------
+static void charger_config_interne(void)
+{
+    int prog_idx = 0;
+    config_nvs_lire_prog_actif(&prog_idx);
+    config_nvs_lire_machine(&s_cfg_machine);
+    config_nvs_lire_programme(prog_idx, &s_cfg_prog);
+    s_profil = machine_get(s_cfg_machine.machine_active);
+    s_abaque = abaque_get(s_profil->abaque_idx);
+    s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
+    strncpy(s_status.prog_nom,    s_cfg_prog.nom,             sizeof(s_status.prog_nom) - 1);
+    strncpy(s_status.machine_nom, s_profil ? s_profil->nom : "", sizeof(s_status.machine_nom) - 1);
+    gpio_handler_set_params(s_cfg_machine.fenetre_vitesse, s_cfg_machine.max_cycles_si);
+    gpio_handler_set_mode_degrade_a(s_cfg_machine.mode_deg_vitesse);
+    s_status.mode_degrade_vitesse = s_cfg_machine.mode_deg_vitesse;
+    s_status.mode_degrade_poumon  = s_cfg_machine.mode_deg_poumon;
+}
+
+// ---------------------------------------------------------------------------
 // Initialisation
 // ---------------------------------------------------------------------------
 void state_machine_init(void)
@@ -100,10 +120,8 @@ void state_machine_init(void)
     s_mutex = xSemaphoreCreateMutex();
     memset(&s_status, 0, sizeof(s_status));
 
-    config_nvs_lire_machine(&s_cfg_machine);
-    int prog_idx = 0;
-    config_nvs_lire_prog_actif(&prog_idx);
-    config_nvs_lire_programme(prog_idx, &s_cfg_prog);
+    charger_config_interne();
+
     config_nvs_lire_longueur(&s_longueur_enroulee);
     config_nvs_lire_deroule(&s_longueur_deroule_m);
     s_longueur_derniere_nvs = s_longueur_enroulee;
@@ -124,16 +142,11 @@ void state_machine_init(void)
         ESP_LOGW(TAG, "Longueur restauree (ancien NVS) : enroule=%.1fm", s_longueur_enroulee);
     }
 
-    s_profil = machine_get(s_cfg_machine.machine_active);
-    s_abaque = abaque_get(s_profil->abaque_idx);
-
     // Résolution double entrée profil
     machine_profile_t profil_copy = *s_profil;
     if (!machine_resoudre_double_entree(&profil_copy)) {
         ESP_LOGE(TAG, "Profil machine invalide (largeur et spires tous les deux à 0)");
     }
-
-    s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
 
     // Raison urgence persistante depuis NVS
     char raison_nvs[64] = "";
@@ -171,6 +184,45 @@ void tick_state_machine(void)
     }
 #endif
     int64_t t_dans_etat = now_ms() - s_t_etat_ms;
+
+    // Réarmement physique : 3 appuis sur poumon_plein quand EV_POUMON=OFF
+    {
+        static int     s_rearm_count   = 0;
+        static bool    s_rearm_prev    = false;
+        static int64_t s_rearm_last_ms = 0;
+
+        bool ev_poumon_on = (gpio_get_level(PIN_EV_POUMON) != 0);
+        if (!ev_poumon_on) {
+            bool p = e.poumon_plein;
+            if (p && !s_rearm_prev) {  // front montant
+                int64_t t = now_ms();
+                if (s_rearm_count > 0 && (t - s_rearm_last_ms) > 1500) {
+                    s_rearm_count = 0;
+                }
+                s_rearm_last_ms = t;
+                s_rearm_count++;
+                if (s_rearm_count >= 3) {
+                    s_rearm_count = 0;
+                    ESP_LOGW(TAG, "Rearmement physique (3x poumon) etat=%d", s_etat);
+                    s_demarrage_autorise = true;
+                    if (s_etat == ETAT_ARRET_URGENCE) {
+                        memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
+                        config_nvs_sauver_urgence("");
+                        s_longueur_enroulee     = 0.0f;
+                        s_longueur_derniere_nvs = 0.0f;
+                        s_longueur_session_m    = 0.0f;
+                        config_nvs_sauver_longueur(0.0f);
+                        regulation_reset_calibration();
+                        entrer_etat(ETAT_VEILLE);
+                    }
+                }
+            }
+            s_rearm_prev = p;
+        } else {
+            s_rearm_count = 0;
+            s_rearm_prev  = false;
+        }
+    }
 
     switch (s_etat) {
 
@@ -229,15 +281,20 @@ void tick_state_machine(void)
         // EV_CANON=OFF au premier remplissage initial (sera mis ON en entrant EN_COURS)
         (void)canon_deja_ouvert;
 
+        int64_t t_rempl_ms = (s_cfg_machine.t_rempl_fixe_s > 0.0f)
+                             ? (int64_t)(s_cfg_machine.t_rempl_fixe_s * 1000.0f)
+                             : 20000;
+        bool poumon_ok = e.poumon_plein ||
+                         (s_cfg_machine.mode_deg_poumon && t_dans_etat >= t_rempl_ms);
         if (!e.pression_ok) {
             gpio_all_ev_off();
             entrer_etat(ETAT_PAUSE_PRESSION);
-        } else if (e.poumon_plein) {
+        } else if (poumon_ok) {
             gpio_ev_poumon_set(false);
             gpio_ev_canon_set(true);
             entrer_etat(ETAT_EN_COURS);
             entrer_sous_etat(SOUS_VIDANGE);
-        } else if (t_dans_etat >= 20000) {  // timeout 20s tentative
+        } else if (t_dans_etat >= 20000) {  // timeout 20s tentative (mode normal uniquement)
             gpio_ev_poumon_set(false);
             s_nb_tentatives++;
             if (s_nb_tentatives >= 2) {
@@ -423,6 +480,7 @@ void tick_state_machine(void)
             regulation_reset_calibration();
             config_nvs_sauver_machine(&s_cfg_machine);
             memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
+            charger_config_interne();  // recharge programme depuis NVS (peut avoir changé pendant la session)
             // s_demarrage_autorise conservé tel quel :
             //   - fin normale (fin_course) : reste true  → VEILLE auto-démarre au prochain cycle
             //   - arrêt cmd_stop           : reste false → VEILLE attend un Démarrer explicite
@@ -636,19 +694,7 @@ void state_machine_recharger_config(void)
         xSemaphoreGive(s_mutex);
         return;
     }
-    int prog_idx = 0;
-    config_nvs_lire_prog_actif(&prog_idx);
-    config_nvs_lire_machine(&s_cfg_machine);
-    config_nvs_lire_programme(prog_idx, &s_cfg_prog);
-    s_profil = machine_get(s_cfg_machine.machine_active);
-    s_abaque = abaque_get(s_profil->abaque_idx);
-    s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
-    strncpy(s_status.prog_nom,    s_cfg_prog.nom,             sizeof(s_status.prog_nom) - 1);
-    strncpy(s_status.machine_nom, s_profil ? s_profil->nom : "", sizeof(s_status.machine_nom) - 1);
-    gpio_handler_set_params(s_cfg_machine.fenetre_vitesse, s_cfg_machine.max_cycles_si);
-    gpio_handler_set_mode_degrade_a(s_cfg_machine.mode_deg_vitesse);
-    s_status.mode_degrade_vitesse = s_cfg_machine.mode_deg_vitesse;
-    s_status.mode_degrade_poumon  = s_cfg_machine.mode_deg_poumon;
+    charger_config_interne();
     xSemaphoreGive(s_mutex);
 }
 
