@@ -91,7 +91,7 @@ static void test_scenario_cycle_avec_tempo(void)
     config_nvs_sauver_programme(0, &p);
     state_machine_init();
 
-    // VEILLE → OUVERTURE_CANON
+    // VEILLE → OUVERTURE_CANON (mise en pression par l'opérateur)
     tick_state_machine();
     mock_time_advance_ms(100);
     TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());

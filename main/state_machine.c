@@ -61,7 +61,7 @@ static session_summary_t s_session;
 static bool              s_bilan_envoye = false;
 
 // Doit être true pour que VEILLE puisse démarrer (protège contre redémarrage auto après stop/urgence)
-static bool              s_demarrage_autorise = false;
+static bool              s_demarrage_autorise = true;  // false uniquement après ARRET_URGENCE
 
 #ifdef CONFIG_IRRI_ENABLE_TESTS
 static bool s_sim_active      = false;
@@ -511,7 +511,6 @@ void state_machine_cmd_stop(void)
         s_etat != ETAT_ARRET_FINAL &&
         s_etat != ETAT_ARRET_URGENCE) {
         ESP_LOGI(TAG, "cmd_stop recu depuis etat %d", s_etat);
-        s_demarrage_autorise = false;
         gpio_all_ev_off();
         entrer_etat(ETAT_ARRET_FINAL);
     } else {
@@ -537,7 +536,7 @@ void state_machine_cmd_reset(void)
         entrer_etat(ETAT_VEILLE);
     } else if (s_etat == ETAT_ARRET_FINAL) {
         ESP_LOGI(TAG, "cmd_reset - sortie arret final (manuel)");
-        s_demarrage_autorise = false;
+        s_demarrage_autorise = true;  // arrêt normal : redémarrage auto autorisé à la prochaine mise en pression
         s_longueur_enroulee     = 0.0f;
         s_longueur_derniere_nvs = 0.0f;
         s_longueur_session_m    = 0.0f;
