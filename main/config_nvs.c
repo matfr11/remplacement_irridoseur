@@ -42,7 +42,9 @@ esp_err_t config_nvs_lire_machine(config_machine_t *cfg)
     ret = nvs_get_blob(h, "cfg", cfg, &sz);
     nvs_close(h);
 
-    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+    if (ret == ESP_ERR_NVS_NOT_FOUND || ret == ESP_ERR_NVS_INVALID_LENGTH) {
+        // Blob absent ou taille différente (migration firmware) → valeurs par défaut
+        ESP_LOGW(TAG, "Config machine incompatible ou absente — valeurs par defaut");
         *cfg = defaut;
         return ESP_OK;
     }

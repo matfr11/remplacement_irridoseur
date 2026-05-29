@@ -392,6 +392,14 @@ void tick_state_machine(void)
                 float dpulse = calcul_dist_pulse_m(r) * s_cfg_machine.facteur_correction;
                 float dist_cycle = (float)impulsions * dpulse;
 
+                // Mode dégradé vitesse sans capteur : fallback géométrique
+                // dist = 2π × r(étage) / cycles_par_tour  (ajusté à l'étage courant)
+                if (dist_cycle <= 0.0f &&
+                    s_cfg_machine.mode_deg_vitesse &&
+                    s_cfg_machine.cycles_par_tour > 0.0f) {
+                    dist_cycle = (2.0f * (float)M_PI * r) / s_cfg_machine.cycles_par_tour;
+                }
+
                 if (dist_cycle > 0.0f) {
                     float dist_moy = regulation_update_dist_par_cycle(dist_cycle);
                     s_cfg_machine.dist_cycle_nvs = dist_moy;
@@ -536,6 +544,7 @@ void tick_state_machine(void)
     s_status.cfg_t_rempl_fixe_s   = s_cfg_machine.t_rempl_fixe_s;
     s_status.cfg_denivele_m       = s_cfg_machine.denivele_m;
     s_status.cfg_machine_active   = s_cfg_machine.machine_active;
+    s_status.cfg_cycles_par_tour  = s_cfg_machine.cycles_par_tour;
 
     xSemaphoreGive(s_mutex);
 }

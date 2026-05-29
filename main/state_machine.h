@@ -100,6 +100,7 @@ typedef struct {
     float           cfg_t_rempl_fixe_s;
     float           cfg_denivele_m;
     int             cfg_machine_active;
+    float           cfg_cycles_par_tour;
 } machine_status_t;
 
 // Session summary pour télémétrie fin de session

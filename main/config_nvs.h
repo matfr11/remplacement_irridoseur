@@ -28,6 +28,7 @@ typedef struct {
     bool    mode_deg_poumon;        // Mode dégradé contact poumon
     float   t_rempl_fixe_s;         // Durée remplissage fixe (mode dégradé B)
     float   denivele_m;             // Dénivelé terrain (0 = plat)
+    float   cycles_par_tour;        // Nb cycles poumon par tour de bobine (0 = non renseigné)
 } config_machine_t;
 
 // -----------------------------------------------------------------------------
@@ -59,6 +60,7 @@ typedef struct {
     .mode_deg_poumon   = false, \
     .t_rempl_fixe_s    = 0.0f,  \
     .denivele_m        = 0.0f,  \
+    .cycles_par_tour   = 0.0f,  \
 }
 
 // -----------------------------------------------------------------------------

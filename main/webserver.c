@@ -294,6 +294,7 @@ static void handle_ws_command(const char *data, size_t len)
         if (json_parse_bool (data, "mode_deg_vitesse",   &b)) cfg.mode_deg_vitesse    = b;
         if (json_parse_bool (data, "mode_deg_poumon",    &b)) cfg.mode_deg_poumon     = b;
         if (json_parse_int  (data, "machine_active",     &n)) cfg.machine_active      = n;
+        if (json_parse_float(data, "cycles_par_tour",    &f)) cfg.cycles_par_tour     = f;
         config_nvs_sauver_machine(&cfg);
         state_machine_recharger_config();
     }
