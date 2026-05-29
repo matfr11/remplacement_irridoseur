@@ -6,6 +6,7 @@
   #include "simulator/simulator_ws.h"
 #endif
 #include "state_machine.h"
+#include "batterie.h"
 #include "config_nvs.h"
 #include "esp_wifi.h"
 #include "esp_netif.h"
@@ -135,7 +136,13 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         "\"camp_dose_moy_mm\":%.2f,"
         "\"camp_vitesse_moy_m_h\":%.2f,"
         "\"camp_nb_sessions\":%u,"
-        "\"camp_duree_h\":%.2f"
+        "\"camp_duree_h\":%.2f,"
+        "\"batterie_v\":%.2f,"
+        "\"batterie_pct\":%d,"
+        "\"batterie_etat\":\"%s\","
+        "\"batterie_couleur\":\"%s\","
+        "\"cfg_batt_warn_v\":%.1f,"
+        "\"cfg_batt_crit_v\":%.1f"
         "}",
         etat_to_str(s->etat), (int)s->etat,
         s->prog_nom,
@@ -192,7 +199,13 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         s->camp_dose_moy_mm,
         s->camp_vitesse_moy_m_h,
         (unsigned int)s->camp_nb_sessions,
-        s->camp_duree_h
+        s->camp_duree_h,
+        s->batterie_v,
+        s->batterie_pct,
+        batterie_etat_str((batt_etat_t)s->batterie_etat),
+        batterie_etat_couleur((batt_etat_t)s->batterie_etat),
+        s->cfg_batt_warn_v,
+        s->cfg_batt_crit_v
     );
 }
 
@@ -338,6 +351,13 @@ static void handle_ws_command(const char *data, size_t len)
         if (json_parse_int  (data, "machine_active",     &n)) cfg.machine_active      = n;
         if (json_parse_float(data, "cycles_par_tour",    &f)) cfg.cycles_par_tour     = f;
         config_nvs_sauver_machine(&cfg);
+        {
+            float w = 11.5f, c = 11.0f;
+            config_nvs_lire_batt_seuils(&w, &c);
+            if (json_parse_float(data, "batt_warn_v", &f)) w = f;
+            if (json_parse_float(data, "batt_crit_v", &f)) c = f;
+            config_nvs_sauver_batt_seuils(w, c);
+        }
         state_machine_recharger_config();
     }
 }

@@ -6,6 +6,7 @@ set(SRCS
     "calculs_hydraulique.c"
     "calculs_mecanique.c"
     "regulation.c"
+    "batterie.c"
     "config_nvs.c"
     "webserver.c"
     "telemetry.c"
@@ -55,4 +56,5 @@ idf_component_register(
         lwip
         newlib
         app_update
+        esp_adc
 )

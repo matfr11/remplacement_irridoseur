@@ -30,6 +30,7 @@ add_executable(irrifrance_tests
   mock/mock_nvs.c
   mock/mock_log.c
   mock/mock_telemetry.c
+  mock/mock_batterie.c
   helpers/test_helpers.c
   test_calculs_hydraulique.c
   test_calculs_mecanique.c

@@ -107,3 +107,7 @@ typedef struct {
 esp_err_t config_nvs_lire_stats(config_stats_t *stats);
 esp_err_t config_nvs_sauver_stats(const config_stats_t *stats);
 esp_err_t config_nvs_reset_stats(void);
+
+// Seuils batterie (namespace irri_machine, cles separees — pas de migration blob)
+esp_err_t config_nvs_lire_batt_seuils(float *warn_v, float *crit_v);
+esp_err_t config_nvs_sauver_batt_seuils(float warn_v, float crit_v);

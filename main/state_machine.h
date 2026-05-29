@@ -110,6 +110,13 @@ typedef struct {
     uint32_t        camp_nb_sessions;
     float           camp_duree_h;
 
+    // Batterie
+    float           batterie_v;
+    int             batterie_pct;
+    int             batterie_etat;      // batt_etat_t cast en int
+    float           cfg_batt_warn_v;
+    float           cfg_batt_crit_v;
+
     // Validité config
     bool            cfg_valide;
 

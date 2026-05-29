@@ -55,3 +55,8 @@
 
 // Anti-rebond temporel ISR — ignorer tout front < 50ms
 #define DEBOUNCE_VITESSE_MS     50
+
+// -----------------------------------------------------------------------------
+// Mesure tension batterie — ADC1 canal 0, diviseur R1=100kΩ/R2=27kΩ
+// -----------------------------------------------------------------------------
+#define PIN_BATT_ADC            36

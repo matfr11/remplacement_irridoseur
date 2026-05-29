@@ -193,6 +193,16 @@ details>summary::-webkit-details-marker{display:none}
         </div>
       </div>
 
+      <div class="card" id="card-batt">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:13px;color:var(--muted)">Batterie</span>
+          <span style="font-size:13px"><strong id="batt-v">--</strong> V &mdash; <span id="batt-etat" style="font-weight:600">--</span> (<span id="batt-pct">--</span>%)</span>
+        </div>
+        <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden">
+          <div id="batt-bar" style="height:100%;border-radius:4px;width:0%;transition:width .5s,background .5s"></div>
+        </div>
+      </div>
+
       <button id="btn-start" class="btn btn-green" onclick="sendCmd({cmd:'start'})">&#9654; DEMARRER</button>
       <button id="btn-stop" class="btn btn-red" onclick="sendCmd({cmd:'stop'})">&#9632; ARRET URGENCE</button>
       <button id="btn-reset" class="btn btn-orange" style="display:none" onclick="sendCmd({cmd:'reset'})">&#8635; RESET</button>
@@ -221,6 +231,7 @@ details>summary::-webkit-details-marker{display:none}
         <div class="stat-row"><span class="stat-lbl">T. attente</span><span class="stat-val"><span id="s-tattente">--</span> s</span></div>
         <div class="stat-row"><span class="stat-lbl">Facteur correction</span><span class="stat-val"><span id="s-fcorr">--</span></span></div>
         <div class="stat-row"><span class="stat-lbl">Cycles total</span><span class="stat-val"><span id="s-cycles">--</span></span></div>
+        <div class="stat-row"><span class="stat-lbl">Batterie</span><span class="stat-val"><span id="s-batt">--</span> V</span></div>
       </div>
 
       <div id="stpanel-campagne" class="card" style="display:none">
@@ -322,7 +333,17 @@ details>summary::-webkit-details-marker{display:none}
         </div>
       </details>
 
-      <!-- Section 4 : OTA -->
+      <!-- Section 4 : Batterie -->
+      <details>
+        <summary>Batterie</summary>
+        <div class="detail-body">
+          <div class="field"><label>Seuil alerte (V)</label><input id="m-batt-warn" type="number" min="10" max="13" step="0.1"></div>
+          <div class="field"><label>Seuil critique (V)</label><input id="m-batt-crit" type="number" min="10" max="13" step="0.1"></div>
+          <button class="btn btn-blue" onclick="saveMachine()">Enregistrer seuils</button>
+        </div>
+      </details>
+
+      <!-- Section 5 : OTA -->
       <details>
         <summary>Mise a jour firmware</summary>
         <div class="detail-body">
@@ -579,6 +600,13 @@ function updateUI() {
   txt('s-tattente', s.t_attente_ms != null ? (s.t_attente_ms / 1000).toFixed(1) : '--');
   txt('s-fcorr', s.facteur_correction != null ? s.facteur_correction.toFixed(4) : '--');
   txt('s-cycles', s.cycles_total != null ? s.cycles_total : '--');
+  txt('s-batt', s.batterie_v != null ? s.batterie_v.toFixed(2) : '--');
+  // Batterie accueil
+  txt('batt-v',    s.batterie_v   != null ? s.batterie_v.toFixed(1)  : '--');
+  txt('batt-etat', s.batterie_etat != null ? s.batterie_etat          : '--');
+  txt('batt-pct',  s.batterie_pct  != null ? s.batterie_pct           : '--');
+  const bar = document.getElementById('batt-bar');
+  if (bar) { bar.style.width = (s.batterie_pct || 0) + '%'; bar.style.background = s.batterie_couleur || '#6b7280'; }
   // Stats campagne
   txt('c-sessions', s.camp_nb_sessions != null ? s.camp_nb_sessions : '--');
   txt('c-surface', s.camp_surface_ha != null ? s.camp_surface_ha.toFixed(3) : '--');
@@ -624,6 +652,8 @@ function loadConfigFromStatus() {
   if (!s.etat) return;
 
   // Champs profil machine depuis JSON statut (cfg_* fields)
+  if (s.cfg_batt_warn_v != null) setField('m-batt-warn', s.cfg_batt_warn_v);
+  if (s.cfg_batt_crit_v != null) setField('m-batt-crit', s.cfg_batt_crit_v);
   if (s.cfg_t_vidange_s != null)     setField('m-tvidange', s.cfg_t_vidange_s);
   if (s.cfg_kp_regulation != null)   setField('m-kp', s.cfg_kp_regulation);
   if (s.cfg_n_cycles_calib != null)  setField('m-ncalib', s.cfg_n_cycles_calib);
@@ -741,7 +771,9 @@ function saveMachine() {
     mode_deg_spires: document.getElementById('m-mds').checked,
     t_rempl_fixe_s: parseFloat(document.getElementById('m-trempl').value) || 0,
     denivele_m: parseFloat(document.getElementById('m-denivele').value) || 0,
-    cycles_par_tour: parseFloat(document.getElementById('m-cyclestour').value) || 0
+    cycles_par_tour: parseFloat(document.getElementById('m-cyclestour').value) || 0,
+    batt_warn_v: parseFloat(document.getElementById('m-batt-warn').value) || 11.5,
+    batt_crit_v: parseFloat(document.getElementById('m-batt-crit').value) || 11.0
   });
   configDirty = false;
 }
@@ -759,7 +791,9 @@ function resetEtalonnage() {
     mode_deg_spires: document.getElementById('m-mds').checked,
     t_rempl_fixe_s: parseFloat(document.getElementById('m-trempl').value) || 0,
     denivele_m: parseFloat(document.getElementById('m-denivele').value) || 0,
-    cycles_par_tour: parseFloat(document.getElementById('m-cyclestour').value) || 0
+    cycles_par_tour: parseFloat(document.getElementById('m-cyclestour').value) || 0,
+    batt_warn_v: parseFloat(document.getElementById('m-batt-warn').value) || 11.5,
+    batt_crit_v: parseFloat(document.getElementById('m-batt-crit').value) || 11.0
   });
 }
 
@@ -786,7 +820,9 @@ function openDerouleCorrection() {
         mode_deg_spires: st.mode_degrade_spires || false,
         t_rempl_fixe_s: st.cfg_t_rempl_fixe_s || 0,
         denivele_m: st.cfg_denivele_m || 0,
-        cycles_par_tour: st.cfg_cycles_par_tour || 0
+        cycles_par_tour: st.cfg_cycles_par_tour || 0,
+        batt_warn_v: st.cfg_batt_warn_v || 11.5,
+        batt_crit_v: st.cfg_batt_crit_v || 11.0
       });
       return;
     }

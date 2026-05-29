@@ -2,6 +2,7 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "config_nvs.h"
+#include "batterie.h"
 #include "gpio_handler.h"
 #include "state_machine.h"
 #include "webserver.h"
@@ -42,6 +43,9 @@ void app_main(void)
     test_config_nvs_run();
     ESP_LOGI(TAG, "=== Tests terminés ===");
 #endif
+
+    // Mesure tension batterie (ADC1 GPIO 36)
+    ESP_ERROR_CHECK(batterie_init());
 
     // GPIO — électrovannes OFF immédiat (fail-safe)
     gpio_handler_init();

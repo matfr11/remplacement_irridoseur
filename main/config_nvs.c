@@ -236,3 +236,29 @@ esp_err_t config_nvs_reset_stats(void)
     memset(&z, 0, sizeof(z));
     return config_nvs_sauver_stats(&z);
 }
+
+esp_err_t config_nvs_lire_batt_seuils(float *warn_v, float *crit_v)
+{
+    *warn_v = 11.5f;
+    *crit_v = 11.0f;
+    nvs_handle_t h;
+    if (nvs_open(NS_MACHINE, NVS_READONLY, &h) != ESP_OK) return ESP_OK;
+    size_t sz = sizeof(float);
+    if (nvs_get_blob(h, "batt_warn", warn_v, &sz) != ESP_OK) *warn_v = 11.5f;
+    sz = sizeof(float);
+    if (nvs_get_blob(h, "batt_crit", crit_v, &sz) != ESP_OK) *crit_v = 11.0f;
+    nvs_close(h);
+    return ESP_OK;
+}
+
+esp_err_t config_nvs_sauver_batt_seuils(float warn_v, float crit_v)
+{
+    nvs_handle_t h;
+    esp_err_t ret = nvs_open(NS_MACHINE, NVS_READWRITE, &h);
+    if (ret != ESP_OK) return ret;
+    nvs_set_blob(h, "batt_warn", &warn_v, sizeof(float));
+    nvs_set_blob(h, "batt_crit", &crit_v, sizeof(float));
+    ret = nvs_commit(h);
+    nvs_close(h);
+    return ret;
+}

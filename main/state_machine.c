@@ -1,4 +1,5 @@
 #include "state_machine.h"
+#include "batterie.h"
 #include "telemetry.h"
 #include "securites.h"
 #include "gpio_handler.h"
@@ -65,6 +66,12 @@ static session_summary_t s_session;
 static bool              s_bilan_envoye = false;
 static config_stats_t    s_stats;
 
+// Batterie
+static batt_status_t s_batt        = {0};
+static float         s_batt_warn_v = 11.5f;
+static float         s_batt_crit_v = 11.0f;
+static int           s_batt_tick   = 299;  // declenche mesure au 1er tick
+
 // Doit être true pour que VEILLE puisse démarrer (protège contre redémarrage auto après stop/urgence)
 static bool              s_demarrage_autorise = true;  // false uniquement après ARRET_URGENCE
 
@@ -129,6 +136,8 @@ static void charger_config_interne(void)
         ? lookup_vitesse_cible(s_abaque, s_cfg_prog.pression_bar,
                                (float)s_cfg_prog.buse_mm, s_cfg_prog.dose_mm, NULL, NULL)
         : 0.0f;
+    config_nvs_lire_batt_seuils(&s_batt_warn_v, &s_batt_crit_v);
+    batterie_set_seuils(s_batt_warn_v, s_batt_crit_v);
 }
 
 // ---------------------------------------------------------------------------
@@ -189,6 +198,11 @@ void state_machine_init(void)
 // ---------------------------------------------------------------------------
 void tick_state_machine(void)
 {
+    if (++s_batt_tick >= 300) {
+        s_batt_tick = 0;
+        s_batt = batterie_get_status();
+    }
+
     xSemaphoreTake(s_mutex, portMAX_DELAY);
 
     // SEC priorité absolue — avant tout traitement état
@@ -642,6 +656,12 @@ void tick_state_machine(void)
     s_status.camp_vitesse_moy_m_h = s_stats.vitesse_moy_m_h;
     s_status.camp_nb_sessions     = s_stats.nb_sessions;
     s_status.camp_duree_h         = s_stats.total_duree_h;
+
+    s_status.batterie_v           = s_batt.voltage_v;
+    s_status.batterie_pct         = s_batt.pourcentage;
+    s_status.batterie_etat        = (int)s_batt.etat;
+    s_status.cfg_batt_warn_v      = s_batt_warn_v;
+    s_status.cfg_batt_crit_v      = s_batt_crit_v;
 
     // Estimation heure arrivée (valide depuis DEROULE jusqu'à TEMPO_ARRIVEE)
     {
