@@ -20,7 +20,7 @@ static void telemetry_task(void *arg)
 esp_err_t telemetry_init(void)
 {
     ESP_LOGI(TAG, "Démarrage tâche telemetry (500ms)");
-    xTaskCreate(telemetry_task, "telemetry", 4096, NULL, 5, NULL);
+    xTaskCreate(telemetry_task, "telemetry", 6144, NULL, 5, NULL);
     return ESP_OK;
 }
 
