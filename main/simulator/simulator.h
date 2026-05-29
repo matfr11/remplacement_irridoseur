@@ -1,5 +1,7 @@
 #pragma once
 
+#include "sdkconfig.h"
+
 #ifdef CONFIG_IRRI_TEST_MODE
 
 #include <stdbool.h>

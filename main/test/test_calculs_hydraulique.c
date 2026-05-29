@@ -1,3 +1,4 @@
+#include "sdkconfig.h"
 #include "calculs_hydraulique.h"
 #include "abaques/abaques.h"
 #include "esp_log.h"
@@ -10,8 +11,8 @@ static const char *TAG = "test_hyd";
 #define EPSILON 0.5f   // tolérance m/h (interpolation approximative)
 #define EPS_SM  0.01f  // tolérance pour surface, dose (valeurs exactes)
 
-#define PASS(name) ESP_LOGI(TAG, "PASS  " name)
-#define FAIL(name, fmt, ...) ESP_LOGE(TAG, "FAIL  " name " — " fmt, ##__VA_ARGS__)
+#define PASS(name) ESP_LOGI(TAG, "PASS  %s", name)
+#define FAIL(name, fmt, ...) ESP_LOGE(TAG, "FAIL  %s -- " fmt, name, ##__VA_ARGS__)
 
 static void assert_near(float attendu, float reel, float eps, const char *nom)
 {

@@ -1,3 +1,4 @@
+#include "sdkconfig.h"
 #include "state_machine.h"
 #include "esp_log.h"
 

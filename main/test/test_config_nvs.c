@@ -1,3 +1,4 @@
+#include "sdkconfig.h"
 #include "config_nvs.h"
 #include "esp_log.h"
 #include <string.h>

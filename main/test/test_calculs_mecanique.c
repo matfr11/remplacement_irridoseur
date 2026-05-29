@@ -1,3 +1,4 @@
+#include "sdkconfig.h"
 #include "calculs_mecanique.h"
 #include "machines/machines.h"
 #include "esp_log.h"

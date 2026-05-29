@@ -1,3 +1,4 @@
+#include "sdkconfig.h"
 #include "simulator_ws.h"
 
 #ifdef CONFIG_IRRI_TEST_MODE

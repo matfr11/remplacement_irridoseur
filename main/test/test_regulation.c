@@ -1,3 +1,4 @@
+#include "sdkconfig.h"
 #include "regulation.h"
 #include "esp_log.h"
 #include <math.h>
@@ -5,8 +6,8 @@
 // Tests unitaires regulation — PR-06
 static const char *TAG = "test_reg";
 
-#define PASS(name)  ESP_LOGI(TAG, "PASS  " name)
-#define FAIL(name, fmt, ...) ESP_LOGE(TAG, "FAIL  " name " — " fmt, ##__VA_ARGS__)
+#define PASS(name)  ESP_LOGI(TAG, "PASS  %s", name)
+#define FAIL(name, fmt, ...) ESP_LOGE(TAG, "FAIL  %s -- " fmt, name, ##__VA_ARGS__)
 
 #define TOL  1e-3f
 
