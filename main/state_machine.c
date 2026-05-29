@@ -423,7 +423,9 @@ void tick_state_machine(void)
             regulation_reset_calibration();
             config_nvs_sauver_machine(&s_cfg_machine);
             memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
-            s_demarrage_autorise = true;  // fin normale : prochain cycle auto
+            // s_demarrage_autorise conservé tel quel :
+            //   - fin normale (fin_course) : reste true  → VEILLE auto-démarre au prochain cycle
+            //   - arrêt cmd_stop           : reste false → VEILLE attend un Démarrer explicite
             entrer_etat(ETAT_VEILLE);
         }
         break;
@@ -514,6 +516,7 @@ void state_machine_cmd_stop(void)
         s_etat != ETAT_ARRET_FINAL &&
         s_etat != ETAT_ARRET_URGENCE) {
         ESP_LOGI(TAG, "cmd_stop recu depuis etat %d", s_etat);
+        s_demarrage_autorise = false;  // arrêt opérateur : ne pas redémarrer seul
         gpio_all_ev_off();
         entrer_etat(ETAT_ARRET_FINAL);
     } else {
