@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulateur Irrifrance</title>
+<style>
+body{font-family:monospace;background:#111;color:#eee;padding:16px;max-width:640px;margin:auto}
+h1{color:#4af;margin-bottom:8px}
+.section{background:#1e1e1e;border:1px solid #333;border-radius:6px;padding:12px;margin-bottom:12px}
+h2{margin:0 0 10px;font-size:1em;color:#aaa;text-transform:uppercase;letter-spacing:.08em}
+.row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+label{font-size:.9em}
+.badge{padding:3px 10px;border-radius:12px;font-size:.82em;font-weight:bold}
+.on{background:#2a6;color:#fff}
+.off{background:#444;color:#aaa}
+button{background:#2244aa;color:#fff;border:none;border-radius:4px;padding:6px 14px;cursor:pointer;font-size:.9em}
+button:active{background:#113388}
+.scen-btn{background:#554400;margin:4px 4px 0 0}
+#status{font-size:.82em;color:#888;margin-top:4px}
+#etat{font-size:1.2em;font-weight:bold;color:#4af}
+</style>
+</head>
+<body>
+<h1>Simulateur Irrifrance</h1>
+<div id="status">Connexion...</div>
+
+<div class="section">
+  <h2>Etat machine</h2>
+  <div id="etat">VEILLE</div>
+</div>
+
+<div class="section">
+  <h2>Capteurs</h2>
+  <div class="row">
+    <label>Pressostat (pression ok = LOW)</label>
+    <span id="b_pressostat" class="badge off">OFF</span>
+  </div>
+  <div class="row">
+    <label>Fin de course (canon rentre)</label>
+    <span id="b_fin_course" class="badge off">OFF</span>
+  </div>
+  <div class="row">
+    <label>Securite spires</label>
+    <span id="b_secu_spires" class="badge off">OFF</span>
+  </div>
+  <div class="row">
+    <label>Poumon plein</label>
+    <span id="b_poumon_plein" class="badge off">OFF</span>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Injection capteurs</h2>
+  <div class="row">
+    <label>Pressostat</label>
+    <span>
+      <button onclick="send('pressostat',0)">Pression OK</button>
+      <button onclick="send('pressostat',1)">Pression perdue</button>
+    </span>
+  </div>
+  <div class="row">
+    <label>Fin de course</label>
+    <span>
+      <button onclick="send('fin_course',1)">Activer</button>
+      <button onclick="send('fin_course',0)">Desactiver</button>
+    </span>
+  </div>
+  <div class="row">
+    <label>Securite spires</label>
+    <span>
+      <button onclick="send('secu_spires',1)">Activer</button>
+      <button onclick="send('secu_spires',0)">Desactiver</button>
+    </span>
+  </div>
+  <div class="row">
+    <label>Poumon plein</label>
+    <span>
+      <button onclick="send('poumon_plein',1)">Activer</button>
+      <button onclick="send('poumon_plein',0)">Desactiver</button>
+    </span>
+  </div>
+  <div class="row">
+    <label>Vitesse auto (m/h, 0=off)</label>
+    <span>
+      <input id="v_mh" type="number" value="0" style="width:60px;background:#222;color:#eee;border:1px solid #555;padding:4px">
+      <button onclick="send('vitesse_auto',parseInt(document.getElementById('v_mh').value)||0)">Appliquer</button>
+    </span>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Scenarios rapides</h2>
+  <button class="scen-btn" onclick="scenario(1)">1 Cycle normal</button>
+  <button class="scen-btn" onclick="scenario(3)">3 Perte pression</button>
+  <button class="scen-btn" onclick="scenario(4)">4 Reprise pression</button>
+  <button class="scen-btn" onclick="scenario(5)">5 Urgence spires</button>
+  <button class="scen-btn" onclick="scenario(6)">6 Urgence fin course</button>
+</div>
+
+<script>
+var ws = null;
+var badges = {pressostat:0, fin_course:0, secu_spires:0, poumon_plein:0};
+
+var ETATS = ['VEILLE','OUVERTURE_CANON','TEMPO_DEPART','REMPLISSAGE_POUMON',
+             'EN_COURS','PAUSE_PRESSION','TEMPO_ARRIVEE','ARRET_FINAL','ARRET_URGENCE'];
+
+function connect() {
+  ws = new WebSocket('ws://' + location.hostname + '/ws_test');
+  ws.onopen  = function() { document.getElementById('status').textContent = 'Connecte'; };
+  ws.onclose = function() { document.getElementById('status').textContent = 'Deconnecte'; setTimeout(connect, 2000); };
+  ws.onerror = function() { ws.close(); };
+}
+
+function send(sim, val) {
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({sim: sim, value: val}));
+    badges[sim] = val;
+    updateBadge(sim);
+  }
+}
+
+function scenario(n) {
+  if (ws && ws.readyState === 1) ws.send(JSON.stringify({scenario: n}));
+}
+
+function updateBadge(key) {
+  var el = document.getElementById('b_' + key);
+  if (!el) return;
+  el.className = 'badge ' + (badges[key] ? 'on' : 'off');
+  el.textContent = badges[key] ? 'ON' : 'OFF';
+}
+
+// Recuperer le statut depuis le WS principal /ws
+var ws_main = null;
+function connectMain() {
+  ws_main = new WebSocket('ws://' + location.hostname + '/ws');
+  ws_main.onmessage = function(ev) {
+    try {
+      var d = JSON.parse(ev.data);
+      if (d.etat !== undefined) {
+        document.getElementById('etat').textContent = ETATS[d.etat] || d.etat;
+      }
+    } catch(e) {}
+  };
+  ws_main.onclose = function() { setTimeout(connectMain, 2000); };
+}
+
+connect();
+connectMain();
+</script>
+</body>
+</html>

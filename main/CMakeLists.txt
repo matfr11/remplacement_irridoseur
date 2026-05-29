@@ -27,10 +27,22 @@ if(CONFIG_IRRI_ENABLE_TESTS)
     )
 endif()
 
+if(CONFIG_IRRI_TEST_MODE)
+    list(APPEND SRCS
+        "simulator/simulator.c"
+        "simulator/simulator_ws.c"
+    )
+endif()
+
+set(EMBED "webui/index.html")
+if(CONFIG_IRRI_TEST_MODE)
+    list(APPEND EMBED "simulator/simulator_ui.html")
+endif()
+
 idf_component_register(
     SRCS ${SRCS}
     INCLUDE_DIRS "."
-    EMBED_FILES "webui/index.html"
+    EMBED_FILES ${EMBED}
     REQUIRES
         driver
         freertos

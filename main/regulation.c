@@ -82,3 +82,9 @@ int regulation_get_nb_cycles(void)
 {
     return s_nb_cycles;
 }
+
+float calcul_cycles_par_min(float v_m_h, float dist_par_cycle_m)
+{
+    if (dist_par_cycle_m <= 0.0f) return 0.0f;
+    return (v_m_h / 60.0f) / dist_par_cycle_m;
+}

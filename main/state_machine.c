@@ -584,4 +584,16 @@ void state_machine_test_injecter_etat(etat_machine_t etat)
 void state_machine_test_set_pression(bool pression_ok)  { s_sim_pression    = pression_ok; }
 void state_machine_test_set_fin_course(bool active)      { s_sim_fin_course  = active; }
 void state_machine_test_set_secu_spires(bool active)     { s_sim_secu_spires = active; }
+int  state_machine_test_get_nb_tentatives(void)          { return s_nb_tentatives; }
+
+void state_machine_test_reset(void)
+{
+    s_etat              = ETAT_VEILLE;
+    s_sous_etat         = SOUS_VIDANGE;
+    s_longueur_enroulee = 0.0f;
+    s_nb_tentatives     = 0;
+    s_bilan_envoye      = false;
+    gpio_ev_canon_set(false);
+    gpio_ev_poumon_set(false);
+}
 #endif

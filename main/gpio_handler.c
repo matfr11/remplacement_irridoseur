@@ -7,6 +7,13 @@
 #include "esp_log.h"
 #include <string.h>
 
+#ifdef CONFIG_IRRI_TEST_MODE
+  #include "simulator/simulator.h"
+  #define READ_GPIO(pin)  sim_gpio_get_level(pin)
+#else
+  #define READ_GPIO(pin)  gpio_get_level(pin)
+#endif
+
 static const char *TAG = "gpio_handler";
 
 // --- Fenêtre glissante vitesse ---
@@ -99,10 +106,10 @@ void gpio_handler_init(void)
 
 void gpio_handler_lire_entrees(entrees_t *entrees)
 {
-    entrees->fin_course   = gpio_get_level(PIN_FIN_COURSE)   != 0;
-    entrees->secu_spires  = gpio_get_level(PIN_SECU_SPIRES)  != 0;
-    entrees->poumon_plein = gpio_get_level(PIN_POUMON_PLEIN) != 0;
-    entrees->pression_ok  = gpio_get_level(PIN_PRESSOSTAT)   == 0;
+    entrees->fin_course   = READ_GPIO(PIN_FIN_COURSE)   != 0;
+    entrees->secu_spires  = READ_GPIO(PIN_SECU_SPIRES)  != 0;
+    entrees->poumon_plein = READ_GPIO(PIN_POUMON_PLEIN) != 0;
+    entrees->pression_ok  = READ_GPIO(PIN_PRESSOSTAT)   == 0;
 }
 
 // =============================================================================

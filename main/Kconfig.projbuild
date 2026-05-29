@@ -8,4 +8,12 @@ menu "Irrifrance ESP32"
             Les tests s'exécutent au démarrage (app_main).
             À désactiver impérativement en production.
 
+    config IRRI_TEST_MODE
+        bool "Activer le simulateur web interactif"
+        default n
+        help
+            Active main/simulator/* et les routes /test + /ws_test.
+            Remplace gpio_get_level() par sim_gpio_get_level() via READ_GPIO.
+            À désactiver impérativement en production.
+
 endmenu
