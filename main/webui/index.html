@@ -374,7 +374,11 @@ function connect() {
     sendCmd({cmd: 'set_time', ts: Math.floor(Date.now() / 1000)});
   };
   ws.onmessage = e => {
-    try { st = JSON.parse(e.data); updateUI(); } catch(_) {}
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'bilan') { showBilan(msg); return; }
+      st = msg; updateUI();
+    } catch(_) {}
   };
   ws.onclose = ws.onerror = () => { wsTimer = setTimeout(connect, 3000); };
 }
@@ -553,9 +557,20 @@ function loadConfigFromStatus() {
   const s = st;
   if (!s.etat) return;
 
-  // Sélection programme actif depuis prog_nom
-  // (on utilise etat_code === VEILLE pour éviter les conflits)
-  // Mettre à jour les dropdowns machines si disponible
+  // Champs profil machine depuis JSON statut (cfg_* fields)
+  if (s.cfg_t_vidange_s != null)     setField('m-tvidange', s.cfg_t_vidange_s);
+  if (s.cfg_kp_regulation != null)   setField('m-kp', s.cfg_kp_regulation);
+  if (s.cfg_n_cycles_calib != null)  setField('m-ncalib', s.cfg_n_cycles_calib);
+  if (s.cfg_fenetre_vitesse != null) setField('m-fenetre', s.cfg_fenetre_vitesse);
+  if (s.cfg_max_cycles_si != null)   setField('m-maxcyc', s.cfg_max_cycles_si);
+  if (s.cfg_t_rempl_fixe_s != null)  setField('m-trempl', s.cfg_t_rempl_fixe_s);
+  if (s.cfg_denivele_m != null)      setField('m-denivele', s.cfg_denivele_m);
+  if (s.cfg_machine_active != null)  setField('m-machine', s.cfg_machine_active);
+  if (s.mode_degrade_vitesse != null) setCheck('m-mdv', s.mode_degrade_vitesse);
+  if (s.mode_degrade_poumon != null) {
+    setCheck('m-mdp', s.mode_degrade_poumon);
+    show('m-trempl-wrap', s.mode_degrade_poumon);
+  }
 }
 
 function onSelectProg() {
@@ -750,6 +765,26 @@ async function startOta() {
     msg.textContent = 'Echec : ' + e.message;
     btn.disabled = false;
   }
+}
+
+// ============================================================
+// Bilan de session
+// ============================================================
+function showBilan(b) {
+  const msg = 'Session terminée\n'
+    + 'Longueur enroulée : ' + b.longueur_m.toFixed(0) + ' m\n'
+    + 'Surface arrosée : ' + b.surface_m2.toFixed(0) + ' m²\n'
+    + 'Volume eau : ' + b.volume_m3.toFixed(1) + ' m³\n'
+    + 'Durée : ' + fmtDuree(b.duree_s) + '\n'
+    + 'Cycles poumon : ' + b.nb_cycles;
+  const el = document.createElement('div');
+  el.className = 'alert alert-warn';
+  el.style.background = '#1a3a1a';
+  el.style.borderColor = '#43A047';
+  el.textContent = msg.replace(/\n/g, ' — ');
+  const content = document.getElementById('tab-home');
+  content.insertBefore(el, content.firstChild);
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 15000);
 }
 
 // marquer dirty quand l'user édite un champ config

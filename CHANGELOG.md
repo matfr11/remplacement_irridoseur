@@ -5,6 +5,41 @@ Format : [PR-XX] — date — description
 
 ---
 
+## [PR-10] — 2026-05-29 — Intégration complète
+
+### state_machine.h
+- Ajout 8 champs `cfg_*` dans `machine_status_t` (t_vidange_s, kp, n_cycles_calib, fenetre, max_cycles_si, t_rempl_fixe_s, denivele_m, machine_active) — diffusés dans le JSON WebSocket 500ms
+- Déclaration `state_machine_recharger_config()` et `state_machine_get_session_summary()`
+
+### state_machine.c
+- `state_machine_recharger_config()` : relit NVS et met à jour s_cfg_machine, s_cfg_prog, s_profil, s_abaque, s_status.cfg_valide, prog_nom, machine_nom, mode_degrade — refusée silencieusement hors VEILLE
+- `state_machine_get_session_summary()` : expose s_session via mutex
+- À l'entrée de ETAT_ARRET_FINAL : peuple session_summary_t et appelle telemetry_envoyer_bilan() (une seule fois par session via s_bilan_envoye)
+- Tracking s_duree_pause_ms (incrémenté à chaque tick de PAUSE_PRESSION)
+- Champs cfg_* mis à jour dans s_status à chaque tick
+- Réinitialisation s_bilan_envoye et s_duree_pause_ms au départ du cycle (OUVERTURE_CANON)
+
+### webserver.h / webserver.c
+- Déclaration et implémentation `webserver_broadcast_raw(const char *json)` — factorisation via broadcast_json() interne
+- `status_to_json()` : ajout des 8 champs cfg_* ; JSON_BUF_SIZE porté à 2048
+- Appel `state_machine_recharger_config()` après select_programme, save_programme, save_machine
+
+### telemetry.c
+- `telemetry_envoyer_bilan()` implémentée : appelle state_machine_get_session_summary(), sérialise en JSON `{"type":"bilan",...}`, broadcast via webserver_broadcast_raw()
+
+### main/webui/index.html
+- `loadConfigFromStatus()` complétée : peuple les champs m-tvidange, m-kp, m-ncalib, etc. depuis les champs cfg_* du JSON statut
+- Réception des messages `{"type":"bilan"}` : affichage bandeau vert 15s dans l'onglet Accueil
+
+### test/test_state_machine.c
+- T_reload_veille : state_machine_recharger_config() en VEILLE → reste VEILLE, pas de crash
+- T_reload_hors_veille : state_machine_recharger_config() en EN_COURS → ignorée, état inchangé
+
+### Taille firmware
+- 0xd88f0 bytes (~869 KB) — **55% flash libre** (+6 KB vs PR-09)
+
+---
+
 ## [PR-09] — 2026-05-29 — Web UI mobile embarquée — 3 onglets
 
 ### main/webui/index.html (nouveau)
