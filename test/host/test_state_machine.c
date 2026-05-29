@@ -107,6 +107,7 @@ static void test_sec2_priorite(void)
 {
     state_machine_test_injecter_etat(ETAT_EN_COURS);
     state_machine_test_set_secu_spires(true);
+    gpio_set_level(PIN_SECU_SPIRES, 1);
     tick_state_machine();
     mock_time_advance_ms(100);
     TEST_ASSERT_EQUAL_INT(ETAT_ARRET_URGENCE, state_machine_get_etat());
@@ -118,6 +119,7 @@ static void test_sec1_ouverture_canon(void)
 {
     state_machine_test_injecter_etat(ETAT_OUVERTURE_CANON);
     state_machine_test_set_fin_course(true);
+    gpio_set_level(PIN_FIN_COURSE, 1);
     state_machine_test_set_pression(true);
     tick_state_machine();
     mock_time_advance_ms(100);

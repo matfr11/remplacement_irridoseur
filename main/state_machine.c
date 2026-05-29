@@ -422,8 +422,10 @@ void tick_state_machine(void)
     s_status.t_remplissage_ms = (int32_t)s_t_remplissage_ms;
     s_status.t_attente_ms     = (int32_t)s_t_attente_ms;
     s_status.cycles_total     = (uint32_t)regulation_get_nb_cycles();
-    s_status.facteur_correction = s_cfg_machine.facteur_correction;
-    s_status.heure_synchro    = s_heure_synchro;
+    s_status.facteur_correction   = s_cfg_machine.facteur_correction;
+    s_status.heure_synchro        = s_heure_synchro;
+    s_status.mode_degrade_vitesse = s_cfg_machine.mode_deg_vitesse;
+    s_status.mode_degrade_poumon  = s_cfg_machine.mode_deg_poumon;
 
     // Champs config machine (pour initialisation de l'UI)
     s_status.cfg_t_vidange_s      = s_cfg_machine.t_vidange_s;
