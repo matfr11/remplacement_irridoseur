@@ -5,6 +5,31 @@ Format : [PR-XX] — date — description
 
 ---
 
+## [PR-08] — 2026-05-29 — WiFi AP + WebSocket + OTA
+
+### webserver.c — Implémentation complète
+- WiFi AP : SSID "Irrifrance-ESP32", password "irrigation", IP 192.168.4.1, canal 6, WPA2
+- Serveur HTTP/WebSocket : `httpd_start()`, handler WS `/ws`, HTTP GET `/` (placeholder PR-09)
+- `webserver_broadcast_status()` : sérialisation `machine_status_t` → JSON 35 champs (snprintf),
+  broadcast via `httpd_queue_work` + `httpd_ws_send_frame_async` (safe depuis tâche externe)
+- Parsing commandes WebSocket sans bibliothèque JSON :
+  `start`, `stop`, `reset`, `set_time`, `ev_canon`, `ev_poumon`,
+  `select_programme`, `save_programme`, `save_machine`, `etalonner`
+
+### ota.c / ota.h — Implémentation complète
+- `ota_register_handler(httpd_handle_t)` : enregistre `POST /ota/update` sur serveur existant
+- Bloque si cycle en cours (retourne 409)
+- `esp_ota_begin/write/end/set_boot_partition` + reboot après 3s
+- Rollback implicite (partition active inchangée en cas d'erreur)
+
+### sdkconfig.defaults
+- Ajout `CONFIG_HTTPD_WS_SUPPORT=y` (requis pour l'API WebSocket d'esp_http_server)
+
+### Taille firmware
+- 0xce9e0 bytes — 57% flash libre (WiFi + WebSocket stack : +~280KB vs PR-07)
+
+---
+
 ## [PR-07] — 2026-05-28 — NVS config — 5 programmes — tests
 
 ### config_nvs.c
