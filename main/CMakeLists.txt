@@ -23,6 +23,7 @@ if(CONFIG_IRRI_ENABLE_TESTS)
         "test/test_gpio.c"
         "test/test_regulation.c"
         "test/test_state_machine.c"
+        "test/test_config_nvs.c"
     )
 endif()
 
