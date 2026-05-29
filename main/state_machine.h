@@ -90,6 +90,16 @@ typedef struct {
 
     // Validité config
     bool            cfg_valide;
+
+    // Paramètres machine (pour initialisation UI Config)
+    float           cfg_t_vidange_s;
+    float           cfg_kp_regulation;
+    int             cfg_n_cycles_calib;
+    int             cfg_fenetre_vitesse;
+    int             cfg_max_cycles_si;
+    float           cfg_t_rempl_fixe_s;
+    float           cfg_denivele_m;
+    int             cfg_machine_active;
 } machine_status_t;
 
 // Session summary pour télémétrie fin de session
@@ -124,6 +134,13 @@ void state_machine_cmd_ev_poumon_set(bool actif);
 
 // Déclenchement urgence (appelé par securites.c)
 void state_machine_declencher_urgence(const char *raison);
+
+// Recharge la config depuis NVS dans les variables internes (VEILLE uniquement).
+// Appelé depuis webserver.c après save_programme / save_machine / select_programme.
+void state_machine_recharger_config(void);
+
+// Expose le bilan de la dernière session terminée.
+void state_machine_get_session_summary(session_summary_t *out);
 
 #ifdef CONFIG_IRRI_ENABLE_TESTS
 void state_machine_test_injecter_etat(etat_machine_t etat);

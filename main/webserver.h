@@ -16,5 +16,9 @@ esp_err_t webserver_init(void);
 // Appelé depuis la tâche telemetry toutes les 500ms.
 void webserver_broadcast_status(void);
 
+// Diffuse un JSON arbitraire (déjà sérialisé) à tous les clients WS.
+// Utilisé par telemetry_envoyer_bilan().
+void webserver_broadcast_raw(const char *json);
+
 // Arrête proprement le serveur et le WiFi.
 void webserver_stop(void);

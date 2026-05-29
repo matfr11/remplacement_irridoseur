@@ -1,4 +1,5 @@
 #include "state_machine.h"
+#include "telemetry.h"
 #include "securites.h"
 #include "gpio_handler.h"
 #include "gpio_config.h"
@@ -50,6 +51,11 @@ static int      s_nb_tentatives      = 0;
 
 // Pause pression
 static int64_t  s_t_pause_debut_ms   = 0;
+static int32_t  s_duree_pause_ms     = 0;
+
+// Bilan de session
+static session_summary_t s_session;
+static bool              s_bilan_envoye = false;
 
 // Heure estimée arrivée
 static int64_t  s_heure_base_unix    = 0;
@@ -153,6 +159,8 @@ void tick_state_machine(void)
         if (s_tick_pression_stable >= 30) {  // 30 × 100ms = 3s
             s_tick_pression_stable = 0;
             s_t_session_debut_ms = now_ms();
+            s_duree_pause_ms = 0;
+            s_bilan_envoye   = false;
             regulation_reset_calibration();
             s_longueur_enroulee = 0.0f;
             if (s_cfg_prog.tempo_depart_on && s_cfg_prog.tempo_depart_s > 0) {
@@ -331,6 +339,7 @@ void tick_state_machine(void)
 
     // -----------------------------------------------------------------------
     case ETAT_PAUSE_PRESSION:
+        s_duree_pause_ms += 100;
         // Reprise automatique au retour pression
         if (e.pression_ok) {
             gpio_ev_canon_set(true);
@@ -352,6 +361,17 @@ void tick_state_machine(void)
 
     // -----------------------------------------------------------------------
     case ETAT_ARRET_FINAL:
+        if (!s_bilan_envoye) {
+            s_session.longueur_m              = s_longueur_enroulee;
+            s_session.surface_m2              = s_status.surface_m2;
+            s_session.dose_moy_mm             = s_status.dose_inst_mm;
+            s_session.volume_m3               = s_status.surface_m2 * s_status.dose_inst_mm / 1000.0f;
+            s_session.duree_s                 = s_status.duree_s;
+            s_session.nb_cycles               = (uint32_t)regulation_get_nb_cycles();
+            s_session.duree_pause_pression_s  = s_duree_pause_ms / 1000;
+            telemetry_envoyer_bilan();
+            s_bilan_envoye = true;
+        }
         // Retour VEILLE automatique quand l'opérateur déroule (fin_course disparaît)
         if (!e.fin_course) {
             s_longueur_enroulee = 0.0f;
@@ -397,6 +417,16 @@ void tick_state_machine(void)
     s_status.cycles_total     = (uint32_t)regulation_get_nb_cycles();
     s_status.facteur_correction = s_cfg_machine.facteur_correction;
     s_status.heure_synchro    = s_heure_synchro;
+
+    // Champs config machine (pour initialisation de l'UI)
+    s_status.cfg_t_vidange_s      = s_cfg_machine.t_vidange_s;
+    s_status.cfg_kp_regulation    = s_cfg_machine.kp_regulation;
+    s_status.cfg_n_cycles_calib   = s_cfg_machine.n_cycles_calib;
+    s_status.cfg_fenetre_vitesse  = s_cfg_machine.fenetre_vitesse;
+    s_status.cfg_max_cycles_si    = s_cfg_machine.max_cycles_si;
+    s_status.cfg_t_rempl_fixe_s   = s_cfg_machine.t_rempl_fixe_s;
+    s_status.cfg_denivele_m       = s_cfg_machine.denivele_m;
+    s_status.cfg_machine_active   = s_cfg_machine.machine_active;
 
     xSemaphoreGive(s_mutex);
 }
@@ -502,6 +532,36 @@ void state_machine_declencher_urgence(const char *raison)
         strncpy(s_status.raison_arret, raison, sizeof(s_status.raison_arret) - 1);
         config_nvs_sauver_urgence(raison);
     }
+}
+
+void state_machine_recharger_config(void)
+{
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (s_etat != ETAT_VEILLE) {
+        xSemaphoreGive(s_mutex);
+        return;
+    }
+    int prog_idx = 0;
+    config_nvs_lire_prog_actif(&prog_idx);
+    config_nvs_lire_machine(&s_cfg_machine);
+    config_nvs_lire_programme(prog_idx, &s_cfg_prog);
+    s_profil = machine_get(s_cfg_machine.machine_active);
+    s_abaque = abaque_get(s_profil->abaque_idx);
+    s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
+    strncpy(s_status.prog_nom,    s_cfg_prog.nom,             sizeof(s_status.prog_nom) - 1);
+    strncpy(s_status.machine_nom, s_profil ? s_profil->nom : "", sizeof(s_status.machine_nom) - 1);
+    gpio_handler_set_params(s_cfg_machine.fenetre_vitesse, s_cfg_machine.max_cycles_si);
+    gpio_handler_set_mode_degrade_a(s_cfg_machine.mode_deg_vitesse);
+    s_status.mode_degrade_vitesse = s_cfg_machine.mode_deg_vitesse;
+    s_status.mode_degrade_poumon  = s_cfg_machine.mode_deg_poumon;
+    xSemaphoreGive(s_mutex);
+}
+
+void state_machine_get_session_summary(session_summary_t *out)
+{
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    *out = s_session;
+    xSemaphoreGive(s_mutex);
 }
 
 // ---------------------------------------------------------------------------

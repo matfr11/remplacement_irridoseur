@@ -271,7 +271,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | **PR-07** | ✅ Fait | NVS config — 5 programmes — fix namespace prog_actif — 10 tests |
 | **PR-08** | ✅ Fait | WiFi AP — WebSocket broadcast + 10 cmds — OTA — sync heure |
 | **PR-09** | ✅ Fait | Web UI mobile embarquée — 3 onglets (dark theme, WebSocket, OTA) |
-| **PR-10** | 🔲 À faire | Intégration complète — README GitHub — documentation |
+| **PR-10** | ✅ Fait | Intégration complète — rechargement config live, bilan session, UI Config initialisée |
 
 ---
 

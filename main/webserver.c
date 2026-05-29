@@ -17,7 +17,7 @@
 static const char *TAG = "webserver";
 
 #define MAX_WS_CLIENTS  4
-#define JSON_BUF_SIZE   1500
+#define JSON_BUF_SIZE   2048
 
 static httpd_handle_t s_server = NULL;
 
@@ -106,7 +106,15 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         "\"mode_degrade_poumon\":%s,"
         "\"facteur_correction\":%.4f,"
         "\"raison_arret\":\"%s\","
-        "\"cfg_valide\":%s"
+        "\"cfg_valide\":%s,"
+        "\"cfg_t_vidange_s\":%.1f,"
+        "\"cfg_kp_regulation\":%.3f,"
+        "\"cfg_n_cycles_calib\":%d,"
+        "\"cfg_fenetre_vitesse\":%d,"
+        "\"cfg_max_cycles_si\":%d,"
+        "\"cfg_t_rempl_fixe_s\":%.1f,"
+        "\"cfg_denivele_m\":%.1f,"
+        "\"cfg_machine_active\":%d"
         "}",
         etat_to_str(s->etat), (int)s->etat,
         s->prog_nom,
@@ -139,7 +147,15 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         s->mode_degrade_poumon    ? "true" : "false",
         s->facteur_correction,
         s->raison_arret,
-        s->cfg_valide           ? "true" : "false"
+        s->cfg_valide           ? "true" : "false",
+        s->cfg_t_vidange_s,
+        s->cfg_kp_regulation,
+        s->cfg_n_cycles_calib,
+        s->cfg_fenetre_vitesse,
+        s->cfg_max_cycles_si,
+        s->cfg_t_rempl_fixe_s,
+        s->cfg_denivele_m,
+        s->cfg_machine_active
     );
 }
 
@@ -229,6 +245,7 @@ static void handle_ws_command(const char *data, size_t len)
         int idx = 0;
         json_parse_int(data, "idx", &idx);
         config_nvs_sauver_prog_actif(idx);
+        state_machine_recharger_config();
 
     } else if (strstr(data, "\"cmd\":\"etalonner\"")) {
         float longueur_m = 0.0f;
@@ -251,6 +268,7 @@ static void handle_ws_command(const char *data, size_t len)
         if (json_parse_bool (data, "tempo_arrivee_on", &b)) prog.tempo_arrivee_on = b;
         if (json_parse_int  (data, "tempo_arrivee_s",  &n)) prog.tempo_arrivee_s  = n;
         config_nvs_sauver_programme(idx, &prog);
+        state_machine_recharger_config();
 
     } else if (strstr(data, "\"cmd\":\"save_machine\"")) {
         config_machine_t cfg;
@@ -268,6 +286,7 @@ static void handle_ws_command(const char *data, size_t len)
         if (json_parse_bool (data, "mode_deg_poumon",    &b)) cfg.mode_deg_poumon     = b;
         if (json_parse_int  (data, "machine_active",     &n)) cfg.machine_active      = n;
         config_nvs_sauver_machine(&cfg);
+        state_machine_recharger_config();
     }
 }
 
@@ -334,35 +353,41 @@ static void ws_send_work_cb(void *arg)
     free(a);
 }
 
-void webserver_broadcast_status(void)
+static void broadcast_json(const char *json, size_t len)
 {
     if (!s_server) return;
-
-    machine_status_t s;
-    state_machine_get_status(&s);
-
-    char json[JSON_BUF_SIZE];
-    int len = status_to_json(&s, json, sizeof(json));
-    if (len <= 0 || len >= (int)sizeof(json)) return;
-
     size_t nb = MAX_WS_CLIENTS + 2;
     int fds[MAX_WS_CLIENTS + 2];
     if (httpd_get_client_list(s_server, &nb, fds) != ESP_OK) return;
-
     for (size_t i = 0; i < nb; i++) {
         if (httpd_ws_get_fd_info(s_server, fds[i]) != HTTPD_WS_CLIENT_WEBSOCKET) continue;
-
         ws_send_arg_t *arg = malloc(sizeof(ws_send_arg_t));
         if (!arg) continue;
         arg->server = s_server;
         arg->fd     = fds[i];
-        memcpy(arg->json, json, len);
-        arg->len    = (size_t)len;
-
+        size_t copy_len = len < JSON_BUF_SIZE ? len : JSON_BUF_SIZE - 1;
+        memcpy(arg->json, json, copy_len);
+        arg->len = copy_len;
         if (httpd_queue_work(s_server, ws_send_work_cb, arg) != ESP_OK) {
             free(arg);
         }
     }
+}
+
+void webserver_broadcast_status(void)
+{
+    machine_status_t s;
+    state_machine_get_status(&s);
+    char json[JSON_BUF_SIZE];
+    int len = status_to_json(&s, json, sizeof(json));
+    if (len <= 0 || len >= (int)sizeof(json)) return;
+    broadcast_json(json, (size_t)len);
+}
+
+void webserver_broadcast_raw(const char *json)
+{
+    if (!json) return;
+    broadcast_json(json, strlen(json));
 }
 
 // =============================================================================
