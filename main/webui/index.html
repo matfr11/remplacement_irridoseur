@@ -268,7 +268,7 @@ details>summary::-webkit-details-marker{display:none}
         <div class="detail-body">
           <div class="toggle-row">
             <label>Mode dégradé capteur vitesse</label>
-            <label class="tgl"><input type="checkbox" id="m-mdv" onchange="saveMachine()"><span class="tgl-slider"></span></label>
+            <label class="tgl"><input type="checkbox" id="m-mdv" onchange="toggleModeA()"><span class="tgl-slider"></span></label>
           </div>
           <div class="toggle-row">
             <label>Mode dégradé contact poumon</label>
@@ -277,6 +277,10 @@ details>summary::-webkit-details-marker{display:none}
           <div class="field" id="m-trempl-wrap" style="display:none">
             <label>T. remplissage fixe (s)</label>
             <input id="m-trempl" type="number" min="0" max="60" step="0.5">
+          </div>
+          <div class="field" id="m-cyclestour-wrap" style="display:none">
+            <label>Cycles poumon / tour bobine</label>
+            <input id="m-cyclestour" type="number" min="0" max="100" step="0.5" title="Marquer le tambour, compter les cycles poumon pour 1 tour complet">
           </div>
         </div>
       </details>
@@ -566,7 +570,11 @@ function loadConfigFromStatus() {
   if (s.cfg_t_rempl_fixe_s != null)  setField('m-trempl', s.cfg_t_rempl_fixe_s);
   if (s.cfg_denivele_m != null)      setField('m-denivele', s.cfg_denivele_m);
   if (s.cfg_machine_active != null)  setField('m-machine', s.cfg_machine_active);
-  if (s.mode_degrade_vitesse != null) setCheck('m-mdv', s.mode_degrade_vitesse);
+  if (s.cfg_cycles_par_tour != null) setField('m-cyclestour', s.cfg_cycles_par_tour);
+  if (s.mode_degrade_vitesse != null) {
+    setCheck('m-mdv', s.mode_degrade_vitesse);
+    show('m-cyclestour-wrap', s.mode_degrade_vitesse);
+  }
   if (s.mode_degrade_poumon != null) {
     setCheck('m-mdp', s.mode_degrade_poumon);
     show('m-trempl-wrap', s.mode_degrade_poumon);
@@ -607,6 +615,12 @@ function setCheck(id, val) {
 function toggleTempo(which) {
   const on = document.getElementById('p-' + which + '-on').checked;
   show('p-' + which + '-wrap', on);
+}
+
+function toggleModeA() {
+  const on = document.getElementById('m-mdv').checked;
+  show('m-cyclestour-wrap', on);
+  saveMachine();
 }
 
 function toggleModeB() {
@@ -660,7 +674,8 @@ function saveMachine() {
     mode_deg_vitesse: document.getElementById('m-mdv').checked,
     mode_deg_poumon: document.getElementById('m-mdp').checked,
     t_rempl_fixe_s: parseFloat(document.getElementById('m-trempl').value) || 0,
-    denivele_m: parseFloat(document.getElementById('m-denivele').value) || 0
+    denivele_m: parseFloat(document.getElementById('m-denivele').value) || 0,
+    cycles_par_tour: parseFloat(document.getElementById('m-cyclestour').value) || 0
   });
   configDirty = false;
 }
@@ -677,7 +692,8 @@ function resetEtalonnage() {
     mode_deg_vitesse: document.getElementById('m-mdv').checked,
     mode_deg_poumon: document.getElementById('m-mdp').checked,
     t_rempl_fixe_s: parseFloat(document.getElementById('m-trempl').value) || 0,
-    denivele_m: parseFloat(document.getElementById('m-denivele').value) || 0
+    denivele_m: parseFloat(document.getElementById('m-denivele').value) || 0,
+    cycles_par_tour: parseFloat(document.getElementById('m-cyclestour').value) || 0
   });
 }
 
