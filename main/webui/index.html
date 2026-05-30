@@ -161,6 +161,8 @@ details>summary::-webkit-details-marker{display:none}
       </div>
 
       <div id="alert-urgence" class="alert" style="display:none"><strong>ARRET URGENCE :</strong> <span id="raison-txt"></span></div>
+      <div id="alert-debordement-actif" class="alert" style="display:none;background:#E65100;color:#fff">Debordement bobine actif &mdash; resolvez le probleme avant de reprendre</div>
+      <div id="alert-debordement-resolu" class="alert" style="display:none;background:#2E7D32;color:#fff">Debordement resolu &mdash; vous pouvez reprendre ou reinitialiser</div>
       <div id="alert-pression" class="alert alert-warn" style="display:none">Pression insuffisante</div>
       <div id="alert-deg-poumon" class="alert alert-warn" style="display:none">Mode dégradé : contact poumon</div>
       <div id="alert-deg-spires" class="alert" style="display:none;background:#5a1a1a;border-color:#c62828">&#9888; SECURITE SPIRES DESACTIVEE — risque débordement bobine</div>
@@ -574,8 +576,11 @@ function updateUI() {
   const arret   = s.etat === 'ARRET_FINAL' || urgence;
   const btnStart = document.getElementById('btn-start');
   if (btnStart) btnStart.disabled = !s.cfg_valide || (!veille && !deroule);
+  const debordement = urgence && (s.raison_arret || '').indexOf('Debordement') !== -1;
   show('btn-reset', arret);
-  show('btn-resume', arret && s.longueur_enroulee_m > 0);
+  show('btn-resume', arret && s.longueur_enroulee_m > 0 && (!debordement || !s.secu_spires));
+  show('alert-debordement-actif',  debordement &&  s.secu_spires);
+  show('alert-debordement-resolu', debordement && !s.secu_spires);
   show('btn-stop', !arret && !veille && !deroule);
   show('btn-deroule', veille && !s.fin_course);   // déploiement manuel si fin_course déjà libéré
   // Panneau déroulement

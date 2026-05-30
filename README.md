@@ -217,6 +217,10 @@ L'ESP32 génère son propre **point d'accès WiFi** — aucun réseau externe n�
 
 Affiché en ARRET_URGENCE / ARRET_FINAL uniquement si une session était en cours (`longueur_enroulee > 0`). Retourne en VEILLE en **préservant la position et les longueurs de session**, contrairement à RESET qui remet tout à zéro.
 
+**Cas débordement bobine** : le bouton est masqué tant que le capteur `secu_spires` est encore actif. Une alerte orange indique "Debordement actif", remplacée par une alerte verte "Debordement resolu" dès que le capteur se libère — REPRENDRE SESSION devient alors disponible. Le firmware rejette aussi la commande `resume` si le capteur est encore actif (double sécurité).
+
+**Réarmement physique (3 appuis poumon_plein)** : conserve désormais les longueurs de session (comportement "reprendre" au lieu de "reset"). Bloqué si le débordement bobine est encore actif.
+
 ### Preview vitesse programme
 
 Dans l'onglet Config, dès que l'opérateur renseigne pression / buse / dose, la vitesse cible estimée s'affiche en temps réel sous les champs (appel `/api/vitesse?p=X&b=Y&d=Z`).

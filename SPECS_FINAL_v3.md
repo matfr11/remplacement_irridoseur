@@ -519,12 +519,20 @@ Transitions :
 ```
 EV tout OFF
 Raison stockée NVS (survit au redémarrage, s_demarrage_autorise=false)
-Réarmement physique : 3 appuis poumon_plein → ETAT_VEILLE
+Réarmement physique : 3 appuis poumon_plein → ETAT_VEILLE (longueurs préservées)
+  ⚠ Bloqué si raison="Debordement bobine" ET secu_spires encore actif
 
 Transitions :
-  cmd_reset → reset longueurs → ETAT_VEILLE
+  cmd_reset  → reset longueurs → ETAT_VEILLE
   cmd_resume → préserve longueurs → ETAT_VEILLE (si incident résolu)
+    ⚠ Bloqué firmware si raison="Debordement bobine" ET secu_spires encore actif
 ```
+
+Comportement UI selon raison d'urgence :
+- **Fin de course** : RESET + REPRENDRE SESSION visibles immédiatement
+- **Debordement bobine** :
+  - Tant que secu_spires actif : alerte orange "Debordement actif", REPRENDRE SESSION masqué
+  - Dès que secu_spires inactif : alerte verte "Debordement resolu", REPRENDRE SESSION visible
 
 ### Vue d'ensemble transitions
 
@@ -550,7 +558,9 @@ PAUSE_PRESSION ← pression perdue (depuis TEMPO_DEP, REMPL_POU, EN_COURS)
       │ pression revenue → EN_COURS
 
 ARRET_URGENCE ← SEC-1 ou SEC-2 (tout état sauf TEMPO_ARR, ARRET_*)
-      │ cmd_reset ou cmd_resume → VEILLE
+      │ cmd_reset → VEILLE
+      │ cmd_resume → VEILLE (bloqué si debordement toujours actif)
+      │ 3-tap poumon → VEILLE, longueurs préservées (bloqué si debordement actif)
 ```
 
 ---
@@ -827,7 +837,7 @@ Champs batterie inclus dans chaque broadcast :
 | `start` | — | Autorise démarrage |
 | `stop` | — | Arrêt → ARRET_FINAL |
 | `reset` | — | Reset longueurs → VEILLE |
-| `resume` | — | Préserve longueurs → VEILLE |
+| `resume` | — | Préserve longueurs → VEILLE (refusé si debordement toujours actif) |
 | `set_time` | `ts` (int64) | Sync heure Unix |
 | `ev_canon` | `actif` (bool) | IRRITESTEUR (VEILLE seulement) |
 | `ev_poumon` | `actif` (bool) | IRRITESTEUR (VEILLE seulement) |
@@ -874,6 +884,8 @@ Champs batterie inclus dans chaque broadcast :
   Arrivée prévue   : 14h35 (si heure synchro)
 
 [Alerte ARRET URGENCE : raison]
+[Alerte debordement bobine actif (orange) — visible si urgence debordement ET secu_spires actif]
+[Alerte debordement resolu (vert)          — visible si urgence debordement ET secu_spires inactif]
 [Alerte pression insuffisante]
 [Alerte mode dégradé poumon]
 [Alerte SECURITE SPIRES DESACTIVEE (rouge vif)]
@@ -893,6 +905,7 @@ Champs batterie inclus dans chaque broadcast :
 [■ ARRET URGENCE     ] ← rouge, visible si session en cours
 [↺ RESET             ] ← orange, visible si ARRET_*
 [↩ REPRENDRE SESSION ] ← orange, visible si ARRET_* ET longueur_enroulee_m > 0
+                          (masqué si urgence debordement ET secu_spires encore actif)
 [▶ Mesurer deroulement] ← gris, visible si VEILLE + pas fin_course
 ```
 

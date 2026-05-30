@@ -5,6 +5,23 @@ Format : [PR-XX] — date — description
 
 ---
 
+## [PR-13] — 2026-05-30 — Reprendre après sécurité débordement + 3-tap reprendre
+
+### main/state_machine.c
+- `state_machine_cmd_resume()` : garde firmware — refusée si raison="Debordement bobine" ET `secu_spires` encore actif (log WARN)
+- Bloc réarmement physique 3-tap : longueurs **préservées** (était reset à 0) — comportement "reprendre session" pour toutes les urgences (fin de course et débordement)
+- 3-tap bloqué si raison="Debordement bobine" ET `secu_spires` actif (SEC-2 re-déclencherait immédiatement)
+
+### main/webui/index.html
+- Alerte orange "Debordement bobine actif" : visible si urgence debordement ET capteur encore actif
+- Alerte verte "Debordement resolu" : visible si urgence debordement ET capteur libéré
+- Bouton REPRENDRE SESSION : masqué tant que debordement actif (conditionné sur `s.secu_spires`)
+
+### Taille firmware
+- 0xe0fe0 bytes (~900 KB) — **53% flash libre**
+
+---
+
 ## [PR-10] — 2026-05-29 — Intégration complète
 
 ### state_machine.h

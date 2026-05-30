@@ -238,16 +238,18 @@ void tick_state_machine(void)
                 if (s_rearm_count >= 3) {
                     s_rearm_count = 0;
                     ESP_LOGW(TAG, "Rearmement physique (3x poumon) etat=%d", s_etat);
-                    s_demarrage_autorise = true;
                     if (s_etat == ETAT_ARRET_URGENCE) {
-                        memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
-                        config_nvs_sauver_urgence("");
-                        s_longueur_enroulee     = 0.0f;
-                        s_longueur_derniere_nvs = 0.0f;
-                        s_longueur_session_m    = 0.0f;
-                        config_nvs_sauver_longueur(0.0f);
-                        regulation_reset_calibration();
-                        entrer_etat(ETAT_VEILLE);
+                        if (strstr(s_status.raison_arret, "Debordement") && e.secu_spires) {
+                            ESP_LOGW(TAG, "Rearm physique ignore - debordement toujours actif");
+                        } else {
+                            // Reprendre : longueurs preservees, comme cmd_resume
+                            memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
+                            config_nvs_sauver_urgence("");
+                            s_demarrage_autorise = true;
+                            regulation_reset_calibration();
+                            config_nvs_sauver_machine(&s_cfg_machine);
+                            entrer_etat(ETAT_VEILLE);
+                        }
                     }
                 }
             }
@@ -886,6 +888,15 @@ void state_machine_get_session_summary(session_summary_t *out)
 void state_machine_cmd_resume(void)
 {
     xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (s_etat == ETAT_ARRET_URGENCE && strstr(s_status.raison_arret, "Debordement")) {
+        entrees_t eg;
+        gpio_handler_lire_entrees(&eg);
+        if (eg.secu_spires) {
+            ESP_LOGW(TAG, "cmd_resume ignore - debordement toujours actif");
+            xSemaphoreGive(s_mutex);
+            return;
+        }
+    }
     if (s_etat == ETAT_ARRET_URGENCE || s_etat == ETAT_ARRET_FINAL) {
         ESP_LOGI(TAG, "cmd_resume - reprise session (enroule=%.1fm deroule=%.1fm)",
                  s_longueur_session_m, s_longueur_deroule_m);
