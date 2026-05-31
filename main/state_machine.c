@@ -82,6 +82,10 @@ static bool              s_coupure_detectee   = false;
 static bool              s_heartbeat_level    = false;
 static int64_t           s_heartbeat_ms       = 0;
 
+// Vitesse max et dose corrigée — calculées quand T_attente < 0 (alerte_pression_insuff)
+static float             s_vitesse_max_m_h    = 0.0f;
+static float             s_dose_corrigee_mm   = 0.0f;
+
 #ifdef CONFIG_IRRI_ENABLE_TESTS
 static bool s_sim_active      = false;
 static bool s_sim_pression    = true;
@@ -489,12 +493,13 @@ void tick_state_machine(void)
                     }
 
                     // Recalcul T_attente feedforward
+                    float debit_tmp = 0.0f;
                     float v_cible_m_h = lookup_vitesse_cible(
                         s_abaque,
                         s_cfg_prog.pression_bar,
                         (float)s_cfg_prog.buse_mm,
                         s_cfg_prog.dose_mm,
-                        NULL, NULL);
+                        &debit_tmp, NULL);
                     s_vitesse_cible_m_h = v_cible_m_h;
                     float v_cible_m_s = v_cible_m_h / 3600.0f;
                     bool alerte = false;
@@ -512,6 +517,20 @@ void tick_state_machine(void)
 
                     s_t_attente_ms = t_att * 1000.0f;
                     s_status.alerte_pression_insuff = alerte;
+
+                    // Vitesse max et dose corrigée (utiles si alerte active)
+                    if (alerte) {
+                        float t_min_s = s_t_remplissage_ms / 1000.0f + s_cfg_machine.t_vidange_s;
+                        s_vitesse_max_m_h = (t_min_s > 0.0f)
+                                            ? (dist_moy / t_min_s) * 3600.0f : 0.0f;
+                        s_dose_corrigee_mm = (s_vitesse_max_m_h > 0.0f && s_cfg_prog.largeur_m > 0.0f)
+                                             ? calcul_dose_inst_mm(debit_tmp, s_vitesse_max_m_h,
+                                                                   s_cfg_prog.largeur_m)
+                                             : 0.0f;
+                    } else {
+                        s_vitesse_max_m_h  = 0.0f;
+                        s_dose_corrigee_mm = 0.0f;
+                    }
                 }
 
                 entrer_sous_etat(SOUS_VIDANGE);
@@ -746,6 +765,8 @@ void tick_state_machine(void)
     s_status.cfg_heartbeat_rc_on    = s_cfg_machine.heartbeat_rc_on;
     s_status.cfg_fin_course_seuil_m = s_cfg_machine.fin_course_seuil_m;
     s_status.coupure_detectee       = s_coupure_detectee;
+    s_status.vitesse_max_m_h        = s_vitesse_max_m_h;
+    s_status.dose_corrigee_mm       = s_dose_corrigee_mm;
 
     // Heartbeat GPIO 2 pour circuit RC fail-safe (conditionnel)
     if (s_cfg_machine.heartbeat_rc_on) {

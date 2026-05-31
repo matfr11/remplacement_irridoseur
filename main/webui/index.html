@@ -164,7 +164,7 @@ details>summary::-webkit-details-marker{display:none}
       <div id="alert-debordement-actif" class="alert" style="display:none;background:#E65100;color:#fff">Debordement bobine actif &mdash; resolvez le probleme avant de reprendre</div>
       <div id="alert-debordement-resolu" class="alert" style="display:none;background:#2E7D32;color:#fff">Debordement resolu &mdash; vous pouvez reprendre ou reinitialiser</div>
       <div id="alert-coupure" class="alert" style="display:none;background:#37474F;color:#fff">&#9889; Coupure detectee &mdash; session interrompue a <span id="coupure-longueur"></span> m. Reprendre ou reinitialiser ?</div>
-      <div id="alert-pression" class="alert alert-warn" style="display:none">Pression insuffisante</div>
+      <div id="alert-pression" class="alert alert-warn" style="display:none">Dose configuree trop basse &mdash; vitesse max&nbsp;: <span id="ap-vmax">--</span>&nbsp;m/h &mdash; dose corrigee&nbsp;: <span id="ap-dose">--</span>&nbsp;mm</div>
       <div id="alert-deg-poumon" class="alert alert-warn" style="display:none">Mode dégradé : contact poumon</div>
       <div id="alert-deg-spires" class="alert" style="display:none;background:#5a1a1a;border-color:#c62828">&#9888; SECURITE SPIRES DESACTIVEE — risque débordement bobine</div>
 
@@ -565,6 +565,10 @@ function updateUI() {
   show('alert-urgence', s.etat === 'ARRET_URGENCE');
   if (s.etat === 'ARRET_URGENCE') txt('raison-txt', s.raison_arret || '');
   show('alert-pression', s.alerte_pression_insuff);
+  if (s.alerte_pression_insuff) {
+    txt('ap-vmax', s.vitesse_max_m_h != null ? s.vitesse_max_m_h.toFixed(1) : '--');
+    txt('ap-dose', s.dose_corrigee_mm != null ? s.dose_corrigee_mm.toFixed(1) : '--');
+  }
   show('alert-deg-poumon', s.mode_degrade_poumon);
   show('alert-deg-spires', s.mode_degrade_spires);
 

@@ -124,6 +124,10 @@ typedef struct {
     bool            coupure_detectee;
     float           cfg_fin_course_seuil_m;
 
+    // Vitesse max et dose corrigée (valides si alerte_pression_insuff = true)
+    float           vitesse_max_m_h;
+    float           dose_corrigee_mm;
+
     // Paramètres machine (pour initialisation UI Config)
     float           cfg_t_vidange_s;
     float           cfg_kp_regulation;
