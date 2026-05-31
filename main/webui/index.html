@@ -125,8 +125,14 @@ details>summary::-webkit-details-marker{display:none}
     <!-- TAB 1 : Accueil -->
     <div id="tab-home" class="tab active">
       <div class="card">
-        <div id="badge" class="badge"><span class="badge-dot" id="badge-dot"></span><span id="badge-txt">--</span></div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0">
+          <div id="badge" class="badge" style="margin-bottom:0"><span class="badge-dot" id="badge-dot"></span><span id="badge-txt">--</span></div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600">
+            <span class="dot" id="dot-batt" style="width:11px;height:11px;flex-shrink:0"></span>
+            <span id="batt-v">--</span>&nbsp;V
+          </div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:10px;margin-top:4px">
           <span id="prog-lbl">--</span> &bull; <span id="machine-lbl">--</span>
         </div>
         <div class="grid2">
@@ -178,10 +184,6 @@ details>summary::-webkit-details-marker{display:none}
       </div>
 
       <div class="card">
-        <div class="gpio-row" style="padding-bottom:8px;margin-bottom:2px;border-bottom:2px solid var(--border)">
-          <span style="font-weight:600">Batterie</span>
-          <span><span class="dot" id="dot-batt" style="width:12px;height:12px;margin-right:6px"></span><span id="batt-v">--</span> V</span>
-        </div>
         <div class="gpio-row">
           <span>EV CANON</span>
           <span><span class="dot" id="dot-canon"></span><span id="txt-canon">--</span></span>
