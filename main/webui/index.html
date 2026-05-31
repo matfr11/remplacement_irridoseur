@@ -621,15 +621,7 @@ function updateUI() {
   // Batterie — pastille compacte
   txt('batt-v', s.batterie_v != null ? s.batterie_v.toFixed(1) : '--');
   const battDot = document.getElementById('dot-batt');
-  if (battDot) {
-    const ec = s.batterie_etat;
-    const battCol = ec === 0 ? '#42A5F5'     // CHARGE — bleu
-                  : ec === 1 ? '#66BB6A'     // PLEINE — vert
-                  : ec === 2 ? '#66BB6A'     // CORRECTE — vert
-                  : ec === 3 ? '#FFA726'     // FAIBLE — orange
-                  :            '#EF5350';    // CRITIQUE — rouge
-    battDot.style.background = battCol;
-  }
+  if (battDot) battDot.style.background = s.batterie_couleur || '#6b7280';
   // Stats campagne
   txt('c-sessions', s.camp_nb_sessions != null ? s.camp_nb_sessions : '--');
   txt('c-surface', s.camp_surface_ha != null ? s.camp_surface_ha.toFixed(3) : '--');
