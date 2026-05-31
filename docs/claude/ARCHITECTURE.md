@@ -151,6 +151,7 @@ main.c
 | **34** | ENTRÉE | Capteur vitesse (impulsions) | flancs montants ISR | Diviseur 10kΩ/3.3kΩ (12V→3V) |
 | **35** | ENTRÉE | Fin de course canon | LOW = canon dehors, HIGH = rentré (SEC-1) | Pull-up 10kΩ externe, NC |
 | **36** | ENTRÉE | Tension batterie (ADC1) | analogique 0..3.3V | Diviseur R1=100kΩ / R2=27kΩ |
+| **2** | SORTIE | Heartbeat circuit RC (optionnel) | toggle 1Hz si `heartbeat_rc_on=true` | LED bleue intégrée ESP32 — défaut OFF |
 
 **Logique universelle NC** : LOW = repos/normal, HIGH = danger/actif.
 Fil coupé → HIGH → sécurité active → fail-safe.
@@ -176,6 +177,7 @@ Fil coupé → HIGH → sécurité active → fail-safe.
 | `cycles_tour` | float | 0.0 | Cycles poumon par tour de bobine |
 | `batt_warn_v` | float | 11.5 | Seuil alerte batterie (V) |
 | `batt_crit_v` | float | 11.0 | Seuil critique batterie (V) |
+| `hb_rc` | u8 (bool) | 0 | Heartbeat GPIO 2 pour circuit RC (défaut OFF) |
 
 ### Namespace `irri_prog0` .. `irri_prog4`
 
@@ -199,6 +201,7 @@ Fil coupé → HIGH → sécurité active → fail-safe.
 | `longueur_m` | float | Position absolue interne (survit au reboot) |
 | `deroule_m` | float | Longueur déployée terrain (survit au reboot) |
 | `prog_actif` | i32 | Index programme actif |
+| `session_act` | u8 | 1 = session en cours au moment du reboot (détection coupure) |
 
 ### Namespace `irri_stats`
 

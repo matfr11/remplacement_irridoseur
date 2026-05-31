@@ -5,6 +5,30 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [PR-14] — 2026-05-31 — Robustesse — TWDT + détection coupure + heartbeat RC
+
+### Added
+- `CONFIG_ESP_TASK_WDT_*` dans `sdkconfig.defaults` : reboot automatique si `state_machine_task` bloquée > 3s
+- `esp_task_wdt_add()` + `esp_task_wdt_reset()` dans `state_machine_task` (`main.c`)
+- Clé NVS `session_act` (uint8) dans `irri_state` : distingue coupure de courant d'un arrêt propre
+- `config_nvs_sauver_session_active()` / `config_nvs_lire_session_active()` dans `config_nvs.c`
+- `s_coupure_detectee` : flag firmware → alerte UI si session interrompue sans urgence au reboot
+- Alerte UI coupure (fond gris, longueur sauvée affichée) + boutons Reprendre/Reset dans ETAT_VEILLE
+- Heartbeat GPIO 2 (toggle 1Hz) pour circuit RC fail-safe — conditionnel, défaut OFF
+- `heartbeat_rc_on` dans `config_machine_t` (NVS `irri_machine`) + toggle UI Config → Machine
+- `PIN_HEARTBEAT = 2` dans `gpio_config.h` (LED bleue ESP32)
+- `coupure_detectee` et `cfg_heartbeat_rc_on` dans `machine_status_t` et JSON WebSocket
+
+### Changed
+- `state_machine_init()` : lit `session_active`, détecte coupure, bloque `s_demarrage_autorise` si coupure
+- `state_machine_cmd_reset()` / ETAT_ARRET_FINAL : efface le flag `session_active` à l'arrêt propre
+- `state_machine_cmd_resume()` : efface `s_coupure_detectee`
+- Entrée ETAT_OUVERTURE_CANON depuis VEILLE : pose `session_active = true`
+
+**Taille firmware** : 0xe16a0 bytes (~925 KB) — 53% flash libre
+
+---
+
 ## [PR-13] — 2026-05-30 — Reprendre après sécurité débordement + 3-tap reprendre
 
 ### Added

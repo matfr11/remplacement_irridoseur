@@ -109,7 +109,11 @@ Diffusé toutes les **500ms** à tous les clients connectés.
   "cfg_t_rempl_fixe_s": 0.0,
   "cfg_denivele_m": 0.0,
   "cfg_machine_active": 0,
-  "cfg_cycles_par_tour": 40.0
+  "cfg_cycles_par_tour": 40.0,
+
+  // ── Robustesse (PR-14) ────────────────────────────────────────────────────
+  "coupure_detectee": false,      // bool, true si session interrompue par coupure de courant
+  "cfg_heartbeat_rc_on": false    // bool, heartbeat GPIO 2 pour circuit RC (défaut OFF)
 }
 ```
 

@@ -52,8 +52,9 @@ longueurs, config) est en NVS flash. Un simulateur WebSocket intégré permet de
 | PR-11 | Tests unitaires PC (Unity host) + simulateur WS | ✅ |
 | PR-12 | Mesure batterie ADC1 GPIO 36 (R1=100k/R2=27k) | ✅ |
 | PR-13 | Reprendre après sécu débordement + 3-tap reprendre | ✅ |
+| PR-14 | Robustesse : TWDT + détection coupure + heartbeat RC | ✅ |
 
-**Build actuel** : 0xe0fe0 bytes (~900 KB), 53% flash libre.
+**Build actuel** : 0xe16a0 bytes (~925 KB), 53% flash libre.
 
 ## Décisions techniques et raisons
 
