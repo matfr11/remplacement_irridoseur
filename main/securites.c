@@ -47,5 +47,13 @@ void securites_watchdog(void)
         return;
     }
 
+    // SEC-L : longueur enroulee depasse longueur deroulee + seuil
+    // Capteur fin de course defaillant ou etalonnage grossierement incorrect
+    if (etat == ETAT_EN_COURS && state_machine_longueur_sec_depassee()) {
+        gpio_all_ev_off();
+        state_machine_declencher_urgence("Securite longueur - enroule > deroule");
+        return;
+    }
+
     // SEC-P pression : gérée dans tick_state_machine()
 }

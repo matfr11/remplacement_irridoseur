@@ -195,6 +195,10 @@ void state_machine_cmd_reset_campagne(void);
 // Appelable sans mutex — depuis securites_watchdog() dans le contexte du tick uniquement.
 bool state_machine_fin_course_est_normale(void);
 
+// Retourne true si longueur_session_m dépasse longueur_deroule_m + seuil (capteur fin de course défaillant).
+// Appelable sans mutex — depuis securites_watchdog() dans le contexte du tick uniquement.
+bool state_machine_longueur_sec_depassee(void);
+
 // Calcul vitesse cible (lookup abaque) — utilisé par endpoint HTTP /api/vitesse.
 float state_machine_calc_vitesse(float pression_bar, float buse_mm, float dose_mm,
                                   float *debit_out, float *p_buse_out);

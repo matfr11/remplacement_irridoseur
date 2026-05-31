@@ -1016,6 +1016,13 @@ bool state_machine_fin_course_est_normale(void)
     return restant <= s_cfg_machine.fin_course_seuil_m;
 }
 
+bool state_machine_longueur_sec_depassee(void)
+{
+    if (s_longueur_deroule_m <= 0.0f) return false;  // longueur inconnue — pas de securite
+    float delta = s_longueur_session_m - s_longueur_deroule_m;
+    return delta > s_cfg_machine.fin_course_seuil_m;
+}
+
 float state_machine_calc_vitesse(float pression_bar, float buse_mm, float dose_mm,
                                   float *debit_out, float *p_buse_out)
 {
