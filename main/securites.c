@@ -39,8 +39,9 @@ void securites_watchdog(void)
                             etat == ETAT_EN_COURS           ||
                             etat == ETAT_PAUSE_PRESSION);
 
-    // SEC-1 : fin de course en cours de cycle (non applicable TEMPO_ARRIVEE, ARRET_*)
-    if (sec1_applicable && e.fin_course) {
+    // SEC-1 : fin de course inattendue (pas en zone de fin normale de bobine)
+    // Si longueur restante <= seuil configuré → fin normale, la machine d'états gère
+    if (sec1_applicable && e.fin_course && !state_machine_fin_course_est_normale()) {
         gpio_all_ev_off();
         state_machine_declencher_urgence("Fin de course en cours de cycle");
         return;

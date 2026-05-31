@@ -122,6 +122,7 @@ typedef struct {
 
     // Coupure détectée au boot (session interrompue sans arrêt propre)
     bool            coupure_detectee;
+    float           cfg_fin_course_seuil_m;
 
     // Paramètres machine (pour initialisation UI Config)
     float           cfg_t_vidange_s;
@@ -185,6 +186,10 @@ void state_machine_get_session_summary(session_summary_t *out);
 
 // Remise à zéro stats campagne NVS.
 void state_machine_cmd_reset_campagne(void);
+
+// Retourne true si longueur restante <= seuil fin_course_seuil_m (fin de bobine normale).
+// Appelable sans mutex — depuis securites_watchdog() dans le contexte du tick uniquement.
+bool state_machine_fin_course_est_normale(void);
 
 // Calcul vitesse cible (lookup abaque) — utilisé par endpoint HTTP /api/vitesse.
 float state_machine_calc_vitesse(float pression_bar, float buse_mm, float dose_mm,

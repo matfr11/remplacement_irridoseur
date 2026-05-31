@@ -337,6 +337,10 @@ details>summary::-webkit-details-marker{display:none}
             <label>Cycles poumon / tour bobine</label>
             <input id="m-cyclestour" type="number" min="0" max="200" step="1" title="Marquer le tambour, compter les cycles poumon pour 1 tour complet">
           </div>
+          <div class="field">
+            <label>Seuil fin de course normale (m) <span style="color:#90a4ae;font-size:11px">fin_course ignorée par SEC-1 si restant ≤ seuil</span></label>
+            <input id="m-fc-seuil" type="number" min="0" max="50" step="1">
+          </div>
         </div>
       </details>
 
@@ -683,6 +687,7 @@ function loadConfigFromStatus() {
   }
   if (s.mode_degrade_spires != null) setCheck('m-mds', s.mode_degrade_spires);
   if (s.cfg_heartbeat_rc_on != null) setCheck('m-heartbeat', s.cfg_heartbeat_rc_on);
+  if (s.cfg_fin_course_seuil_m != null) setField('m-fc-seuil', s.cfg_fin_course_seuil_m);
 
   // Champs programme actif depuis JSON statut (prog_* fields)
   if (s.prog_dose_mm != null)         setField('p-dose', s.prog_dose_mm || '');
@@ -788,7 +793,8 @@ function saveMachine() {
     cycles_par_tour: parseFloat(document.getElementById('m-cyclestour').value) || 0,
     batt_warn_v: parseFloat(document.getElementById('m-batt-warn').value) || 11.5,
     batt_crit_v: parseFloat(document.getElementById('m-batt-crit').value) || 11.0,
-    heartbeat_rc_on: document.getElementById('m-heartbeat').checked
+    heartbeat_rc_on: document.getElementById('m-heartbeat').checked,
+    fin_course_seuil_m: parseFloat(document.getElementById('m-fc-seuil').value) || 10
   });
   configDirty = false;
 }
@@ -809,7 +815,8 @@ function resetEtalonnage() {
     cycles_par_tour: parseFloat(document.getElementById('m-cyclestour').value) || 0,
     batt_warn_v: parseFloat(document.getElementById('m-batt-warn').value) || 11.5,
     batt_crit_v: parseFloat(document.getElementById('m-batt-crit').value) || 11.0,
-    heartbeat_rc_on: document.getElementById('m-heartbeat').checked
+    heartbeat_rc_on: document.getElementById('m-heartbeat').checked,
+    fin_course_seuil_m: parseFloat(document.getElementById('m-fc-seuil').value) || 10
   });
 }
 
@@ -839,7 +846,8 @@ function openDerouleCorrection() {
         cycles_par_tour: st.cfg_cycles_par_tour || 0,
         batt_warn_v: st.cfg_batt_warn_v || 11.5,
         batt_crit_v: st.cfg_batt_crit_v || 11.0,
-        heartbeat_rc_on: st.cfg_heartbeat_rc_on || false
+        heartbeat_rc_on: st.cfg_heartbeat_rc_on || false,
+        fin_course_seuil_m: st.cfg_fin_course_seuil_m || 10
       });
       return;
     }

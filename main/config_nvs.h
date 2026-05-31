@@ -30,6 +30,7 @@ typedef struct {
     float   denivele_m;             // Dénivelé terrain (0 = plat)
     float   cycles_par_tour;        // Nb cycles poumon par tour de bobine (0 = non renseigné)
     bool    heartbeat_rc_on;        // Heartbeat GPIO 2 pour circuit RC fail-safe (défaut OFF)
+    float   fin_course_seuil_m;     // Longueur restante en dessous de laquelle fin_course = fin normale (défaut 10m)
 } config_machine_t;
 
 // -----------------------------------------------------------------------------
@@ -62,7 +63,8 @@ typedef struct {
     .t_rempl_fixe_s    = 0.0f,  \
     .denivele_m        = 0.0f,  \
     .cycles_par_tour   = 0.0f,  \
-    .heartbeat_rc_on   = false, \
+    .heartbeat_rc_on    = false, \
+    .fin_course_seuil_m = 10.0f, \
 }
 
 // -----------------------------------------------------------------------------

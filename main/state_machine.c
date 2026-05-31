@@ -365,9 +365,20 @@ void tick_state_machine(void)
             entrer_etat(ETAT_PAUSE_PRESSION);
         } else if (poumon_ok) {
             gpio_ev_poumon_set(false);
-            gpio_ev_canon_set(true);
-            entrer_etat(ETAT_EN_COURS);
-            entrer_sous_etat(SOUS_VIDANGE);
+            if (e.fin_course) {
+                // Fin de bobine detectee apres remplissage — arret propre
+                if (s_cfg_prog.tempo_arrivee_on && s_cfg_prog.tempo_arrivee_s > 0) {
+                    gpio_ev_canon_set(true);
+                    entrer_etat(ETAT_TEMPO_ARRIVEE);
+                } else {
+                    gpio_ev_canon_set(false);
+                    entrer_etat(ETAT_ARRET_FINAL);
+                }
+            } else {
+                gpio_ev_canon_set(true);
+                entrer_etat(ETAT_EN_COURS);
+                entrer_sous_etat(SOUS_VIDANGE);
+            }
         } else if (t_dans_etat >= 20000) {  // timeout 20s tentative (mode normal uniquement)
             gpio_ev_poumon_set(false);
             s_nb_tentatives++;
@@ -392,8 +403,11 @@ void tick_state_machine(void)
         }
 
         // Fin de course : transition vers arrivée ou arrêt final
-        if (e.fin_course) {
-            gpio_ev_poumon_set(false);
+        // Guard SOUS_REMPLISSAGE : laisser le cycle de remplissage se terminer avant d'arrêter.
+        // Couper EV_POUMON en cours de remplissage peut rétracter le cliquet et relâcher
+        // le capteur de fin de course → boucle infinie.
+        if (e.fin_course && s_sous_etat != SOUS_REMPLISSAGE) {
+            gpio_ev_poumon_set(false);  // défensif — déjà OFF en VIDANGE/ATTENTE
             if (s_cfg_prog.tempo_arrivee_on && s_cfg_prog.tempo_arrivee_s > 0) {
                 entrer_etat(ETAT_TEMPO_ARRIVEE);
             } else {
@@ -729,8 +743,9 @@ void tick_state_machine(void)
     s_status.cfg_denivele_m       = s_cfg_machine.denivele_m;
     s_status.cfg_machine_active   = s_cfg_machine.machine_active;
     s_status.cfg_cycles_par_tour  = s_cfg_machine.cycles_par_tour;
-    s_status.cfg_heartbeat_rc_on  = s_cfg_machine.heartbeat_rc_on;
-    s_status.coupure_detectee     = s_coupure_detectee;
+    s_status.cfg_heartbeat_rc_on    = s_cfg_machine.heartbeat_rc_on;
+    s_status.cfg_fin_course_seuil_m = s_cfg_machine.fin_course_seuil_m;
+    s_status.coupure_detectee       = s_coupure_detectee;
 
     // Heartbeat GPIO 2 pour circuit RC fail-safe (conditionnel)
     if (s_cfg_machine.heartbeat_rc_on) {
@@ -971,6 +986,13 @@ void state_machine_cmd_reset_campagne(void)
     memset(&s_stats, 0, sizeof(s_stats));
     xSemaphoreGive(s_mutex);
     ESP_LOGI(TAG, "Stats campagne remises a zero");
+}
+
+bool state_machine_fin_course_est_normale(void)
+{
+    float restant = s_longueur_deroule_m - s_longueur_session_m;
+    if (restant < 0.0f) restant = 0.0f;
+    return restant <= s_cfg_machine.fin_course_seuil_m;
 }
 
 float state_machine_calc_vitesse(float pression_bar, float buse_mm, float dose_mm,
