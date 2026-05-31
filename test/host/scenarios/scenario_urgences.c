@@ -8,6 +8,7 @@
 #include "mock_timer.h"
 #include "mock_log.h"
 #include "test_helpers.h"
+#include <string.h>
 
 static void set_fin_course(bool active)
 {

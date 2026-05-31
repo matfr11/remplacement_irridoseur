@@ -39,9 +39,14 @@ void securites_watchdog(void)
                             etat == ETAT_EN_COURS           ||
                             etat == ETAT_PAUSE_PRESSION);
 
-    // SEC-1 : fin de course inattendue (pas en zone de fin normale de bobine)
-    // Si longueur restante <= seuil configuré → fin normale, la machine d'états gère
-    if (sec1_applicable && e.fin_course && !state_machine_fin_course_est_normale()) {
+    // SEC-1 : fin de course inattendue
+    // La bobine ne peut physiquement avancer QUE pendant EN_COURS et REMPLISSAGE_POUMON.
+    // Dans ces états, si longueur_restante <= seuil → fin normale (machine d'états gère).
+    // Dans tous les autres états (OUVERTURE_CANON, TEMPO_DEPART, PAUSE_PRESSION), fin_course
+    // est toujours une anomalie quelle que soit la longueur.
+    bool fin_course_normale = (etat == ETAT_EN_COURS || etat == ETAT_REMPLISSAGE_POUMON)
+                               && state_machine_fin_course_est_normale();
+    if (sec1_applicable && e.fin_course && !fin_course_normale) {
         gpio_all_ev_off();
         state_machine_declencher_urgence("Fin de course en cours de cycle");
         return;
