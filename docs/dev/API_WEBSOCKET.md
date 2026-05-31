@@ -113,7 +113,14 @@ Diffusé toutes les **500ms** à tous les clients connectés.
 
   // ── Robustesse (PR-14) ────────────────────────────────────────────────────
   "coupure_detectee": false,      // bool, true si session interrompue par coupure de courant
-  "cfg_heartbeat_rc_on": false    // bool, heartbeat GPIO 2 pour circuit RC (défaut OFF)
+  "cfg_heartbeat_rc_on": false,   // bool, heartbeat GPIO 2 pour circuit RC (défaut OFF)
+
+  // ── Fin de course (PR-15) ─────────────────────────────────────────────────
+  "cfg_fin_course_seuil_m": 10.0, // float, longueur restante sous laquelle fin_course = fin normale
+
+  // ── Alerte dose trop basse (PR-16) ───────────────────────────────────────
+  "vitesse_max_m_h": 0.0,         // float, vitesse max physique si T_attente < 0 (0 sinon)
+  "dose_corrigee_mm": 0.0         // float, dose réelle à vitesse_max (0 sinon)
 }
 ```
 

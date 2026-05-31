@@ -53,8 +53,11 @@ longueurs, config) est en NVS flash. Un simulateur WebSocket intégré permet de
 | PR-12 | Mesure batterie ADC1 GPIO 36 (R1=100k/R2=27k) | ✅ |
 | PR-13 | Reprendre après sécu débordement + 3-tap reprendre | ✅ |
 | PR-14 | Robustesse : TWDT + détection coupure + heartbeat RC | ✅ |
+| PR-15 | Fix fin de course : arrêt normal → ARRET_FINAL (seuil configurable) | ✅ |
+| PR-16 | Alerte dose trop basse : vitesse max + dose corrigée affichées | ✅ |
+| PR-17 | SEC-L : sécurité longueur enroulée > déployée | ✅ |
 
-**Build actuel** : 0xe16a0 bytes (~925 KB), 53% flash libre.
+**Build actuel** : 0xe1c70 bytes (~921 KB), 53% flash libre.
 
 ## Décisions techniques et raisons
 

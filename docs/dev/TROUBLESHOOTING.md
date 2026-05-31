@@ -48,6 +48,49 @@
 
 ---
 
+### ARRET_URGENCE "Fin de course en cours de cycle" inattendu
+
+**Symptôme** : urgence en cours de session alors que la bobine n'est pas terminée.
+
+**Causes** :
+1. Câble capteur fin de course coupé → GPIO 35 monte via pull-up → HIGH = ACTIF
+   → Vérifier continuité câble capteur fin de course
+2. Longueur restante > `fin_course_seuil_m` (défaut 10m) → SEC-1 considère le signal comme anomalie
+   → Si le capteur physique déclenche trop tôt : augmenter le seuil dans Config → Machine
+3. Capteur collé mécaniquement en position active
+
+**Note** : en fin de bobine normale (longueur restante ≤ seuil), fin_course → ARRET_FINAL (pas d'urgence).
+
+---
+
+### ARRET_URGENCE "Securite longueur - enroule > deroule"
+
+**Symptôme** : urgence avec cette raison en cours de session.
+
+**Causes** :
+1. Capteur fin de course défaillant → session qui continue au-delà de la bobine
+   → Vérifier le capteur fin de course (GPIO 35)
+2. Longueur déployée mal mesurée (trop petite) → la session semble dépasser
+   → Vérifier la mesure de déploiement (ETAT_DEROULE) ou la longueur forcée
+3. Facteur de correction trop élevé → comptage longueur surestimé
+   → Recalibrer via IRRITESTEUR → Étalonner
+
+---
+
+### Bandeau "Dose configuree trop basse" en cours de session
+
+**Symptôme** : bandeau d'alerte orange avec vitesse max et dose corrigée.
+
+**Signification** : le cycle pneumatique (T_remplissage + T_vidange) est trop long pour atteindre la vitesse cible issue de l'abaque. La machine tourne à vitesse maximale sans pause.
+
+**Solutions** :
+1. Augmenter la dose dans le programme → vitesse cible diminue → T_attente positif
+2. Augmenter la pression eau → T_remplissage diminue → plus de marge
+3. Réduire t_vidange_s dans Config → Machine si surestimé
+4. Accepter la dose corrigée affichée (la machine fait de son mieux)
+
+---
+
 ### T_attente très long → vitesse réelle trop faible
 
 **Symptôme** : vitesse mesurée << vitesse cible, T_attente augmente.

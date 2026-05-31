@@ -5,6 +5,48 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [PR-17] — 2026-05-31 — Sécurité longueur SEC-L
+
+### Added
+- `state_machine_longueur_sec_depassee()` : retourne true si `longueur_session > longueur_deroule + fin_course_seuil_m`
+- SEC-L dans `securites_watchdog()` : déclenche ARRET_URGENCE `"Securite longueur - enroule > deroule"` si EN_COURS et longueur dépassée
+- Garde contre : capteur fin de course défaillant + comptage longueur qui continue
+- N'agit pas si `longueur_deroule = 0` (déploiement non mesuré)
+- Seuil partagé avec SEC-1 (`fin_course_seuil_m`, configurable, défaut 10m)
+
+---
+
+## [PR-16] — 2026-05-31 — Alerte dose trop basse — vitesse max et dose corrigée
+
+### Added
+- `vitesse_max_m_h` : vitesse max physique atteignable quand T_attente < 0 (cycle pneumatique saturé)
+- `dose_corrigee_mm` : dose réellement délivrée à `vitesse_max_m_h`
+- Les deux champs exposés dans `machine_status_t` et JSON WebSocket
+
+### Changed
+- Alerte `alert-pression` renommée : `"Dose configuree trop basse — vitesse max : X m/h — dose corrigee : Y mm"` (était : "Pression insuffisante" — message imprecis)
+- `lookup_vitesse_cible()` : capture `debit_tmp` pour le calcul de dose corrigée
+
+---
+
+## [PR-15] — 2026-05-31 — Correction fin de course — arrêt normal vs SEC-1
+
+### Fixed
+- **Bug** : `fin_course` pendant `EN_COURS` déclenchait toujours ARRET_URGENCE (SEC-1 interceptait avant la machine d'états) — le code de fin normale dans EN_COURS était du code mort
+- SEC-1 désormais conditionné à `!state_machine_fin_course_est_normale()` : si `longueur_restante <= fin_course_seuil_m`, la machine d'états gère → ARRET_FINAL propre
+- `ETAT_REMPLISSAGE_POUMON` : détection `fin_course` ajoutée **après** `poumon_ok` (évite de couper EV_POUMON en cours de remplissage → rétraction cliquet → boucle infinie)
+- `ETAT_EN_COURS` : guard `s_sous_etat != SOUS_REMPLISSAGE` pour la même raison
+
+### Added
+- `fin_course_seuil_m` (float, défaut 10m) dans `config_machine_t` + NVS `irri_machine`
+- `state_machine_fin_course_est_normale()` — fonction sans mutex, appellable depuis `securites_watchdog()`
+- Champ `cfg_fin_course_seuil_m` dans `machine_status_t` et JSON WebSocket
+- Champ UI "Seuil fin de course normale (m)" dans Config → Machine (section Modes dégradés)
+
+**Taille firmware** : 0xe1c70 bytes (~921 KB) — 53% flash libre
+
+---
+
 ## [PR-14] — 2026-05-31 — Robustesse — TWDT + détection coupure + heartbeat RC
 
 ### Added
