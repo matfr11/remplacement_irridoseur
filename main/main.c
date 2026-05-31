@@ -1,6 +1,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "esp_task_wdt.h"
 #include "config_nvs.h"
 #include "batterie.h"
 #include "gpio_handler.h"
@@ -15,8 +16,10 @@ static const char *TAG = "main";
 static void state_machine_task(void *arg)
 {
     (void)arg;
+    esp_task_wdt_add(NULL);  // TWDT : reboot si bloqué > CONFIG_ESP_TASK_WDT_TIMEOUT_S
     while (1) {
         tick_state_machine();
+        esp_task_wdt_reset();
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }

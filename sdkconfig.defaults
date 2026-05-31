@@ -47,6 +47,13 @@ CONFIG_LOG_DEFAULT_LEVEL=3
 # Pas de chiffrement NVS (pas de secure boot sur cette cible)
 # CONFIG_NVS_ENCRYPTION is not set
 
+# --- Task Watchdog Timer (TWDT) ---
+# Reboot si state_machine_task bloquée > 3s (plantage, deadlock)
+CONFIG_ESP_TASK_WDT_EN=y
+CONFIG_ESP_TASK_WDT_INIT=y
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=3
+CONFIG_ESP_TASK_WDT_PANIC=y
+
 # --- Tests unitaires ---
 # Désactivé par défaut — activer avec "idf.py menuconfig" pour le dev
 # CONFIG_IRRI_ENABLE_TESTS is not set

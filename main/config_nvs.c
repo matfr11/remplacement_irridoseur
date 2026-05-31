@@ -145,6 +145,27 @@ esp_err_t config_nvs_lire_urgence(char *raison, size_t len)
     return ret;
 }
 
+esp_err_t config_nvs_sauver_session_active(bool actif)
+{
+    nvs_handle_t h;
+    esp_err_t ret = nvs_open(NS_STATE, NVS_READWRITE, &h);
+    if (ret != ESP_OK) return ret;
+    ret = nvs_set_u8(h, "session_act", actif ? 1u : 0u);
+    if (ret == ESP_OK) ret = nvs_commit(h);
+    nvs_close(h);
+    return ret;
+}
+
+bool config_nvs_lire_session_active(void)
+{
+    nvs_handle_t h;
+    if (nvs_open(NS_STATE, NVS_READONLY, &h) != ESP_OK) return false;
+    uint8_t val = 0;
+    nvs_get_u8(h, "session_act", &val);
+    nvs_close(h);
+    return val != 0;
+}
+
 esp_err_t config_nvs_sauver_longueur(float longueur_m)
 {
     nvs_handle_t h;

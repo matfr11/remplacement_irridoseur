@@ -75,6 +75,13 @@ static int           s_batt_tick   = 299;  // declenche mesure au 1er tick
 // Doit être true pour que VEILLE puisse démarrer (protège contre redémarrage auto après stop/urgence)
 static bool              s_demarrage_autorise = true;  // false uniquement après ARRET_URGENCE
 
+// Coupure de courant détectée au boot (session_active=1 sans urgence au redémarrage)
+static bool              s_coupure_detectee   = false;
+
+// Heartbeat circuit RC GPIO 2 — conditionnel sur cfg.heartbeat_rc_on
+static bool              s_heartbeat_level    = false;
+static int64_t           s_heartbeat_ms       = 0;
+
 #ifdef CONFIG_IRRI_ENABLE_TESTS
 static bool s_sim_active      = false;
 static bool s_sim_pression    = true;
@@ -177,6 +184,9 @@ void state_machine_init(void)
         ESP_LOGE(TAG, "Profil machine invalide (largeur et spires tous les deux à 0)");
     }
 
+    // Détection coupure de courant : session_active=1 sans raison d'urgence
+    bool session_etait_active = config_nvs_lire_session_active();
+
     // Raison urgence persistante depuis NVS
     char raison_nvs[64] = "";
     config_nvs_lire_urgence(raison_nvs, sizeof(raison_nvs));
@@ -186,7 +196,24 @@ void state_machine_init(void)
         s_demarrage_autorise = false;  // reboot après urgence : démarrage explicite requis
     } else {
         s_demarrage_autorise = true;   // démarrage auto dès mise en pression
+        if (session_etait_active && s_longueur_enroulee > 0.0f) {
+            s_coupure_detectee = true;
+            s_demarrage_autorise = false;  // attendre choix opérateur (reprendre ou reset)
+            ESP_LOGW(TAG, "Coupure detectee - session interrompue (enroule=%.1fm)",
+                     s_longueur_enroulee);
+        }
     }
+
+    // Initialiser GPIO heartbeat RC (sortie, défaut LOW)
+    gpio_config_t hb_cfg = {
+        .pin_bit_mask = (1ULL << PIN_HEARTBEAT),
+        .mode         = GPIO_MODE_OUTPUT,
+        .pull_up_en   = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&hb_cfg);
+    gpio_set_level(PIN_HEARTBEAT, 0);
 
     gpio_all_ev_off();
     entrer_etat(ETAT_VEILLE);
@@ -276,6 +303,8 @@ void tick_state_machine(void)
         s_fc_deroule_prev = e.fin_course;
         if (s_demarrage_autorise && e.pression_ok && !e.fin_course && s_status.cfg_valide) {
             s_demarrage_autorise = false;
+            s_coupure_detectee = false;
+            config_nvs_sauver_session_active(true);  // session démarre
             gpio_ev_canon_set(true);
             entrer_etat(ETAT_OUVERTURE_CANON);
         }
@@ -540,6 +569,7 @@ void tick_state_machine(void)
             s_longueur_session_m    = 0.0f;
             // s_longueur_deroule_m conservée : l'opérateur redéploiera la même longueur
             config_nvs_sauver_longueur(0.0f);
+            config_nvs_sauver_session_active(false);  // fin propre
             regulation_reset_calibration();
             config_nvs_sauver_machine(&s_cfg_machine);
             memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
@@ -699,6 +729,22 @@ void tick_state_machine(void)
     s_status.cfg_denivele_m       = s_cfg_machine.denivele_m;
     s_status.cfg_machine_active   = s_cfg_machine.machine_active;
     s_status.cfg_cycles_par_tour  = s_cfg_machine.cycles_par_tour;
+    s_status.cfg_heartbeat_rc_on  = s_cfg_machine.heartbeat_rc_on;
+    s_status.coupure_detectee     = s_coupure_detectee;
+
+    // Heartbeat GPIO 2 pour circuit RC fail-safe (conditionnel)
+    if (s_cfg_machine.heartbeat_rc_on) {
+        if (now_ms() - s_heartbeat_ms >= 500) {
+            s_heartbeat_level = !s_heartbeat_level;
+            gpio_set_level(PIN_HEARTBEAT, s_heartbeat_level ? 1 : 0);
+            s_heartbeat_ms = now_ms();
+        }
+    } else {
+        if (s_heartbeat_level) {
+            s_heartbeat_level = false;
+            gpio_set_level(PIN_HEARTBEAT, 0);
+        }
+    }
 
     xSemaphoreGive(s_mutex);
 }
@@ -755,8 +801,10 @@ void state_machine_cmd_reset(void)
     if (s_etat == ETAT_ARRET_URGENCE) {
         ESP_LOGI(TAG, "cmd_reset - sortie urgence");
         s_demarrage_autorise = false;
+        s_coupure_detectee = false;
         memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
         config_nvs_sauver_urgence("");
+        config_nvs_sauver_session_active(false);
         s_longueur_enroulee     = 0.0f;
         s_longueur_derniere_nvs = 0.0f;
         s_longueur_session_m    = 0.0f;
@@ -766,11 +814,13 @@ void state_machine_cmd_reset(void)
         entrer_etat(ETAT_VEILLE);
     } else if (s_etat == ETAT_ARRET_FINAL) {
         ESP_LOGI(TAG, "cmd_reset - sortie arret final (manuel)");
-        s_demarrage_autorise = true;  // arrêt normal : redémarrage auto autorisé à la prochaine mise en pression
+        s_demarrage_autorise = true;
+        s_coupure_detectee = false;
         s_longueur_enroulee     = 0.0f;
         s_longueur_derniere_nvs = 0.0f;
         s_longueur_session_m    = 0.0f;
         config_nvs_sauver_longueur(0.0f);
+        config_nvs_sauver_session_active(false);
         regulation_reset_calibration();
         config_nvs_sauver_machine(&s_cfg_machine);
         memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
@@ -901,6 +951,7 @@ void state_machine_cmd_resume(void)
         ESP_LOGI(TAG, "cmd_resume - reprise session (enroule=%.1fm deroule=%.1fm)",
                  s_longueur_session_m, s_longueur_deroule_m);
         s_demarrage_autorise = false;
+        s_coupure_detectee = false;
         memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
         config_nvs_sauver_urgence("");
         // longueurs préservées intentionnellement

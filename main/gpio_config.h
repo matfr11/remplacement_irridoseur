@@ -60,3 +60,10 @@
 // Mesure tension batterie — ADC1 canal 0, diviseur R1=100kΩ/R2=27kΩ
 // -----------------------------------------------------------------------------
 #define PIN_BATT_ADC            36
+
+// -----------------------------------------------------------------------------
+// Heartbeat circuit RC fail-safe (optionnel — activé via Config → Machine)
+// Toggle 1Hz → LED bleue intégrée + signal circuit RC
+// Inactif par défaut (heartbeat_rc_on = false dans config_machine_t)
+// -----------------------------------------------------------------------------
+#define PIN_HEARTBEAT            2

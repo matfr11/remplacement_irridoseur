@@ -142,7 +142,9 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         "\"batterie_etat\":\"%s\","
         "\"batterie_couleur\":\"%s\","
         "\"cfg_batt_warn_v\":%.1f,"
-        "\"cfg_batt_crit_v\":%.1f"
+        "\"cfg_batt_crit_v\":%.1f,"
+        "\"cfg_heartbeat_rc_on\":%s,"
+        "\"coupure_detectee\":%s"
         "}",
         etat_to_str(s->etat), (int)s->etat,
         s->prog_nom,
@@ -205,7 +207,9 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         batterie_etat_str((batt_etat_t)s->batterie_etat),
         batterie_etat_couleur((batt_etat_t)s->batterie_etat),
         s->cfg_batt_warn_v,
-        s->cfg_batt_crit_v
+        s->cfg_batt_crit_v,
+        s->cfg_heartbeat_rc_on  ? "true" : "false",
+        s->coupure_detectee     ? "true" : "false"
     );
 }
 
@@ -350,6 +354,7 @@ static void handle_ws_command(const char *data, size_t len)
         if (json_parse_bool (data, "mode_deg_spires",    &b)) cfg.mode_deg_spires     = b;
         if (json_parse_int  (data, "machine_active",     &n)) cfg.machine_active      = n;
         if (json_parse_float(data, "cycles_par_tour",    &f)) cfg.cycles_par_tour     = f;
+        if (json_parse_bool (data, "heartbeat_rc_on",    &b)) cfg.heartbeat_rc_on     = b;
         config_nvs_sauver_machine(&cfg);
         {
             float w = 11.5f, c = 11.0f;

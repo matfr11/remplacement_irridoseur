@@ -163,6 +163,7 @@ details>summary::-webkit-details-marker{display:none}
       <div id="alert-urgence" class="alert" style="display:none"><strong>ARRET URGENCE :</strong> <span id="raison-txt"></span></div>
       <div id="alert-debordement-actif" class="alert" style="display:none;background:#E65100;color:#fff">Debordement bobine actif &mdash; resolvez le probleme avant de reprendre</div>
       <div id="alert-debordement-resolu" class="alert" style="display:none;background:#2E7D32;color:#fff">Debordement resolu &mdash; vous pouvez reprendre ou reinitialiser</div>
+      <div id="alert-coupure" class="alert" style="display:none;background:#37474F;color:#fff">&#9889; Coupure detectee &mdash; session interrompue a <span id="coupure-longueur"></span> m. Reprendre ou reinitialiser ?</div>
       <div id="alert-pression" class="alert alert-warn" style="display:none">Pression insuffisante</div>
       <div id="alert-deg-poumon" class="alert alert-warn" style="display:none">Mode dégradé : contact poumon</div>
       <div id="alert-deg-spires" class="alert" style="display:none;background:#5a1a1a;border-color:#c62828">&#9888; SECURITE SPIRES DESACTIVEE — risque débordement bobine</div>
@@ -323,6 +324,10 @@ details>summary::-webkit-details-marker{display:none}
           <div class="toggle-row">
             <label>Bypass sécurité spires <span style="color:#ef9a9a;font-size:11px">(capteur défaillant)</span></label>
             <label class="tgl"><input type="checkbox" id="m-mds" onchange="saveMachine()"><span class="tgl-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <label>Circuit RC heartbeat (GPIO 2) <span style="color:#90a4ae;font-size:11px">activer si circuit câblé</span></label>
+            <label class="tgl"><input type="checkbox" id="m-heartbeat" onchange="saveMachine()"><span class="tgl-slider"></span></label>
           </div>
           <div class="field" id="m-trempl-wrap" style="display:none">
             <label>T. remplissage fixe (s)</label>
@@ -577,10 +582,13 @@ function updateUI() {
   const btnStart = document.getElementById('btn-start');
   if (btnStart) btnStart.disabled = !s.cfg_valide || (!veille && !deroule);
   const debordement = urgence && (s.raison_arret || '').indexOf('Debordement') !== -1;
-  show('btn-reset', arret);
-  show('btn-resume', arret && s.longueur_enroulee_m > 0 && (!debordement || !s.secu_spires));
+  const coupure = !urgence && s.coupure_detectee && veille;
+  show('btn-reset', arret || coupure);
+  show('btn-resume', (arret || coupure) && s.longueur_enroulee_m > 0 && (!debordement || !s.secu_spires));
   show('alert-debordement-actif',  debordement &&  s.secu_spires);
   show('alert-debordement-resolu', debordement && !s.secu_spires);
+  show('alert-coupure', coupure);
+  if (coupure) txt('coupure-longueur', s.longueur_enroulee_m != null ? s.longueur_enroulee_m.toFixed(0) : '?');
   show('btn-stop', !arret && !veille && !deroule);
   show('btn-deroule', veille && !s.fin_course);   // déploiement manuel si fin_course déjà libéré
   // Panneau déroulement
@@ -674,6 +682,7 @@ function loadConfigFromStatus() {
     show('m-trempl-wrap', s.mode_degrade_poumon);
   }
   if (s.mode_degrade_spires != null) setCheck('m-mds', s.mode_degrade_spires);
+  if (s.cfg_heartbeat_rc_on != null) setCheck('m-heartbeat', s.cfg_heartbeat_rc_on);
 
   // Champs programme actif depuis JSON statut (prog_* fields)
   if (s.prog_dose_mm != null)         setField('p-dose', s.prog_dose_mm || '');
@@ -778,7 +787,8 @@ function saveMachine() {
     denivele_m: parseFloat(document.getElementById('m-denivele').value) || 0,
     cycles_par_tour: parseFloat(document.getElementById('m-cyclestour').value) || 0,
     batt_warn_v: parseFloat(document.getElementById('m-batt-warn').value) || 11.5,
-    batt_crit_v: parseFloat(document.getElementById('m-batt-crit').value) || 11.0
+    batt_crit_v: parseFloat(document.getElementById('m-batt-crit').value) || 11.0,
+    heartbeat_rc_on: document.getElementById('m-heartbeat').checked
   });
   configDirty = false;
 }
@@ -798,7 +808,8 @@ function resetEtalonnage() {
     denivele_m: parseFloat(document.getElementById('m-denivele').value) || 0,
     cycles_par_tour: parseFloat(document.getElementById('m-cyclestour').value) || 0,
     batt_warn_v: parseFloat(document.getElementById('m-batt-warn').value) || 11.5,
-    batt_crit_v: parseFloat(document.getElementById('m-batt-crit').value) || 11.0
+    batt_crit_v: parseFloat(document.getElementById('m-batt-crit').value) || 11.0,
+    heartbeat_rc_on: document.getElementById('m-heartbeat').checked
   });
 }
 
@@ -827,7 +838,8 @@ function openDerouleCorrection() {
         denivele_m: st.cfg_denivele_m || 0,
         cycles_par_tour: st.cfg_cycles_par_tour || 0,
         batt_warn_v: st.cfg_batt_warn_v || 11.5,
-        batt_crit_v: st.cfg_batt_crit_v || 11.0
+        batt_crit_v: st.cfg_batt_crit_v || 11.0,
+        heartbeat_rc_on: st.cfg_heartbeat_rc_on || false
       });
       return;
     }

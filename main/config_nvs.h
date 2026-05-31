@@ -29,6 +29,7 @@ typedef struct {
     float   t_rempl_fixe_s;         // Durée remplissage fixe (mode dégradé B)
     float   denivele_m;             // Dénivelé terrain (0 = plat)
     float   cycles_par_tour;        // Nb cycles poumon par tour de bobine (0 = non renseigné)
+    bool    heartbeat_rc_on;        // Heartbeat GPIO 2 pour circuit RC fail-safe (défaut OFF)
 } config_machine_t;
 
 // -----------------------------------------------------------------------------
@@ -61,6 +62,7 @@ typedef struct {
     .t_rempl_fixe_s    = 0.0f,  \
     .denivele_m        = 0.0f,  \
     .cycles_par_tour   = 0.0f,  \
+    .heartbeat_rc_on   = false, \
 }
 
 // -----------------------------------------------------------------------------
@@ -80,6 +82,11 @@ esp_err_t config_nvs_sauver_prog_actif(int idx);
 // Sauvegarde la raison du dernier arrêt urgence (namespace irri_state)
 esp_err_t config_nvs_sauver_urgence(const char *raison);
 esp_err_t config_nvs_lire_urgence(char *raison, size_t len);
+
+// Flag session active — permet de détecter une coupure de courant au reboot
+// Mis à 1 au démarrage d'une session, mis à 0 à l'arrêt propre (ARRET_FINAL/reset)
+esp_err_t config_nvs_sauver_session_active(bool actif);
+bool      config_nvs_lire_session_active(void);
 
 // Longueur persistante session — survie au reboot (namespace irri_state)
 // longueur_m = position absolue interne (calculs mécaniques)

@@ -120,6 +120,9 @@ typedef struct {
     // Validité config
     bool            cfg_valide;
 
+    // Coupure détectée au boot (session interrompue sans arrêt propre)
+    bool            coupure_detectee;
+
     // Paramètres machine (pour initialisation UI Config)
     float           cfg_t_vidange_s;
     float           cfg_kp_regulation;
@@ -130,6 +133,7 @@ typedef struct {
     float           cfg_denivele_m;
     int             cfg_machine_active;
     float           cfg_cycles_par_tour;
+    bool            cfg_heartbeat_rc_on;
 } machine_status_t;
 
 // Session summary pour télémétrie fin de session
