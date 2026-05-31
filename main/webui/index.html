@@ -178,6 +178,10 @@ details>summary::-webkit-details-marker{display:none}
       </div>
 
       <div class="card">
+        <div class="gpio-row" style="padding-bottom:8px;margin-bottom:2px;border-bottom:2px solid var(--border)">
+          <span style="font-weight:600">Batterie</span>
+          <span><span class="dot" id="dot-batt" style="width:12px;height:12px;margin-right:6px"></span><span id="batt-v">--</span> V</span>
+        </div>
         <div class="gpio-row">
           <span>EV CANON</span>
           <span><span class="dot" id="dot-canon"></span><span id="txt-canon">--</span></span>
@@ -193,16 +197,6 @@ details>summary::-webkit-details-marker{display:none}
         <div class="gpio-row">
           <span>Fin de course</span>
           <span><span class="dot" id="dot-fdc"></span><span id="txt-fdc">--</span></span>
-        </div>
-      </div>
-
-      <div class="card" id="card-batt">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:13px;color:var(--muted)">Batterie</span>
-          <span style="font-size:13px"><strong id="batt-v">--</strong> V &mdash; <span id="batt-etat" style="font-weight:600">--</span> (<span id="batt-pct">--</span>%)</span>
-        </div>
-        <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden">
-          <div id="batt-bar" style="height:100%;border-radius:4px;width:0%;transition:width .5s,background .5s"></div>
         </div>
       </div>
 
@@ -622,12 +616,18 @@ function updateUI() {
   txt('s-fcorr', s.facteur_correction != null ? s.facteur_correction.toFixed(4) : '--');
   txt('s-cycles', s.cycles_total != null ? s.cycles_total : '--');
   txt('s-batt', s.batterie_v != null ? s.batterie_v.toFixed(2) : '--');
-  // Batterie accueil
-  txt('batt-v',    s.batterie_v   != null ? s.batterie_v.toFixed(1)  : '--');
-  txt('batt-etat', s.batterie_etat != null ? s.batterie_etat          : '--');
-  txt('batt-pct',  s.batterie_pct  != null ? s.batterie_pct           : '--');
-  const bar = document.getElementById('batt-bar');
-  if (bar) { bar.style.width = (s.batterie_pct || 0) + '%'; bar.style.background = s.batterie_couleur || '#6b7280'; }
+  // Batterie — pastille compacte
+  txt('batt-v', s.batterie_v != null ? s.batterie_v.toFixed(1) : '--');
+  const battDot = document.getElementById('dot-batt');
+  if (battDot) {
+    const ec = s.batterie_etat;
+    const battCol = ec === 0 ? '#42A5F5'     // CHARGE — bleu
+                  : ec === 1 ? '#66BB6A'     // PLEINE — vert
+                  : ec === 2 ? '#66BB6A'     // CORRECTE — vert
+                  : ec === 3 ? '#FFA726'     // FAIBLE — orange
+                  :            '#EF5350';    // CRITIQUE — rouge
+    battDot.style.background = battCol;
+  }
   // Stats campagne
   txt('c-sessions', s.camp_nb_sessions != null ? s.camp_nb_sessions : '--');
   txt('c-surface', s.camp_surface_ha != null ? s.camp_surface_ha.toFixed(3) : '--');
