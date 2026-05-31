@@ -326,6 +326,31 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | **PR-11** | ✅ Fait | Tests unitaires PC Unity/CMake (47 tests, CI GitHub Actions) + simulateur web `/test` |
 | **Post PR-11** | ✅ Fait | Fix vitesse m/h (×3600), cmd_resume, stats session calculées, campagne NVS, preview vitesse programme, ETAT_DEROULE, estimation heure arrivée, mode_deg_spires, calcul dist_cycle_m |
 | **PR-12** | ✅ Fait | Mesure tension batterie ADC1 GPIO 36 — diviseur 100kΩ/27kΩ — seuils NVS — barre UI — simulateur slider |
+| **PR-13** | ✅ Fait | Reprendre après sécurité débordement bobine — alertes UI état capteur — 3-tap reprendre (longueurs préservées) |
+
+---
+
+## Documentation
+
+| Document | Audience | Contenu |
+|---|---|---|
+| [docs/dev/GETTING_STARTED.md](docs/dev/GETTING_STARTED.md) | Développeur | Prérequis, build, flash, tests, simulateur |
+| [docs/dev/ARCHITECTURE.md](docs/dev/ARCHITECTURE.md) | Développeur | Vue d'ensemble, flux données, ajouter machine/abaque |
+| [docs/dev/HARDWARE.md](docs/dev/HARDWARE.md) | Développeur / installateur | Câblage détaillé, diviseurs de tension, mesures terrain |
+| [docs/dev/API_WEBSOCKET.md](docs/dev/API_WEBSOCKET.md) | Développeur | Format JSON complet, toutes les commandes, exemple session |
+| [docs/dev/CONTRIBUER.md](docs/dev/CONTRIBUER.md) | Contributeur | Conventions commits, workflow Git, règles nommage |
+| [docs/dev/TROUBLESHOOTING.md](docs/dev/TROUBLESHOOTING.md) | Développeur / utilisateur | Problèmes connus, logs Serial, reset NVS, OTA |
+| [SPECS_FINAL_v3.md](SPECS_FINAL_v3.md) | Référence | Spécifications complètes système (source de vérité) |
+| [CHANGELOG.md](CHANGELOG.md) | Tous | Historique des changements par PR |
+
+---
+
+## Machines compatibles
+
+| Machine | Tuyau | Étages | Abaque | Statut |
+|---|---|---|---|---|
+| Irrifrance Structure 1 bis | PE Ø82mm — 330m | 4 | Nelson SR 150C | ✅ Testé (machine de référence) |
+| Autre enrouleur | — | — | — | Contribuer — voir [CONTRIBUER.md](docs/dev/CONTRIBUER.md) |
 
 ---
 
@@ -354,6 +379,17 @@ test: ajout/modification tests
 docs: documentation
 refactor: refactorisation
 ```
+
+Voir le guide complet : [docs/dev/CONTRIBUER.md](docs/dev/CONTRIBUER.md)
+
+---
+
+## Licence
+
+Ce projet est distribué sous licence **MIT**.
+
+Utilisation libre pour usage personnel, agricole ou commercial.
+Contributions bienvenues via Pull Request sur GitHub.
 
 ---
 

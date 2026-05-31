@@ -1,353 +1,225 @@
 # Changelog — Irrifrance ESP32
 
 Toutes les modifications notables sont documentées ici.
-Format : [PR-XX] — date — description
+Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
 ## [PR-13] — 2026-05-30 — Reprendre après sécurité débordement + 3-tap reprendre
 
-### main/state_machine.c
-- `state_machine_cmd_resume()` : garde firmware — refusée si raison="Debordement bobine" ET `secu_spires` encore actif (log WARN)
-- Bloc réarmement physique 3-tap : longueurs **préservées** (était reset à 0) — comportement "reprendre session" pour toutes les urgences (fin de course et débordement)
-- 3-tap bloqué si raison="Debordement bobine" ET `secu_spires` actif (SEC-2 re-déclencherait immédiatement)
+### Added
+- Alerte orange "Debordement bobine actif" dans l'UI (visible si urgence debordement ET `secu_spires` encore actif)
+- Alerte verte "Debordement resolu" dans l'UI (visible si urgence debordement ET capteur libéré)
 
-### main/webui/index.html
-- Alerte orange "Debordement bobine actif" : visible si urgence debordement ET capteur encore actif
-- Alerte verte "Debordement resolu" : visible si urgence debordement ET capteur libéré
-- Bouton REPRENDRE SESSION : masqué tant que debordement actif (conditionné sur `s.secu_spires`)
+### Changed
+- **3-tap poumon_plein en ARRET_URGENCE** : longueurs préservées désormais (comportement "reprendre" au lieu de "reset complet")
+- Bouton REPRENDRE SESSION masqué tant que débordement bobine est encore actif
+- `state_machine_cmd_resume()` : refusée si raison="Debordement bobine" ET `secu_spires` actif (garde firmware)
+- 3-tap poumon_plein bloqué si débordement encore actif (SEC-2 re-déclencherait immédiatement)
 
-### Taille firmware
-- 0xe0fe0 bytes (~900 KB) — **53% flash libre**
+**Taille firmware** : 0xe0fe0 bytes (~900 KB) — 53% flash libre
 
 ---
 
-## [PR-10] — 2026-05-29 — Intégration complète
+## [PR-12] — 2026-05-29 — Mesure tension batterie
 
-### state_machine.h
-- Ajout 8 champs `cfg_*` dans `machine_status_t` (t_vidange_s, kp, n_cycles_calib, fenetre, max_cycles_si, t_rempl_fixe_s, denivele_m, machine_active) — diffusés dans le JSON WebSocket 500ms
-- Déclaration `state_machine_recharger_config()` et `state_machine_get_session_summary()`
+### Added
+- `batterie.c/h` : mesure ADC1 GPIO 36, diviseur R1=100kΩ/R2=27kΩ, moyenne 16 samples
+- Seuils configurables NVS (`batt_warn_v`, `batt_crit_v`) via Config → Machine
+- Barre de niveau batterie dans l'UI Accueil (tension V, état texte, pourcentage indicatif)
+- 5 états batterie : CHARGE (>13.5V), PLEINE, CORRECTE, FAIBLE, CRITIQUE
+- Curseur tension batterie dans le simulateur web (`batterie_sim_set_voltage()`)
+- `config_nvs_lire_batt_seuils()` / `config_nvs_sauver_batt_seuils()`
 
-### state_machine.c
-- `state_machine_recharger_config()` : relit NVS et met à jour s_cfg_machine, s_cfg_prog, s_profil, s_abaque, s_status.cfg_valide, prog_nom, machine_nom, mode_degrade — refusée silencieusement hors VEILLE
-- `state_machine_get_session_summary()` : expose s_session via mutex
-- À l'entrée de ETAT_ARRET_FINAL : peuple session_summary_t et appelle telemetry_envoyer_bilan() (une seule fois par session via s_bilan_envoye)
-- Tracking s_duree_pause_ms (incrémenté à chaque tick de PAUSE_PRESSION)
-- Champs cfg_* mis à jour dans s_status à chaque tick
-- Réinitialisation s_bilan_envoye et s_duree_pause_ms au départ du cycle (OUVERTURE_CANON)
+### Changed
+- `machine_status_t` : ajout `batterie_v`, `batterie_pct`, `batterie_etat`, `cfg_batt_warn_v`, `cfg_batt_crit_v`
+- `status_to_json()` : ajout 5 champs batterie
+- `state_machine_init()` : appel `batterie_init()`, chargement seuils NVS, `batterie_set_seuils()`
+- Tick state_machine : lecture batterie toutes les 300 itérations (30s)
 
-### webserver.h / webserver.c
-- Déclaration et implémentation `webserver_broadcast_raw(const char *json)` — factorisation via broadcast_json() interne
-- `status_to_json()` : ajout des 8 champs cfg_* ; JSON_BUF_SIZE porté à 2048
-- Appel `state_machine_recharger_config()` après select_programme, save_programme, save_machine
+---
 
-### telemetry.c
-- `telemetry_envoyer_bilan()` implémentée : appelle state_machine_get_session_summary(), sérialise en JSON `{"type":"bilan",...}`, broadcast via webserver_broadcast_raw()
+## [PR-11] — 2026-05-29 — Tests unitaires PC + simulateur web
 
-### main/webui/index.html
-- `loadConfigFromStatus()` complétée : peuple les champs m-tvidange, m-kp, m-ncalib, etc. depuis les champs cfg_* du JSON statut
-- Réception des messages `{"type":"bilan"}` : affichage bandeau vert 15s dans l'onglet Accueil
+### Added
+- `test/host/` : infrastructure CMake pour tests unitaires PC (Unity framework, sans matériel)
+- Stubs ESP-IDF : GPIO, NVS, FreeRTOS, log, timer haute résolution
+- Helpers : config NVS valide/invalide, injection GPIO
+- Scénarios d'intégration : cycle complet, urgences SEC-1/SEC-2, modes dégradés
+- 47 tests unitaires (tous verts en CI GitHub Actions)
+- `simulator/simulator.c` : simulation GPIO via macro `READ_GPIO` (`sim_gpio_get_level`)
+- `simulator/simulator_ws.c` : routes `/test` et `/ws_test`, parsing JSON injection capteurs
+- Génération automatique de pulses vitesse (`sim_set_vitesse_auto`)
+- `CONFIG_IRRI_TEST_MODE` : sdkconfig + menuconfig
 
-### test/test_state_machine.c
-- T_reload_veille : state_machine_recharger_config() en VEILLE → reste VEILLE, pas de crash
-- T_reload_hors_veille : state_machine_recharger_config() en EN_COURS → ignorée, état inchangé
+### Changed
+- `gpio_handler.c` : macro `READ_GPIO(pin)` (remplace `gpio_get_level(pin)` directement)
+- `state_machine.c` : stubs de simulation séparés du code de production
 
-### Taille firmware
-- 0xd88f0 bytes (~869 KB) — **55% flash libre** (+6 KB vs PR-09)
+---
+
+## [PR-10] — 2026-05-29 — Intégration complète + stats campagne + ETAT_DEROULE
+
+### Added
+- `ETAT_DEROULE` (état 9) : mesure longueur déployée via pastilles pendant traction tracteur
+- Estimation heure d'arrivée (`heure_arrivee_unix`, `heure_arrivee_relative_s`)
+- Preview vitesse live dans l'UI Config (`GET /api/vitesse?p=X&b=Y&d=Z`)
+- Stats campagne cumulatives NVS (`irri_stats`, blob `config_stats_t`)
+- Mode dégradé bypass spires (`mode_deg_spires`, `securites_set_bypass_spires()`)
+- Calcul `dist_par_cycle_m` depuis géométrie (si `cycles_par_tour > 0`)
+- `cmd_resume` : reprise session depuis ARRET_URGENCE/ARRET_FINAL, longueurs préservées
+- `state_machine_cmd_reset_campagne()` + commande WebSocket `reset_campagne`
+- `state_machine_recharger_config()` : relit NVS sans redémarrage (VEILLE uniquement)
+- `state_machine_get_session_summary()` : expose bilan session pour télémétrie
+- Bilan session JSON `{"type":"bilan",...}` diffusé à entrée ARRET_FINAL
+- `webserver_broadcast_raw(const char *json)`
+- 8 champs `cfg_*` dans `machine_status_t` (pour initialiser l'UI Config depuis statut)
+- `state_machine_set_longueur()` : correction manuelle longueur déployée
+
+### Changed
+- `machine_status_t` : ajout nombreux champs (stats session, campagne, estimation arrivée, cfg_*)
+- `JSON_BUF_SIZE` porté à 3072
+- `config_nvs.h` : ajout `config_stats_t`, `config_nvs_lire/sauver_stats()`, `config_nvs_reset_stats()`
+- Vitesse m/h corrigée (×3600 manquant)
+- `loadConfigFromStatus()` dans l'UI complétée (peuple tous les champs Config depuis JSON)
+
+### Fixed
+- Vitesse affichée 0 en cours de session (facteur 3600 absent dans calcul)
 
 ---
 
 ## [PR-09] — 2026-05-29 — Web UI mobile embarquée — 3 onglets
 
-### main/webui/index.html (nouveau)
-- HTML/CSS/JS inline en un seul fichier (~38 KB) — zéro dépendance externe
-- Dark theme, responsive mobile 390px, boutons/textes min 48px
-- **Onglet Accueil** : badge état coloré (9 états), tuiles longueur/vitesse/durée,
-  heure d'arrivée estimée, états GPIO en temps réel, boutons DÉMARRER/ARRÊT/RESET,
-  modal étalonnage (`{"cmd":"etalonner","longueur_m":x}`), alertes modes dégradés
-- **Onglet Stats** : 13 métriques temps réel (surface, dose, débit, pression, étage,
-  cycles, timings poumon, facteur correction) — lecture seule, mise à jour 500ms
-- **Onglet Config** — 5 sections dépliables :
-  - Programme actif : 5 programmes, dropdown + renommer, tous les champs,
-    `{"cmd":"save_programme",...}`
-  - Profil machine : dropdowns machine/abaque, t_vidange, Kp, cycles calibration,
-    reset étalonnage, `{"cmd":"save_machine",...}`
-  - Modes dégradés : checkboxes mode_deg_vitesse/poumon, t_rempl_fixe_s conditionnel
-  - Mise à jour firmware : upload .bin `POST /ota/update`, barre de progression XHR
-  - IRRITESTEUR : boutons EV_CANON/EV_POUMON ON/OFF + lecture entrées temps réel
-    (visible uniquement à ETAT_VEILLE)
+### Added
+- `main/webui/index.html` : UI HTML/CSS/JS inline (~38 KB), zéro dépendance externe
+- Dark theme, responsive mobile 390px, boutons min 48px tactile
+- Onglet **Accueil** : badge état coloré, tuiles longueur/vitesse/durée, GPIO temps réel, boutons opérateur, alertes
+- Onglet **Stats** : 13 métriques session temps réel
+- Onglet **Config** : 5 sections dépliables (Programme, Machine, Modes dégradés, OTA, IRRITESTEUR)
+- `EMBED_FILES "webui/index.html"` dans CMakeLists.txt
 
-### main/webui.h
-- Correction symboles asm : `_binary_index_html_start/end`
-  (nom généré par ESP-IDF depuis le nom de fichier `index.html`)
+### Changed
+- `root_handler()` dans webserver.c retourne le HTML embarqué (était placeholder texte)
 
-### main/CMakeLists.txt
-- Ajout `EMBED_FILES "webui/index.html"` dans `idf_component_register`
-
-### main/webserver.c
-- `root_handler()` : retourne le HTML embarqué via `webui_html_start/end`
-  (remplace le placeholder texte de PR-08)
-- Ajout `#include "webui.h"`
-
-### Taille firmware
-- 0xd7d70 bytes (~863 KB) — **55% flash libre** (+38 KB vs PR-08 pour l'UI)
+**Taille firmware** : 0xd7d70 bytes (~863 KB) — 55% flash libre
 
 ---
 
 ## [PR-08] — 2026-05-29 — WiFi AP + WebSocket + OTA
 
-### webserver.c — Implémentation complète
-- WiFi AP : SSID "Irrifrance-ESP32", password "irrigation", IP 192.168.4.1, canal 6, WPA2
-- Serveur HTTP/WebSocket : `httpd_start()`, handler WS `/ws`, HTTP GET `/` (placeholder PR-09)
-- `webserver_broadcast_status()` : sérialisation `machine_status_t` → JSON 35 champs (snprintf),
-  broadcast via `httpd_queue_work` + `httpd_ws_send_frame_async` (safe depuis tâche externe)
-- Parsing commandes WebSocket sans bibliothèque JSON :
-  `start`, `stop`, `reset`, `set_time`, `ev_canon`, `ev_poumon`,
-  `select_programme`, `save_programme`, `save_machine`, `etalonner`
+### Added
+- WiFi AP : SSID "IRRIDOSEUR-XXXX" (4 derniers octets MAC), IP fixe 192.168.4.1
+- Serveur HTTP + WebSocket (`/ws`) via `esp_http_server`
+- `webserver_broadcast_status()` : sérialise `machine_status_t` → JSON, broadcast tous clients
+- Parsing commandes WebSocket sans cJSON : `start`, `stop`, `reset`, `set_time`, `ev_canon`, `ev_poumon`, `select_programme`, `save_programme`, `save_machine`, `etalonner`
+- `ota.c` : `POST /ota/update`, partition swap, reboot après 3s, rollback implicite
+- `telemetry_task` : tâche FreeRTOS prio 5, broadcast 500ms
+- `sdkconfig.defaults` : `CONFIG_HTTPD_WS_SUPPORT=y`
+- Endpoint `GET /api/vitesse` (preview vitesse sans session)
 
-### ota.c / ota.h — Implémentation complète
-- `ota_register_handler(httpd_handle_t)` : enregistre `POST /ota/update` sur serveur existant
-- Bloque si cycle en cours (retourne 409)
-- `esp_ota_begin/write/end/set_boot_partition` + reboot après 3s
-- Rollback implicite (partition active inchangée en cas d'erreur)
-
-### sdkconfig.defaults
-- Ajout `CONFIG_HTTPD_WS_SUPPORT=y` (requis pour l'API WebSocket d'esp_http_server)
-
-### Taille firmware
-- 0xce9e0 bytes — 57% flash libre (WiFi + WebSocket stack : +~280KB vs PR-07)
+**Taille firmware** : 0xce9e0 bytes — 57% flash libre
 
 ---
 
-## [PR-07] — 2026-05-28 — NVS config — 5 programmes — tests
+## [PR-07] — 2026-05-28 — Config NVS — 5 programmes — tests
 
-### config_nvs.c
-- Fix bug namespace : `prog_actif` lu/écrit dans `irri_state` (était `irri_machine` par erreur,
-  SPECS_FINAL_v3 §11 place cette clé dans `irri_state`)
+### Added
+- `config_nvs.c/h` : 4 namespaces NVS (`irri_machine`, `irri_prog0..4`, `irri_state`)
+- `config_machine_t` : 13 champs (profil, régulation, modes dégradés, cycles_par_tour)
+- `config_programme_t` : 9 champs (nom, dose, largeur, buse, pression, temporisations)
+- `config_programme_est_valide()` : validation programme (dose/largeur/buse/pression > 0)
+- `config_nvs_sauver/lire_longueur()`, `config_nvs_sauver/lire_urgence()`
+- 10 tests unitaires `test_config_nvs.c`
 
-### test/test_config_nvs.c — 10 tests unitaires (nouveau fichier)
-- T01-T03 : `config_programme_est_valide()` — vide/complet/buse_zero
-- T04 : roundtrip config_machine_t (facteur_correction, kp_regulation, fenetre_vitesse, mode_deg)
-- T05-T06 : roundtrip programme idx=0 et idx=4 (nom, dose, largeur, buse, tempo)
-- T07-T08 : indices invalides (-1, 5) → ESP_ERR_INVALID_ARG
-- T09 : roundtrip prog_actif
-- T10 : roundtrip raison urgence
-
-### main.c
-- Déplacement de `config_nvs_init()` avant le bloc `CONFIG_IRRI_ENABLE_TESTS`
-  (les tests NVS nécessitent que NVS flash soit initialisé)
-- Ajout `extern void test_config_nvs_run(void)` et appel dans le bloc tests
-
-### CMakeLists.txt
-- Ajout `"test/test_config_nvs.c"` dans le bloc conditionnel `IRRI_ENABLE_TESTS`
+### Fixed
+- Namespace `prog_actif` : corrigé dans `irri_state` (était `irri_machine` par erreur)
 
 ---
 
-## [PR-06] — 2026-05-28 — Régulation feedforward — modes dégradés — tests
+## [PR-06] — 2026-05-28 — Régulation feedforward + modes dégradés
 
-### state_machine.c
-- Ajout mise à jour `s_cfg_machine.dist_cycle_nvs` en mémoire à chaque cycle
-  (conserve la dernière distance/cycle mesurée pour le mode dégradé A)
-- Ajout estimation vitesse mode dégradé A dans `tick_state_machine()` :
-  calcul depuis `dist_cycle_nvs` et durée cycle, appel `gpio_handler_set_vitesse_estimee()`
-- Ajout `config_nvs_sauver_machine()` en fin de session (`ETAT_ARRET_FINAL` et `cmd_reset`)
+### Added
+- `regulation.c/h` : `calcul_t_attente_s()`, `correction_vitesse()`, `regulation_update_dist_par_cycle()`
+- Buffer circulaire CALIB_WINDOW=5 pour moyenne dist/cycle
+- `calcul_cycles_par_min()`, `regulation_get_nb_cycles()`, `regulation_reset_calibration()`
+- Mode dégradé B : remplissage temporisé `t_rempl_fixe_s` si contact poumon HS
+- Mode dégradé A : vitesse estimée depuis cycles poumon (`gpio_handler_set_vitesse_estimee()`)
+- 10 tests unitaires `test_regulation.c`
 
-### main.c
-- Câblage de tous les tests sous `CONFIG_IRRI_ENABLE_TESTS` :
-  `test_calculs_hydraulique_run`, `test_calculs_mecanique_run`, `test_gpio_run`,
-  `test_regulation_run`, `test_state_machine_run`
-
-### CMakeLists.txt
-- Ajout `test/test_regulation.c` dans le bloc conditionnel `IRRI_ENABLE_TESTS`
-
-### test/test_regulation.c — 10 tests unitaires (nouveau fichier)
-- T_attente nominal, T_att < 0 (alerte=true), T_att > 300s, inputs nuls
-- correction_vitesse : positive, clamp à 0, négative, v_cible=0
-- regulation_update_dist_par_cycle : moyenne glissante sur 5 valeurs
-- regulation_get_nb_cycles + regulation_reset_calibration
+### Changed
+- `tick_state_machine()` : estimation vitesse mode dégradé A calculée chaque tick
+- `config_nvs_sauver_machine()` appelé en fin de session (sauvegarde `dist_cycle_nvs`)
 
 ---
 
-## [PR-05] — 2026-05-28 — Machine d'états : stubs test + 11 tests simulation
+## [PR-05] — 2026-05-28 — Machine d'états complète + sécurités + tests simulation
 
-### state_machine.c
-
-- Variables de simulation statiques (s_sim_active/pression/fin_course/secu_spires) sous CONFIG_IRRI_ENABLE_TESTS
-- `state_machine_test_injecter_etat()` : active la simulation avec valeurs sures par defaut
-- `state_machine_test_set_pression/fin_course/secu_spires()` : implementes (etaient vides)
-- Override des entrees GPIO dans tick_state_machine quand sim active
-
-### test/test_state_machine.c — 11 tests (etait 3)
-
-- Injection directe de chaque etat principal (EN_COURS, OUVERTURE_CANON, TEMPO_ARRIVEE, PAUSE_PRESSION)
-- Urgence depuis EN_COURS et PAUSE_PRESSION → ARRET_URGENCE → reset → VEILLE
-- cmd_stop depuis EN_COURS → ARRET_FINAL
-- cmd_stop noop depuis ARRET_URGENCE (reste en urgence)
+### Added
+- `securites.c/h` : `securites_watchdog()` — SEC-1 (fin_course) et SEC-2 (secu_spires)
+- SEC-2 priorité absolue, tout état — `gpio_all_ev_off()` avant urgence
+- SEC-1 filtrée par `sec1_applicable` (exclut TEMPO_ARRIVEE, ARRET_*)
+- `state_machine_declencher_urgence(const char *raison)` : NVS + transition ARRET_URGENCE
+- ETAT_PAUSE_PRESSION : pause/reprise auto sur pressostat
+- ETAT_TEMPO_ARRIVEE : arrosage final après fin de course
+- Réarmement physique 3-tap poumon_plein → VEILLE depuis ARRET_URGENCE
+- Stubs de simulation sous `CONFIG_IRRI_ENABLE_TESTS`
+- 11 tests `test_state_machine.c`
 
 ---
 
-## [PR-04] — 2026-05-28 — Calculs mécaniques : suite de tests complete
+## [PR-04] — 2026-05-28 — Calculs mécaniques — profils machine — étalonnage
 
-### test/test_calculs_mecanique.c — 16 tests (etait 6)
-
-- `calcul_dist_pulse_m` : tests etage 1 (≈0.4593m) et etage 4 (≈0.6139m)
-- `calcul_longueur_etage_m` : valeur etage 1 (≈61.78m) + cumul 4 etages (≈288.68m)
-- `calcul_etage_courant` : 70m → etage 2, 330m → clamp etage 4
-- `calcul_facteur_etalonnage` : couverture complete des 4 conditions de refus (C1 impulsions < 50, C2 facteur < 0.5, C3 ecart > 30%, C4 longueur theorique < 1m)
+### Added
+- `calculs_mecanique.c/h` : `calcul_rayon_etage()`, `calcul_dist_pulse_m()`, `calcul_dist_cycle_m()`
+- `calcul_etage_courant()` : accumulation longueurs étages jusqu'à position courante
+- `calcul_facteur_etalonnage()` : 4 conditions de validation (nb_impulsions, plage, delta)
+- `machines/machines.h` : `machine_profile_t`, `MACHINES_LISTE[]`, `machine_resoudre_double_entree()`
+- `machines/st1bis_82_330.c` : profil Irrifrance Structure 1 bis Ø82mm — 330m
+- 16 tests `test_calculs_mecanique.c`
 
 ---
 
 ## [PR-03] — 2026-05-28 — Calculs hydrauliques — double interpolation abaque
 
-### calculs_hydraulique.h
+### Added
+- `calculs_hydraulique.c/h` : `lookup_vitesse_cible()` — double interpolation IDW
+- Interpolation linéaire entre colonnes D40/D30/D25/D20/D15 (dose)
+- Paramètre `p_buse_out` : pression effective buse interpolée
+- `calcul_surface_m2()`, `calcul_dose_inst_mm()`
+- `abaques/abaques.h` : `canon_abaque_t`, `canon_entry_t`, `ABAQUES_LISTE[]`
+- `abaques/sr150c.c` : abaque Nelson SR 150C (13 entrées)
+- 16 tests `test_calculs_hydraulique.c`
 
-- `lookup_vitesse_cible()` : ajout paramètre `p_buse_out` (NULL si non souhaité) — interpolé avec les mêmes poids IDW que le débit
-
-### calculs_hydraulique.c
-
-**Correction UB pointeur struct**
-- `interpoler_dose()` : remplacement de `const float *v = &e->D40; v[d]` (UB) par array local explicite `{e->D40, e->D30, e->D25, e->D20, e->D15}`
-
-**Ranges de normalisation dynamiques**
-- Suppression des constantes hardcodées `CANON_P_RANGE=4.6` / `CANON_BUSE_RANGE=8.1`
-- `calc_ranges()` calcule min/max p et buse depuis les données de l'abaque à chaque appel
-- Compatible avec tout abaque futur sans modification du code
-
-**p_buse interpolé**
-- Ajout du calcul IDW sur `p_buse` en parallèle du débit
-
-### state_machine.c
-
-- Call site `lookup_vitesse_cible(... NULL)` → `... NULL, NULL` (nouveau paramètre p_buse_out)
-
-### test/test_calculs_hydraulique.c — 16 tests
-
-| # | Test | Ce qui est vérifié |
-|---|---|---|
-| 1 | `exact_entry0_d25` | Exact match + débit renvoyé |
-| 2 | `exact_entry6_d20` | Exact match entry intermédiaire |
-| 3 | `exact_entry11_d40` | Exact match D40 |
-| 4 | `interp_dose_22.5` | Interpolation linéaire entre D25 et D20 |
-| 5 | `clamp_dose_haute` | dose>40 → D40 (vitesse la plus lente) |
-| 6 | `clamp_dose_basse` | dose<15 → D15 (vitesse la plus rapide) |
-| 7 | `nearest_neighbor` | p/buse légèrement décalés → convergence vers entry0 |
-| 8 | `interp_deux_voisins` | Interpolation IDW entre entry2 et entry3 |
-| 9 | `p_buse_out_entry0` | p_buse=3.5 sur exact match |
-| 10 | `p_buse_out_entry6` | p_buse=4.0 sur exact match |
-| 11 | `abaque_null` | NULL → retourne 0, pas de crash |
-| 12 | `surface_100x60` | 100×60=6000 m² |
-| 13 | `surface_zero` | longueur=0 → 0 |
-| 14 | `dose_inst_25_15_60` | 25/(15×60)×1000=27.78mm |
-| 15 | `dose_inst_vitesse_zero` | vitesse=0 → 0 (pas de div/0) |
-| 16 | `dose_inst_largeur_zero` | largeur=0 → 0 (pas de div/0) |
-
-**Build** : 0 erreur, 0 nouveau warning — 89% flash libre
+### Fixed
+- `interpoler_dose()` : UB pointeur struct corrigé (array local explicite)
+- Ranges de normalisation calculés dynamiquement depuis l'abaque (n'étaient pas hardcodés)
 
 ---
 
-## [PR-02] — 2026-05-28 — GPIO handler complet + ISR vitesse robuste + mode dégradé A
+## [PR-02] — 2026-05-28 — GPIO handler complet + ISR vitesse robuste
 
-### gpio_handler.c/h
+### Added
+- `gpio_handler.c/h` : ISR vitesse anti-rebond 50ms, fenêtre glissante N impulsions
+- `gpio_get_vitesse_m_h(float facteur_correction)` : calcul complet avec timeout cycles
+- `gpio_handler_lire_entrees()` : snapshot atomique toutes les entrées NC
+- `gpio_ev_canon_set()`, `gpio_ev_poumon_set()`, `gpio_all_ev_off()` (fail-safe)
+- `gpio_handler_set_dist_pulse_m()`, `gpio_handler_set_params()`, `gpio_handler_set_mode_degrade_a()`
+- `gpio_handler_tick_cycle()` : incrémente compteur cycles sans impulsion
+- Hooks test : `gpio_handler_test_injecter_pulse()`, `gpio_handler_test_reset()`
+- 9 tests `test_gpio.c`
 
-**Calcul vitesse complet**
-- `gpio_get_vitesse_m_h(float facteur_correction)` : implémenté — fenêtre glissante N impulsions
-  - Formule : `vitesse_m_h = (N × dist_pulse_m × facteur_correction) / dt_s × 3600`
-  - Retourne 0 si fenêtre < 2 pulses, si dist_pulse non initialisée, ou si timeout cycles atteint
-
-**Nouveaux setters runtime**
-- `gpio_handler_set_dist_pulse_m(float)` — mise à jour par state_machine à chaque changement d'étage
-- `gpio_handler_set_params(int fenetre, int max_cycles_si)` — depuis NVS à l'init
-- `gpio_handler_set_mode_degrade_a(bool)` — activation mode dégradé A
-- `gpio_handler_set_vitesse_estimee(float)` — vitesse fournie par state_machine en mode A
-
-**Mode dégradé A**
-- Quand activé, `gpio_get_vitesse_m_h()` retourne la vitesse estimée depuis cycles poumon
-- Alimentation par state_machine chaque tick : `dist_par_cycle_nvs × cycles_par_min × 60`
-
-**Hooks test**
-- `gpio_handler_test_injecter_pulse(int64_t)` et `gpio_handler_test_reset()` — `#ifdef CONFIG_IRRI_ENABLE_TESTS`
-
-**Corrections**
-- Lecture de `s_cycles_sans_impulsion` déplacée dans la section critique (évite race condition)
-- Double `portENTER_CRITICAL` consolidé en un seul appel dans `gpio_get_vitesse_m_h`
-
-### test/test_gpio.c — 9 tests unitaires
-
-| # | Test | Ce qui est vérifié |
-|---|---|---|
-| 1 | `vitesse_nominale` | Calcul vitesse correct (5 pulses × 1m, dt=4s → 4500 m/h) |
-| 2 | `facteur_correction` | Facteur 0.5 divise la vitesse par 2 |
-| 3 | `vitesse_sans_dist_pulse` | Retourne 0 si dist_pulse non initialisée |
-| 4 | `fenetre_insuffisante` | Retourne 0 si < 2 pulses en mémoire |
-| 5 | `timeout_cycles` | Retourne 0 après max_cycles_si ticks sans pulse |
-| 6 | `mode_degrade_a` | Retourne la vitesse estimée injectée |
-| 7 | `mode_degrade_a_desactive` | Retour au calcul ISR après désactivation mode A |
-| 8 | `compteur_impulsions` | Comptage brut + reset |
-| 9 | `lire_entrees_no_crash` | Appel sans crash (valeurs matériel) |
-
-**Build** : 0 erreur, 0 nouveau warning — `irrifrance-esp32.bin` ~214 Ko — **89% flash libre**
+### Fixed
+- Race condition `s_cycles_sans_impulsion` : lecture déplacée dans section critique
+- Double `portENTER_CRITICAL` consolidé
 
 ---
 
-## [Rewrite v3] — 2026-05-28 — Repartition de zéro, SPECS_FINAL_v3
+## [PR-01] — 2026-05-28 — Structure projet + squelettes
 
-Réécriture complète depuis zéro selon `SPECS_FINAL_v3.md`.
-L'ancienne architecture (4 PRs) est remplacée intégralement.
-
-### Changements majeurs
-
-**Matériel**
-- Carte : ESP32 DevKit C + module relais → **ESP32 Quad MOS Switch Module** (4 MOSFET DC 5-60V, buck 12V intégré)
-- Contacts : NO/NC configurable → **NC fixe fail-safe** (fil coupé = danger)
-
-**Architecture**
-- Ajout `gpio_config.h` — affectation GPIO centralisée (PIN_EV_CANON/POUMON provisoires GPIO 25/26)
-- Ajout `main/machines/` — profils machine (machine_profile_t, double entrée spires/largeur)
-- Ajout `main/abaques/` — abaques constructeur (canon_abaque_t, 13 entrées SR 150C)
-- Ajout `securites.c/h` — watchdog SEC-1/SEC-2 priorité absolue, appelé en premier dans tick
-- Ajout `regulation.c/h` — feedforward T_attente, correction Kp, moyenne dist_cycle
-- Ajout `ota.c/h` — stub OTA (implémenté PR-08)
-
-**Données réelles**
-- `main/machines/st1bis_82_330.c` — Irrifrance ST1 Bis Ø82-330m (r_tambour=0.690m, spires=13.45)
-- `main/abaques/sr150c.c` — Nelson SR 150C, 13 entrées, colonnes D40/D30/D25/D20/D15
-
-**Machine d'états**
-- 9 états : ajout `ETAT_OUVERTURE_CANON` (stabilisation pression 3s) et `ETAT_PAUSE_PRESSION` (top-level)
-- Sous-états poumon : SOUS_REMPLISSAGE / SOUS_VIDANGE / SOUS_ATTENTE
-- Impulsions capteur comptées pendant SOUS_REMPLISSAGE (bobine avance pendant remplissage)
-- ARRET_FINAL : retour VEILLE automatique quand fin_de_course disparaît
-- ARRET_URGENCE : raison sauvegardée en NVS, persiste après redémarrage
-
-**Calculs hydraulique**
-- Double interpolation : 2 lignes les plus proches (p_enrouleur + buse_mm) + dose
-- Doses {40, 30, 25, 20, 15} mm — ordre décroissant — vitesse diminue quand dose augmente
-
-**Build**
-- `partitions.csv` : table OTA custom (app0 + app1 + spiffs, flash 4MB)
-- `sdkconfig.defaults` : flash 4MB, partition custom, FreeRTOS 1kHz
-- Build vérifié : `irrifrance-esp32.bin` 214 Ko — **89% flash libre**
-
----
-
-## [PR-04] — 2026-05-27 — Calculs mécaniques (ancienne architecture — remplacé)
-
-Remplacé par le rewrite v3.
-
----
-
-## [PR-03] — 2026-05-27 — Table constructeur (ancienne architecture — remplacé)
-
-Remplacé par le rewrite v3.
-
----
-
-## [PR-02] — 2026-05-26 — GPIO handler (ancienne architecture — remplacé)
-
-Remplacé par le rewrite v3.
-
----
-
-## [PR-01] — 2026-05-25 — Structure projet (ancienne architecture — remplacé)
-
-Remplacé par le rewrite v3.
+### Added
+- Structure CMakeLists.txt : partitions OTA, EMBED_FILES, bloc `IRRI_ENABLE_TESTS`
+- `gpio_config.h` : tous les `#define PIN_*`, `NB_PASTILLES=10`, `DEBOUNCE_VITESSE_MS=50`
+- `main.c` : `app_main()`, séquence init, `state_machine_task` prio 10
+- Squelettes de tous les modules (`.h` avec API complète, `.c` vides)
+- `sdkconfig.defaults` : target esp32, 4MB flash, partitions OTA
+- `sdkconfig.defaults` : `CONFIG_FREERTOS_UNICORE=n` (dual core actif)
