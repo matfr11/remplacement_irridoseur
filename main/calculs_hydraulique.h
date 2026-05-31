@@ -20,10 +20,15 @@
 /**
  * Lookup vitesse cible — double interpolation sur l'abaque.
  *
+ * L'abaque donne les vitesses pour l'espacement de référence esp_m.
+ * La correction largeur_m ramène la vitesse à la largeur réelle configurée :
+ *   v_cible = v_abaque × (esp_interpolé / largeur_m)
+ *
  * @param abaque       Pointeur abaque actif
  * @param p_enrouleur  Pression manomètre (bar)
  * @param buse_mm      Diamètre buse (mm)
  * @param dose_mm      Dose cible mm — plage 10-50mm, extrapolation hors plage
+ * @param largeur_m    Largeur position arrosée (m). 0 = utilise esp_m de l'abaque (compat)
  * @param debit_out    Débit résultant m³/h (NULL si non souhaité)
  * @param p_buse_out   Pression effective à la buse bar (NULL si non souhaité)
  * @return             Vitesse cible m/h (> 0 garanti si abaque valide)
@@ -32,6 +37,7 @@ float lookup_vitesse_cible(const canon_abaque_t *abaque,
                             float p_enrouleur,
                             float buse_mm,
                             float dose_mm,
+                            float largeur_m,
                             float *debit_out,
                             float *p_buse_out);
 

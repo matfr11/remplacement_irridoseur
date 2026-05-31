@@ -989,7 +989,8 @@ async function fetchPrevVitesse() {
     show('p-vitesse-preview', false); return;
   }
   try {
-    const r = await fetch('/api/vitesse?p=' + p + '&b=' + b + '&d=' + d);
+    const l = parseFloat(document.getElementById('p-larg').value) || 0;
+    const r = await fetch('/api/vitesse?p=' + p + '&b=' + b + '&d=' + d + '&l=' + l);
     if (!r.ok) { show('p-vitesse-preview', false); return; }
     const j = await r.json();
     if (j.vitesse_m_h > 0) {

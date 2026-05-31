@@ -201,6 +201,7 @@ bool state_machine_longueur_sec_depassee(void);
 
 // Calcul vitesse cible (lookup abaque) — utilisé par endpoint HTTP /api/vitesse.
 float state_machine_calc_vitesse(float pression_bar, float buse_mm, float dose_mm,
+                                  float largeur_m,
                                   float *debit_out, float *p_buse_out);
 
 #ifdef CONFIG_IRRI_ENABLE_TESTS

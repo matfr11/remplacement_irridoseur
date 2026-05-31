@@ -149,7 +149,8 @@ static void charger_config_interne(void)
     securites_set_bypass_spires(s_cfg_machine.mode_deg_spires);
     s_vitesse_cible_m_h = (s_abaque && s_cfg_prog.buse_mm > 0)
         ? lookup_vitesse_cible(s_abaque, s_cfg_prog.pression_bar,
-                               (float)s_cfg_prog.buse_mm, s_cfg_prog.dose_mm, NULL, NULL)
+                               (float)s_cfg_prog.buse_mm, s_cfg_prog.dose_mm,
+                               s_cfg_prog.largeur_m, NULL, NULL)
         : 0.0f;
     config_nvs_lire_batt_seuils(&s_batt_warn_v, &s_batt_crit_v);
     batterie_set_seuils(s_batt_warn_v, s_batt_crit_v);
@@ -503,6 +504,7 @@ void tick_state_machine(void)
                         s_cfg_prog.pression_bar,
                         (float)s_cfg_prog.buse_mm,
                         s_cfg_prog.dose_mm,
+                        s_cfg_prog.largeur_m,
                         &debit_tmp, NULL);
                     s_vitesse_cible_m_h = v_cible_m_h;
                     float v_cible_m_s = v_cible_m_h / 3600.0f;
@@ -700,6 +702,7 @@ void tick_state_machine(void)
         if (s_abaque && s_cfg_prog.buse_mm > 0) {
             lookup_vitesse_cible(s_abaque, s_cfg_prog.pression_bar,
                                  (float)s_cfg_prog.buse_mm, s_cfg_prog.dose_mm,
+                                 s_cfg_prog.largeur_m,
                                  &debit_out, &p_buse_out);
         }
         s_status.debit_m3h       = debit_out;
@@ -1028,13 +1031,14 @@ bool state_machine_longueur_sec_depassee(void)
 }
 
 float state_machine_calc_vitesse(float pression_bar, float buse_mm, float dose_mm,
+                                  float largeur_m,
                                   float *debit_out, float *p_buse_out)
 {
     if (debit_out)  *debit_out  = 0.0f;
     if (p_buse_out) *p_buse_out = 0.0f;
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     float v = (s_abaque && buse_mm > 0.0f && dose_mm > 0.0f)
-        ? lookup_vitesse_cible(s_abaque, pression_bar, buse_mm, dose_mm, debit_out, p_buse_out)
+        ? lookup_vitesse_cible(s_abaque, pression_bar, buse_mm, dose_mm, largeur_m, debit_out, p_buse_out)
         : 0.0f;
     xSemaphoreGive(s_mutex);
     return v;

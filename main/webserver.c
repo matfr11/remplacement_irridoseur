@@ -421,16 +421,17 @@ static esp_err_t vitesse_handler(httpd_req_t *req)
 {
     char buf[128] = {0};
     size_t len = httpd_req_get_url_query_len(req);
-    float p = 0.0f, b = 0.0f, d = 0.0f;
+    float p = 0.0f, b = 0.0f, d = 0.0f, l = 0.0f;
     if (len > 0 && len < sizeof(buf)) {
         httpd_req_get_url_query_str(req, buf, sizeof(buf));
         char val[32];
         if (httpd_query_key_value(buf, "p", val, sizeof(val)) == ESP_OK) sscanf(val, "%f", &p);
         if (httpd_query_key_value(buf, "b", val, sizeof(val)) == ESP_OK) sscanf(val, "%f", &b);
         if (httpd_query_key_value(buf, "d", val, sizeof(val)) == ESP_OK) sscanf(val, "%f", &d);
+        if (httpd_query_key_value(buf, "l", val, sizeof(val)) == ESP_OK) sscanf(val, "%f", &l);
     }
     float debit = 0.0f, p_buse = 0.0f;
-    float v = state_machine_calc_vitesse(p, b, d, &debit, &p_buse);
+    float v = state_machine_calc_vitesse(p, b, d, l, &debit, &p_buse);
     char resp[128];
     int n = snprintf(resp, sizeof(resp),
         "{\"vitesse_m_h\":%.2f,\"debit_m3h\":%.2f,\"p_buse_bar\":%.2f}",

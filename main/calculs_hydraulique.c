@@ -78,6 +78,7 @@ float lookup_vitesse_cible(const canon_abaque_t *abaque,
                             float p_enrouleur,
                             float buse_mm,
                             float dose_mm,
+                            float largeur_m,
                             float *debit_out,
                             float *p_buse_out)
 {
@@ -113,13 +114,15 @@ float lookup_vitesse_cible(const canon_abaque_t *abaque,
         }
     }
 
-    float v0 = interpoler_dose(&abaque->table[idx0], dose_mm);
+    float v0  = interpoler_dose(&abaque->table[idx0], dose_mm);
+    float esp = abaque->table[idx0].esp_m;  // esp de référence (défaut = plus proche)
 
     // Un seul voisin valide ou matchs quasi-identiques → retourner le plus proche
     if (idx1 < 0 || d0 + d1 < 1e-6f) {
         if (debit_out)  *debit_out  = abaque->table[idx0].q_m3h;
         if (p_buse_out) *p_buse_out = abaque->table[idx0].p_buse;
-        return v0;
+        float larg = (largeur_m > 0.1f) ? largeur_m : esp;
+        return v0 * (esp / larg);
     }
 
     float v1 = interpoler_dose(&abaque->table[idx1], dose_mm);
@@ -130,6 +133,14 @@ float lookup_vitesse_cible(const canon_abaque_t *abaque,
     float wt = w0 + w1;
 
     float vitesse = (w0 * v0 + w1 * v1) / wt;
+
+    // Interpoler esp_m avec les mêmes poids — largeur de référence au point interpolé
+    esp = (w0 * abaque->table[idx0].esp_m + w1 * abaque->table[idx1].esp_m) / wt;
+
+    // Correction largeur : v_cible = v_abaque × (esp_ref / largeur_reelle)
+    // largeur_m = 0 → utilise esp_ref (comportement identique à l'ancien code)
+    float larg = (largeur_m > 0.1f) ? largeur_m : esp;
+    vitesse = vitesse * (esp / larg);
 
     if (debit_out) {
         *debit_out  = (w0 * abaque->table[idx0].q_m3h  + w1 * abaque->table[idx1].q_m3h)  / wt;
