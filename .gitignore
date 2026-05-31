@@ -28,3 +28,6 @@ __pycache__/
 
 # Note : sdkconfig.defaults est VOLONTAIREMENT versionné (paramètres projet)
 # Note : sdkconfig (fichier généré par menuconfig) est ignoré
+
+# Claude Code — settings locaux (personnels, ne pas versionner)
+.claude/settings.local.json
