@@ -127,6 +127,10 @@ static void charger_config_interne(void)
     config_nvs_lire_programme(prog_idx, &s_cfg_prog);
     s_profil = machine_get(s_cfg_machine.machine_active);
     s_abaque = abaque_get(s_profil->abaque_idx);
+    // Fallback cycles_par_tour : 0 en NVS → utiliser la valeur du profil machine
+    if (s_cfg_machine.cycles_par_tour <= 0.0f && s_profil && s_profil->cycles_par_tour > 0.0f) {
+        s_cfg_machine.cycles_par_tour = s_profil->cycles_par_tour;
+    }
     s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
     strncpy(s_status.prog_nom,    s_cfg_prog.nom,             sizeof(s_status.prog_nom) - 1);
     strncpy(s_status.machine_nom, s_profil ? s_profil->nom : "", sizeof(s_status.machine_nom) - 1);
@@ -1065,6 +1069,16 @@ void state_machine_test_reset(void)
     s_demarrage_autorise = true;
     gpio_ev_canon_set(false);
     gpio_ev_poumon_set(false);
+}
+
+void state_machine_test_set_longueurs(float deroule_m, float session_m)
+{
+    s_longueur_deroule_m = deroule_m;
+    s_longueur_session_m = session_m;
+    float total = (s_profil && s_profil->longueur_tuyau_m > 0.0f)
+                  ? s_profil->longueur_tuyau_m : 0.0f;
+    s_longueur_enroulee  = (total > 0.0f) ? total - deroule_m : 0.0f;
+    s_longueur_derniere_nvs = s_longueur_enroulee;
 }
 #endif
 

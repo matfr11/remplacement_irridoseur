@@ -62,13 +62,39 @@ static void test_scenario_sec1_ouverture_canon(void)
     state_machine_cmd_reset();
 }
 
-// Scénario 7 — SEC-1 (fin_course) depuis EN_COURS → ARRET_URGENCE
+// Scénario 7 — SEC-1 (fin_course) inattendue en EN_COURS → ARRET_URGENCE
+// (longueur restante > seuil 10m → fin_course est une anomalie)
 static void test_scenario_sec1_en_cours(void)
 {
+    state_machine_test_set_longueurs(200.0f, 10.0f);  // restant = 190m > 10m
     state_machine_test_injecter_etat(ETAT_EN_COURS);
     set_fin_course(true);
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_ARRET_URGENCE, state_machine_get_etat());
+    state_machine_cmd_reset();
+}
+
+// Scénario 11 — fin_course normale (restant <= seuil) en EN_COURS → ARRET_FINAL
+static void test_scenario_fin_course_normale_arret_final(void)
+{
+    state_machine_test_set_longueurs(50.0f, 46.0f);   // restant = 4m < 10m
+    state_machine_test_injecter_etat(ETAT_EN_COURS);
+    set_fin_course(true);
+    avancer(1);
+    TEST_ASSERT_EQUAL_INT(ETAT_ARRET_FINAL, state_machine_get_etat());
+    state_machine_cmd_reset();
+}
+
+// Scénario 12 — SEC-L : longueur_session > longueur_deroule + seuil → ARRET_URGENCE
+static void test_scenario_sec_longueur_depassee(void)
+{
+    state_machine_test_set_longueurs(50.0f, 62.0f);   // delta = 12m > seuil 10m
+    state_machine_test_injecter_etat(ETAT_EN_COURS);
+    avancer(1);
+    TEST_ASSERT_EQUAL_INT(ETAT_ARRET_URGENCE, state_machine_get_etat());
+    machine_status_t s;
+    state_machine_get_status(&s);
+    TEST_ASSERT_NOT_NULL(strstr(s.raison_arret, "longueur"));
     state_machine_cmd_reset();
 }
 
@@ -104,4 +130,8 @@ void suite_scenario_urgences(void)
     RUN_TEST(test_scenario_sec1_en_cours);
     RUN_TEST(test_scenario_timeout_poumon_2tentatives);
     RUN_TEST(test_scenario_urgence_depuis_pause);
+    // PR-15
+    RUN_TEST(test_scenario_fin_course_normale_arret_final);
+    // PR-17
+    RUN_TEST(test_scenario_sec_longueur_depassee);
 }

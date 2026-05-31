@@ -17,6 +17,7 @@ const machine_profile_t MACHINE_ST1BIS_82_330 = {
     .abaque_idx        = 0,
     .largeur_bobine_m  = 0.0f,      // calculée auto depuis spires_par_etage
     .spires_par_etage  = 13.45f,
+    .cycles_par_tour   = 40.0f,     // mesure physique : 40 cycles poumon par tour de bobine
     .t_vidange_s       = 0.0f,      // ⚠️ À mesurer terrain
     .facteur_correction = 1.0f,
 };

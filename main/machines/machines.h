@@ -27,6 +27,9 @@ typedef struct {
     float   largeur_bobine_m;       // Mesure terrain (mètre ruban)
     float   spires_par_etage;       // Valeur constructeur ou comptage
 
+    // Cycles poumon par tour de bobine — caractéristique constructeur
+    float   cycles_par_tour;        // ex: 40 sur ST1 Bis (valeur physique, pas terrain)
+
     // Paramètres ajustables terrain (modifiables en NVS)
     float   t_vidange_s;            // ⚠️ À mesurer terrain
     float   facteur_correction;     // Étalonnage longueur (défaut 1.0)

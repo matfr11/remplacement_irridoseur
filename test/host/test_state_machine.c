@@ -163,6 +163,66 @@ static void test_get_nb_tentatives_init(void)
     TEST_ASSERT_EQUAL_INT(0, state_machine_test_get_nb_tentatives());
 }
 
+// --- PR-13 : cmd_resume + debordement ---
+
+// 16 — cmd_resume bloquée si raison=Debordement ET secu_spires actif
+static void test_resume_bloque_debordement_actif(void)
+{
+    state_machine_declencher_urgence("Debordement bobine");
+    state_machine_test_set_secu_spires(true);
+    gpio_set_level(PIN_SECU_SPIRES, 1);
+    state_machine_cmd_resume();
+    TEST_ASSERT_EQUAL_INT(ETAT_ARRET_URGENCE, state_machine_get_etat());
+    state_machine_cmd_reset();
+}
+
+// 17 — cmd_resume acceptée si raison=Debordement ET secu_spires inactif
+static void test_resume_accepte_debordement_resolu(void)
+{
+    state_machine_declencher_urgence("Debordement bobine");
+    // secu_spires = false (défaut après local_setUp)
+    state_machine_cmd_resume();
+    TEST_ASSERT_EQUAL_INT(ETAT_VEILLE, state_machine_get_etat());
+}
+
+// --- PR-14 : session_active NVS ---
+
+// 18 — session_active NVS : sauver/lire
+static void test_session_active_nvs(void)
+{
+    config_nvs_sauver_session_active(true);
+    TEST_ASSERT_TRUE(config_nvs_lire_session_active());
+    config_nvs_sauver_session_active(false);
+    TEST_ASSERT_FALSE(config_nvs_lire_session_active());
+}
+
+// --- PR-15 : fin_course_est_normale ---
+
+// 19 — fin_course_est_normale : vrai si restant <= seuil (10m)
+static void test_fin_course_est_normale(void)
+{
+    state_machine_test_set_longueurs(50.0f, 45.0f);   // restant = 5m < 10m
+    TEST_ASSERT_TRUE(state_machine_fin_course_est_normale());
+
+    state_machine_test_set_longueurs(50.0f, 30.0f);   // restant = 20m > 10m
+    TEST_ASSERT_FALSE(state_machine_fin_course_est_normale());
+}
+
+// --- PR-17 : longueur_sec_depassee ---
+
+// 20 — longueur_sec_depassee : vrai si session > deroule + seuil
+static void test_longueur_sec_depassee(void)
+{
+    state_machine_test_set_longueurs(50.0f, 65.0f);   // delta = 15 > 10
+    TEST_ASSERT_TRUE(state_machine_longueur_sec_depassee());
+
+    state_machine_test_set_longueurs(50.0f, 55.0f);   // delta = 5 <= 10
+    TEST_ASSERT_FALSE(state_machine_longueur_sec_depassee());
+
+    state_machine_test_set_longueurs(0.0f, 100.0f);   // deroule=0 → pas de protection
+    TEST_ASSERT_FALSE(state_machine_longueur_sec_depassee());
+}
+
 void suite_state_machine(void)
 {
     unity_suite_setup(local_setUp, local_tearDown);
@@ -181,4 +241,13 @@ void suite_state_machine(void)
     RUN_TEST(test_reload_veille);
     RUN_TEST(test_reload_hors_veille);
     RUN_TEST(test_get_nb_tentatives_init);
+    // PR-13
+    RUN_TEST(test_resume_bloque_debordement_actif);
+    RUN_TEST(test_resume_accepte_debordement_resolu);
+    // PR-14
+    RUN_TEST(test_session_active_nvs);
+    // PR-15
+    RUN_TEST(test_fin_course_est_normale);
+    // PR-17
+    RUN_TEST(test_longueur_sec_depassee);
 }
