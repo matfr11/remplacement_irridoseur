@@ -56,8 +56,9 @@ longueurs, config) est en NVS flash. Un simulateur WebSocket intégré permet de
 | PR-15 | Fix fin de course : arrêt normal → ARRET_FINAL (seuil configurable) | ✅ |
 | PR-16 | Alerte dose trop basse : vitesse max + dose corrigée affichées | ✅ |
 | PR-17 | SEC-L : sécurité longueur enroulée > déployée | ✅ |
+| PR-18 | Calculs hydrauliques analytiques (Torricelli) + validation programme live | ✅ |
 
-**Build actuel** : 0xe1c70 bytes (~921 KB), 53% flash libre.
+**Build actuel** : 0xe3680 bytes (~933 KB), 53% flash libre.
 
 ## Décisions techniques et raisons
 

@@ -92,8 +92,8 @@ EN PREMIER dans `tick_state_machine()`, avant la lecture des entrées et le trai
 | `main/gpio_config.h` | Tous les `#define PIN_*`, `NB_PASTILLES`, `DEBOUNCE_VITESSE_MS` |
 | `main/regulation.c` | Feedforward T_attente, correction Kp, buffer dist/cycle |
 | `main/regulation.h` | API calculs régulation |
-| `main/calculs_hydraulique.c` | Lookup vitesse cible (double interpolation abaque) |
-| `main/calculs_hydraulique.h` | `lookup_vitesse_cible()`, `calcul_surface_m2()`, `calcul_dose_inst_mm()` |
+| `main/calculs_hydraulique.c` | Formule Torricelli : Q=k_q×buse²×√p_buse, V=Q×1000/(larg×dose) ; validation programme |
+| `main/calculs_hydraulique.h` | `lookup_vitesse_cible()`, `valider_params_programme()`, `calcul_esp_nominal_m()`, `hydro_warnings_t` |
 | `main/calculs_mecanique.c` | Rayon étage, dist pulse/cycle, étage courant, étalonnage |
 | `main/calculs_mecanique.h` | API géométrie bobine |
 | `main/config_nvs.c` | Lecture/écriture NVS (machine, programmes, state, stats, batterie) |
@@ -178,6 +178,7 @@ Fil coupé → HIGH → sécurité active → fail-safe.
 | `batt_warn_v` | float | 11.5 | Seuil alerte batterie (V) |
 | `batt_crit_v` | float | 11.0 | Seuil critique batterie (V) |
 | `hb_rc` | u8 (bool) | 0 | Heartbeat GPIO 2 pour circuit RC (défaut OFF) |
+| `t_rempl_min` | float | 5.0 | Temps remplissage min historique (s) — V_max theorique ; mis a jour uniquement si nouvelle valeur < courante ; remis a 5.0 sur cmd_reset |
 
 ### Namespace `irri_prog0` .. `irri_prog4`
 

@@ -38,14 +38,14 @@ updated: 2026-05-31
 │               = (2π × R_n) / NB_PASTILLES                                  │
 │     → mis à jour dans gpio_handler via gpio_handler_set_dist_pulse_m()    │
 │                                                                             │
-│  5. VITESSE CIBLE                                                           │
+│  5. VITESSE CIBLE (PR-18 — formule analytique Torricelli)                  │
 │     vitesse_cible = lookup_vitesse_cible(&ABAQUE_SR150C,                   │
 │                       prog_pression_bar, prog_buse_mm, prog_dose_mm,       │
-│                       &debit_m3h, &p_buse_bar)                             │
-│     → Double interpolation :                                                │
-│        i.  Trouve 2 entrées abaque les plus proches (p_enrouleur + buse)  │
-│        ii. Interpole linéairement entre colonnes Dxx (dose)               │
-│        iii. Interpolation pondérée entre les 2 entrées                     │
+│                       prog_largeur_m, &debit_m3h, &p_buse_bar)            │
+│     → p_buse : 2 voisins IDW depuis abaque (p_enrouleur × buse_mm)        │
+│     → Q (m3/h) = k_q × buse_mm² × sqrt(p_buse)  [k_q=0.039 SR150C]      │
+│     → V (m/h)  = Q × 1000 / (largeur_m × dose_mm)                        │
+│     → largeur_m obligatoire (espacement entre positions)                   │
 │                                                                             │
 │  6. T_CYCLE_CIBLE (feedforward)                                             │
 │     vitesse_cible_m_s = vitesse_cible_m_h / 3600.0                        │

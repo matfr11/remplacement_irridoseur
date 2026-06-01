@@ -41,7 +41,7 @@ Le firmware contrôle la durée des pauses (T_attente) pour ajuster la vitesse.
 | `securites.c` | Watchdog de sécurité. Appelé EN PREMIER à chaque tick (100ms). Coupe tout si danger (débordement bobine ou fin de course inattendu). |
 | `gpio_handler.c` | Lit les capteurs et pilote les électrovannes. Contient l'ISR du capteur de vitesse (impulsions magnétiques). |
 | `regulation.c` | Calculs de régulation : combien de temps attendre entre deux cycles poumon pour avoir la bonne vitesse. Feedforward + correction proportionnelle. |
-| `calculs_hydraulique.c` | Lit la table constructeur (abaque) pour trouver la vitesse cible selon pression/buse/dose. Double interpolation. |
+| `calculs_hydraulique.c` | Formule analytique Torricelli : Q=k_q×buse²×√p_buse, V=Q×1000/(larg×dose). Validation programme (bornes ±25%, portée, V_max). |
 | `calculs_mecanique.c` | Géométrie de la bobine : quel rayon à l'étage courant, quelle distance avance-t-on par impulsion capteur. |
 | `config_nvs.c` | Sauvegarde/lecture en flash : configuration machine, programmes d'arrosage, position courante, urgences, statistiques. |
 | `webserver.c` | WiFi AP + page web + WebSocket. Reçoit les commandes de l'opérateur, envoie l'état toutes les 500ms. |
@@ -191,9 +191,15 @@ Créer `main/abaques/mon_canon.c` :
 #include "abaques.h"
 
 const canon_abaque_t ABAQUE_MON_CANON = {
-    .nom          = "Mon Canon",
-    .constructeur = "Constructeur",
-    .nb_entrees   = 5,    // nombre de lignes dans la table
+    .nom              = "Mon Canon",
+    .constructeur     = "Constructeur",
+    .nb_entrees       = 5,
+    // Constantes empiriques — a calibrer depuis la table constructeur
+    .k_q              = 0.039f,   // Q(m3/h) = k_q * buse_mm^2 * sqrt(p_buse_bar)
+    .k_portee         = 7.06f,    // portee(m) = k_portee * buse^portee_exp_buse * (p/3.5)^portee_exp_p
+    .portee_exp_buse  = 0.557f,
+    .portee_exp_p     = 0.30f,
+    .esp_factor       = 1.55f,    // espacement = portee * esp_factor
     .table = {
         // p_enr  Q      p_buse  buse   esp    D40    D30    D25    D20    D15
         { 4.0f, 20.0f,  3.0f,  17.0f, 55.0f,  8.0f, 11.0f, 13.0f, 17.0f, 22.0f },
@@ -203,9 +209,10 @@ const canon_abaque_t ABAQUE_MON_CANON = {
 };
 ```
 
-Colonnes : `p_enrouleur(bar) | Q(m³/h) | p_buse(bar) | buse(mm) | esp(m) | D40..D15(m/h)`
+Colonnes obligatoires : `p_enrouleur(bar) | Q(m³/h) | p_buse(bar) | buse(mm) | esp(m)`
+Colonnes D40..D15 : données source constructeur, conservées pour référence mais non utilisées dans le calcul (la formule analytique les remplace).
 
-Les colonnes D40..D15 sont les vitesses en m/h pour une dose de respectivement 40, 30, 25, 20, 15 mm.
+Les 5 constantes empiriques (`k_q`, `k_portee`, `portee_exp_buse`, `portee_exp_p`, `esp_factor`) sont spécifiques à chaque canon. Dériver `k_q` en ajustant sur les valeurs Q de la table : `k_q = Q / (buse_mm² × √p_buse)`.
 
 ### Étapes 2, 3, 4
 

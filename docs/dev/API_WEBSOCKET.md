@@ -306,7 +306,7 @@ L'UI affiche un bandeau vert 15s avec ce bilan.
 ## Endpoint HTTP — preview vitesse
 
 ```
-GET /api/vitesse?p=6.5&b=20&d=25
+GET /api/vitesse?p=6.5&b=20&d=25&larg=65
 ```
 
 | Paramètre | Rôle | Exemple |
@@ -314,13 +314,38 @@ GET /api/vitesse?p=6.5&b=20&d=25
 | `p` | Pression enrouleur (bar) | 6.5 |
 | `b` | Diamètre buse (mm) | 20 |
 | `d` | Dose cible (mm) | 25 |
+| `larg` | Espacement entre positions (m) — obligatoire | 65 |
 
-Réponse :
+Réponse étendue (PR-18) :
 ```json
-{"vitesse_m_h": 19.3, "debit_m3h": 31.9, "p_buse_bar": 4.0}
+{
+  "vitesse_m_h": 19.3,
+  "debit_ls": 8.86,         // débit en L/s (m³/h / 3.6)
+  "p_buse_bar": 4.0,
+  "portee_m": 42.0,         // rayon du jet (sens constructeur)
+  "esp_nominal_m": 65.1,    // espacement recommandé = portée × 1.55
+  "esp_pos_min": 48.8,      // esp_nominal × 0.75
+  "esp_pos_max": 71.6,      // esp_nominal × 1.10
+  "p_min": 3.68,            // bornes pression abaque × 0.75 / × 1.25
+  "p_max": 11.88,
+  "buse_min": 12.98,
+  "buse_max": 31.75,
+  "dose_min": 11.25,
+  "dose_max": 50.0,
+  "warnings": {
+    "pression_basse": false,
+    "pression_haute": false,
+    "buse_hors_plage": false,
+    "dose_hors_plage": false,
+    "esp_pos_chevauchement": false,  // larg < esp_nominal × 0.75
+    "esp_pos_insuf": false,          // larg > esp_nominal × 1.10
+    "vitesse_limite": false,         // V_cible > V_max théorique
+    "v_max_m_h": 0.0                 // V_max = dist_cycle / (t_rempl_min + t_vidange) × 3600
+  }
+}
 ```
 
-Utilisé en temps réel dans le formulaire programme (calcul à la volée sans session active).
+Appelé en temps réel dans le formulaire programme (debounce 400ms). Affiche bornes min/max sous chaque champ et alertes jaunes non-bloquantes si warning actif.
 
 ---
 
