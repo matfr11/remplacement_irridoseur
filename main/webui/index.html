@@ -12,6 +12,14 @@
   --green:#43A047;--orange:#FB8C00;--red:#E53935;--yellow:#F9A825;--gray:#616161;
   --tap:48px;
 }
+[data-theme="light"]{
+  --bg:#f5f5f5;--card:#ffffff;--card2:#eeeeee;--border:#cccccc;
+  --text:#212121;--muted:#757575;
+}
+[data-theme="light"] nav{background:#ffffff;border-top:1px solid #cccccc}
+[data-theme="light"] .alert{background:#ffebee}
+[data-theme="light"] .alert-warn{background:#fff8e1}
+[data-theme="light"] .tgl-slider{background:#bdbdbd}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;font-size:16px;overflow:hidden}
 #app{display:flex;flex-direction:column;height:100%}
 #content{flex:1;overflow-y:auto;padding:8px 8px 4px}
@@ -130,6 +138,7 @@ details>summary::-webkit-details-marker{display:none}
           <div style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600">
             <span class="dot" id="dot-batt" style="width:11px;height:11px;flex-shrink:0"></span>
             <span id="batt-v">--</span>&nbsp;V
+            <button id="btn-theme" onclick="toggleTheme()" style="background:none;border:none;cursor:pointer;font-size:18px;padding:0 0 0 6px;line-height:1;color:var(--text)">☀</button>
           </div>
         </div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:10px;margin-top:4px">
@@ -1027,6 +1036,21 @@ document.querySelectorAll('#tab-config input, #tab-config select').forEach(el =>
   el.addEventListener('input', () => { configDirty = true; });
   el.addEventListener('change', () => { if (el.type !== 'checkbox') configDirty = true; });
 });
+
+function toggleTheme(){
+  const t=document.documentElement.getAttribute('data-theme')==='light'?'dark':'light';
+  document.documentElement.setAttribute('data-theme',t);
+  document.getElementById('btn-theme').textContent=t==='light'?'🌙':'☀';
+  localStorage.setItem('theme',t);
+}
+(function(){
+  const saved=localStorage.getItem('theme');
+  const pref=saved||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+  if(pref==='light'){
+    document.documentElement.setAttribute('data-theme','light');
+    document.getElementById('btn-theme').textContent='🌙';
+  }
+})();
 </script>
 </body>
 </html>
