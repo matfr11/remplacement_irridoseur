@@ -122,8 +122,13 @@ if (s_fc_deroule_prev && !e.fin_course) {
     gpio_reset_impulsions_cycle();
     entrer_etat(ETAT_DEROULE);
 }
-// OU cmd_start_deroule depuis WebSocket
+// OU cmd_start_deroule depuis WebSocket (VEILLE uniquement)
+// OU state_machine_sim_force_deroule() en CONFIG_IRRI_TEST_MODE (tout état)
 ```
+
+**Bug fix** : `state_machine_cmd_set_longueur()` synchronise `s_mesure_deroule_m`
+quand appelé en ETAT_DEROULE, pour que la transition DEROULE→OUVERTURE_CANON
+utilise la valeur corrigée (et non 0 si aucune pastille n'avait été comptée).
 
 ### OUVERTURE_CANON → TEMPO_DEPART ou REMPLISSAGE_POUMON
 

@@ -207,12 +207,14 @@ Pilotage direct des EV hors cycle (VEILLE uniquement) :
 {"cmd": "ev_poumon", "actif": false}
 ```
 
-### Mesure déroulement
+### Commencer le déroulement
 
 ```json
 {"cmd": "start_deroule"}
 ```
-Entre en ETAT_DEROULE manuellement (si fin_course déjà LOW depuis VEILLE).
+Entre en ETAT_DEROULE manuellement (depuis VEILLE uniquement). En mode
+simulateur, utiliser la commande sim `start_deroule` via `/ws_test` qui
+force l'entrée depuis n'importe quel état.
 
 ### Configuration programmes
 
@@ -380,4 +382,33 @@ ESP32 → Client : {"etat":"VEILLE","etat_code":0,...}
 // Reset complet si nouvelle campagne
 Client → ESP32 : {"cmd":"reset"}
 Client → ESP32 : {"cmd":"reset_campagne"}
+
+// Simulation déroulement (CONFIG_IRRI_TEST_MODE, via /ws_test)
+Client → ESP32 : {"sim":"start_deroule","value":1}       // force ETAT_DEROULE
+Client → ESP32 : {"sim":"vitesse_deroule","value":60}    // 6.0 km/h (valeur × 100 = m/h)
+ESP32 → Client : {"etat":"DEROULE","etat_code":9,"mesure_deroule_m":3.7,...}
+Client → ESP32 : {"sim":"vitesse_deroule","value":0}     // arrêt pulses
 ```
+
+---
+
+## WebSocket simulateur — `/ws_test` (CONFIG_IRRI_TEST_MODE)
+
+Route distincte de `/ws`. Toutes les commandes ont la forme :
+`{"sim": "<clé>", "value": <entier>}`
+
+| Clé | Valeur | Effet |
+|---|---|---|
+| `pressostat` | 0/1 | Simule pression OK/perdue (GPIO 27) |
+| `fin_course` | 0/1 | Simule fin de course inactif/actif (GPIO 35) |
+| `secu_spires` | 0/1 | Simule débordement bobine (GPIO 32) |
+| `poumon_plein` | 0/1 | Simule contact poumon plein (GPIO 33) |
+| `vitesse_auto` | m/h | Génère des pulses capteur à la vitesse donnée (enroulement) |
+| `vitesse_deroule` | dixièmes de km/h | Génère des pulses à la vitesse tracteur (0–80 = 0–8 km/h). Conversion : valeur × 100 = m/h |
+| `start_deroule` | 1 | Force ETAT_DEROULE depuis n'importe quel état (voir `state_machine_sim_force_deroule()`) |
+| `longueur` | m | Force `set_longueur` |
+| `batt_v` | dixièmes de V | Simule tension batterie (125 = 12.5V, 0 = ADC réel) |
+
+> **Important** : `simulator_init()` doit être appelé avant `simulator_ws_register()` dans
+> `webserver_init()` pour que la tâche `task_pulses` (stack 4096 bytes, priorité 5) soit créée.
+> Sans cet appel, aucun pulse ne sera généré.

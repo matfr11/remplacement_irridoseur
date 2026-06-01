@@ -114,8 +114,8 @@ EN PREMIER dans `tick_state_machine()`, avant la lecture des entrées et le trai
 | `main/abaques/abaques.h` | `canon_abaque_t`, `canon_entry_t`, `ABAQUES_LISTE[]` |
 | `main/abaques/abaques.c` | Tableau abaques + `abaque_get()` |
 | `main/abaques/sr150c.c` | Abaque Nelson SR 150C (13 entrées) |
-| `main/simulator/simulator.c` | Simulation GPIO (CONFIG_IRRI_TEST_MODE) |
-| `main/simulator/simulator_ws.c` | Routes WebSocket simulateur + parsing JSON injection |
+| `main/simulator/simulator.c` | Simulation GPIO + tâche `task_pulses` (4096 bytes stack, priorité 5) — **`simulator_init()` appelé depuis `webserver_init()`** |
+| `main/simulator/simulator_ws.c` | Routes `/ws_test` + commandes sim JSON (`vitesse_deroule`, `start_deroule` → `state_machine_sim_force_deroule()`) |
 | `main/simulator/simulator_ui.h` | Symboles UI simulateur embarquée |
 | `test/host/` | Tests unitaires PC (Unity, stubs ESP-IDF) |
 
