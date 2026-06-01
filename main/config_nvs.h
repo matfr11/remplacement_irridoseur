@@ -31,6 +31,7 @@ typedef struct {
     float   cycles_par_tour;        // Nb cycles poumon par tour de bobine (0 = non renseigné)
     bool    heartbeat_rc_on;        // Heartbeat GPIO 2 pour circuit RC fail-safe (défaut OFF)
     float   fin_course_seuil_m;     // Longueur restante en dessous de laquelle fin_course = fin normale (défaut 10m)
+    int     abaque_idx;             // Index abaque canon actif (0=SR150C, 1=SR100C)
 } config_machine_t;
 
 // -----------------------------------------------------------------------------
@@ -65,6 +66,7 @@ typedef struct {
     .cycles_par_tour   = 0.0f,  \
     .heartbeat_rc_on    = false, \
     .fin_course_seuil_m = 10.0f, \
+    .abaque_idx         = 0,     \
 }
 
 // -----------------------------------------------------------------------------

@@ -129,7 +129,7 @@ static void charger_config_interne(void)
     config_nvs_lire_machine(&s_cfg_machine);
     config_nvs_lire_programme(prog_idx, &s_cfg_prog);
     s_profil = machine_get(s_cfg_machine.machine_active);
-    s_abaque = abaque_get(s_profil->abaque_idx);
+    s_abaque = abaque_get(s_cfg_machine.abaque_idx);
     // Fallback cycles_par_tour : 0 en NVS → utiliser la valeur du profil machine
     if (s_cfg_machine.cycles_par_tour <= 0.0f && s_profil && s_profil->cycles_par_tour > 0.0f) {
         s_cfg_machine.cycles_par_tour = s_profil->cycles_par_tour;
@@ -779,6 +779,7 @@ void tick_state_machine(void)
     s_status.cfg_t_rempl_fixe_s   = s_cfg_machine.t_rempl_fixe_s;
     s_status.cfg_denivele_m       = s_cfg_machine.denivele_m;
     s_status.cfg_machine_active   = s_cfg_machine.machine_active;
+    s_status.cfg_abaque_idx       = s_cfg_machine.abaque_idx;
     s_status.cfg_cycles_par_tour  = s_cfg_machine.cycles_par_tour;
     s_status.cfg_heartbeat_rc_on    = s_cfg_machine.heartbeat_rc_on;
     s_status.cfg_fin_course_seuil_m = s_cfg_machine.fin_course_seuil_m;

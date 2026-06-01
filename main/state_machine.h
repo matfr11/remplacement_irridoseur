@@ -137,6 +137,7 @@ typedef struct {
     float           cfg_t_rempl_fixe_s;
     float           cfg_denivele_m;
     int             cfg_machine_active;
+    int             cfg_abaque_idx;
     float           cfg_cycles_par_tour;
     bool            cfg_heartbeat_rc_on;
 } machine_status_t;

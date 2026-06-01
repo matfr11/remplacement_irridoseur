@@ -122,6 +122,7 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         "\"cfg_t_rempl_fixe_s\":%.1f,"
         "\"cfg_denivele_m\":%.1f,"
         "\"cfg_machine_active\":%d,"
+        "\"cfg_abaque_idx\":%d,"
         "\"cfg_cycles_par_tour\":%.1f,"
         "\"prog_dose_mm\":%.1f,"
         "\"prog_largeur_m\":%.1f,"
@@ -190,6 +191,7 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         s->cfg_t_rempl_fixe_s,
         s->cfg_denivele_m,
         s->cfg_machine_active,
+        s->cfg_abaque_idx,
         s->cfg_cycles_par_tour,
         s->prog_dose_mm,
         s->prog_largeur_m,
@@ -359,6 +361,7 @@ static void handle_ws_command(const char *data, size_t len)
         if (json_parse_bool (data, "mode_deg_poumon",    &b)) cfg.mode_deg_poumon     = b;
         if (json_parse_bool (data, "mode_deg_spires",    &b)) cfg.mode_deg_spires     = b;
         if (json_parse_int  (data, "machine_active",     &n)) cfg.machine_active      = n;
+        if (json_parse_int  (data, "abaque_idx",         &n)) cfg.abaque_idx          = n;
         if (json_parse_float(data, "cycles_par_tour",    &f)) cfg.cycles_par_tour     = f;
         if (json_parse_bool (data, "heartbeat_rc_on",    &b)) cfg.heartbeat_rc_on      = b;
         if (json_parse_float(data, "fin_course_seuil_m", &f)) cfg.fin_course_seuil_m  = f;

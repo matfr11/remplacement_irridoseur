@@ -287,7 +287,7 @@ details>summary::-webkit-details-marker{display:none}
             <select id="m-machine"><option value="0">ST1 Bis &#216;82-330m</option></select>
           </div>
           <div class="field"><label>Abaque canon</label>
-            <select id="m-abaque"><option value="0">SR 150C</option></select>
+            <select id="m-abaque"><option value="0">SR 150C</option><option value="1">SR 100C</option></select>
           </div>
           <div class="field"><label>T. vidange poumon (s) &#9888;</label><input id="m-tvidange" type="number" min="0" max="60" step="0.1"></div>
           <div class="field"><label>Dénivelé (m)</label><input id="m-denivele" type="number" min="-50" max="50" step="0.5"></div>
@@ -669,6 +669,7 @@ function loadConfigFromStatus() {
   if (s.cfg_t_rempl_fixe_s != null)  setField('m-trempl', s.cfg_t_rempl_fixe_s);
   if (s.cfg_denivele_m != null)      setField('m-denivele', s.cfg_denivele_m);
   if (s.cfg_machine_active != null)  setField('m-machine', s.cfg_machine_active);
+  if (s.cfg_abaque_idx != null)      setField('m-abaque',  s.cfg_abaque_idx);
   if (s.cfg_cycles_par_tour != null) setField('m-cyclestour', s.cfg_cycles_par_tour);
   if (s.mode_degrade_poumon != null) {
     setCheck('m-mdp', s.mode_degrade_poumon);
@@ -769,6 +770,7 @@ function saveMachine() {
   sendCmd({
     cmd: 'save_machine',
     machine_active: parseInt(document.getElementById('m-machine').value),
+    abaque_idx: parseInt(document.getElementById('m-abaque').value),
     t_vidange_s: parseFloat(document.getElementById('m-tvidange').value) || 0,
     facteur_correction: parseFloat(st.facteur_correction) || 1.0,
     kp_regulation: parseFloat(document.getElementById('m-kp').value) || 0.1,
