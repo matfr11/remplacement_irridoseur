@@ -137,7 +137,7 @@ details>summary::-webkit-details-marker{display:none}
         </div>
         <div class="grid2">
           <div class="tile">
-            <div class="tile-label">Déroulé <button class="tile-edit" onclick="openEtalonnage()">✏</button></div>
+            <div class="tile-label">Déroulé <button class="tile-edit" onclick="st.etat_code===ETAT_DEROULE ? openDerouleCorrection() : openEtalonnage()">✏</button></div>
             <div><span class="tile-val" id="deroul-val">--</span> <span class="tile-unit">m</span></div>
           </div>
           <div class="tile">
@@ -174,14 +174,6 @@ details>summary::-webkit-details-marker{display:none}
       <div id="alert-deg-poumon" class="alert alert-warn" style="display:none">Mode dégradé : contact poumon</div>
       <div id="alert-deg-spires" class="alert" style="display:none;background:#5a1a1a;border-color:#c62828">&#9888; SECURITE SPIRES DESACTIVEE — risque débordement bobine</div>
 
-      <!-- Panneau ETAT_DEROULE -->
-      <div id="panel-deroule" class="card" style="display:none">
-        <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--muted)">Mesure déroulement en cours&hellip;</div>
-        <div class="gpio-row" style="font-size:16px">
-          <span>Déployé mesuré</span>
-          <span><strong id="deroule-mesure">0</strong> m <button class="tile-edit" onclick="openDerouleCorrection()" title="Corriger la longueur mesurée">&#9998;</button></span>
-        </div>
-      </div>
 
       <div class="card">
         <div class="gpio-row">
@@ -206,7 +198,7 @@ details>summary::-webkit-details-marker{display:none}
       <button id="btn-stop" class="btn btn-red" onclick="sendCmd({cmd:'stop'})">&#9632; ARRET URGENCE</button>
       <button id="btn-reset" class="btn btn-orange" style="display:none" onclick="sendCmd({cmd:'reset'})">&#8635; RESET</button>
       <button id="btn-resume" class="btn btn-orange" style="display:none" onclick="sendCmd({cmd:'resume'})">&#8617; REPRENDRE SESSION</button>
-      <button id="btn-deroule" class="btn" style="display:none;background:var(--card2);border:1px solid var(--border)" onclick="sendCmd({cmd:'start_deroule'})">&#9654; Mesurer déroulement</button>
+      <button id="btn-deroule" class="btn" style="display:none;background:var(--card2);border:1px solid var(--border)" onclick="sendCmd({cmd:'start_deroule'})">&#9654; Commencer le déroulement</button>
     </div>
 
     <!-- TAB 2 : Stats -->
@@ -532,7 +524,9 @@ function updateUI() {
   txt('machine-lbl', s.machine_nom || '--');
 
   // Tiles
-  txt('deroul-val', s.longueur_deroulee_m != null ? s.longueur_deroulee_m.toFixed(0) : '--');
+  txt('deroul-val', s.etat_code === ETAT_DEROULE
+    ? (s.mesure_deroule_m != null ? s.mesure_deroule_m.toFixed(0) : '0')
+    : (s.longueur_deroulee_m != null ? s.longueur_deroulee_m.toFixed(0) : '--'));
   txt('enroul-val', s.longueur_enroulee_m != null ? s.longueur_enroulee_m.toFixed(0) : '--');
   txt('vitesse-val', s.vitesse_m_h != null ? s.vitesse_m_h.toFixed(1) : '--');
   txt('duree-val', s.duree_s != null ? fmtDuree(s.duree_s) : '--');
@@ -596,9 +590,6 @@ function updateUI() {
   if (coupure) txt('coupure-longueur', s.longueur_enroulee_m != null ? s.longueur_enroulee_m.toFixed(0) : '?');
   show('btn-stop', !arret && !veille && !deroule);
   show('btn-deroule', veille && !s.fin_course);   // déploiement manuel si fin_course déjà libéré
-  // Panneau déroulement
-  show('panel-deroule', deroule);
-  if (deroule) txt('deroule-mesure', s.mesure_deroule_m != null ? s.mesure_deroule_m.toFixed(0) : '0');
 
   // Stats session
   txt('s-surface', s.surface_m2 != null ? (s.surface_m2 / 10000).toFixed(3) : '--');

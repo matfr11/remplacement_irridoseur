@@ -100,6 +100,26 @@ input[type=range]{width:200px;accent-color:#4af}
 </div>
 
 <div class="section">
+  <h2>Simulation deroulement</h2>
+  <div class="row">
+    <label>Commencer le deroulement</label>
+    <button onclick="send('start_deroule',1)">Commencer</button>
+  </div>
+  <div class="row">
+    <label>Vitesse tracteur</label>
+    <span>
+      <input type="range" id="deroule-slider" min="0" max="80" step="5" value="0"
+             oninput="updateDerouleSlider(this.value)">
+      &nbsp;<strong id="deroule-vval">0.0</strong> km/h
+    </span>
+  </div>
+  <div class="row">
+    <label>&nbsp;</label>
+    <button onclick="stopDeroule()">Arreter</button>
+  </div>
+</div>
+
+<div class="section">
   <h2>Scenarios rapides</h2>
   <button class="scen-btn" onclick="scenario(1)">1 Cycle normal</button>
   <button class="scen-btn" onclick="scenario(3)">3 Perte pression</button>
@@ -159,6 +179,17 @@ function updateBattSlider(raw) {
   lbl.style.color = BATT_COLORS[idx];
   send('batt_v', parseInt(raw));
 }
+function updateDerouleSlider(raw) {
+  var kmh = raw / 10;
+  document.getElementById('deroule-vval').textContent = kmh.toFixed(1);
+  send('vitesse_deroule', parseInt(raw));
+}
+function stopDeroule() {
+  document.getElementById('deroule-slider').value = 0;
+  document.getElementById('deroule-vval').textContent = '0.0';
+  send('vitesse_deroule', 0);
+}
+
 function disableBattSim() {
   document.getElementById('batt-etat-lbl').textContent = 'ADC reel actif';
   document.getElementById('batt-etat-lbl').style.color = '#888';
@@ -175,6 +206,7 @@ function connectMain() {
       if (d.etat !== undefined) {
         document.getElementById('etat').textContent = ETATS[d.etat] || d.etat;
       }
+
     } catch(e) {}
   };
   ws_main.onclose = function() { setTimeout(connectMain, 2000); };

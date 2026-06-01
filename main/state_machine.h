@@ -233,6 +233,12 @@ typedef struct {
 programme_preview_t state_machine_programme_preview(float pression_bar, float buse_mm,
                                                      float dose_mm, float largeur_m);
 
+#ifdef CONFIG_IRRI_TEST_MODE
+// Force l'entrée en ETAT_DEROULE depuis n'importe quel état (simulateur).
+// Coupe les EVs, remet s_demarrage_autorise à false pour éviter l'auto-démarrage.
+void state_machine_sim_force_deroule(void);
+#endif
+
 #ifdef CONFIG_IRRI_ENABLE_TESTS
 void state_machine_test_injecter_etat(etat_machine_t etat);
 void state_machine_test_set_pression(bool pression_ok);

@@ -577,6 +577,7 @@ esp_err_t webserver_init(void)
     httpd_register_uri_handler(s_server, &uri_vitesse);
     ota_register_handler(s_server);
 #ifdef CONFIG_IRRI_TEST_MODE
+    simulator_init();
     simulator_ws_register(s_server);
 #endif
 

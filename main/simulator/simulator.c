@@ -35,6 +35,7 @@ void sim_gpio_set_level(gpio_num_t pin, int level)
 static void task_pulses(void *arg)
 {
     (void)arg;
+    uint32_t n_pulses = 0;
     while (1) {
         float v = s_vitesse_auto_mh;
         if (v > 0.0f) {
@@ -46,6 +47,9 @@ static void task_pulses(void *arg)
                 int64_t interval_us = (int64_t)(1e6f / pps);
                 vTaskDelay(pdMS_TO_TICKS(interval_us / 1000));
                 gpio_handler_test_injecter_pulse(esp_timer_get_time());
+                n_pulses++;
+                if (n_pulses <= 3 || n_pulses % 20 == 0)
+                    ESP_LOGI(TAG, "pulse sim #%u v=%.0f m/h", n_pulses, v);
                 continue;
             }
         }
@@ -67,7 +71,7 @@ void simulator_init(void)
     s_gpio_values[PIN_SECU_SPIRES]  = 0;  // normal
     s_gpio_values[PIN_POUMON_PLEIN] = 0;  // pas plein
 
-    xTaskCreate(task_pulses, "sim_pulses", 2048, NULL, 5, NULL);
+    xTaskCreate(task_pulses, "sim_pulses", 4096, NULL, 5, NULL);
     ESP_LOGI(TAG, "Simulateur initialisé");
 }
 

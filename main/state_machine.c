@@ -901,6 +901,8 @@ void state_machine_cmd_set_longueur(float longueur_deroule_m)
     float abs_enroulee = (total > 0.0f) ? total - longueur_deroule_m : 0.0f;
 
     s_longueur_deroule_m    = longueur_deroule_m;  // affiché "Déroulé" — constant session
+    if (s_etat == ETAT_DEROULE)
+        s_mesure_deroule_m = longueur_deroule_m;  // sync pour que la transition DEROULE->CANON soit correcte
     s_longueur_session_m    = 0.0f;                // progression repart de 0
     s_longueur_enroulee     = abs_enroulee;        // interne, calculs mécaniques
     s_longueur_derniere_nvs = abs_enroulee;
@@ -1160,7 +1162,22 @@ void state_machine_test_set_longueurs(float deroule_m, float session_m)
     s_longueur_enroulee  = (total > 0.0f) ? total - deroule_m : 0.0f;
     s_longueur_derniere_nvs = s_longueur_enroulee;
 }
-#endif
+#endif // CONFIG_IRRI_ENABLE_TESTS
+
+#ifdef CONFIG_IRRI_TEST_MODE
+void state_machine_sim_force_deroule(void)
+{
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    gpio_ev_canon_set(false);
+    gpio_ev_poumon_set(false);
+    s_mesure_deroule_m   = 0.0f;
+    s_demarrage_autorise = false;   // evite l'auto-demarrage depuis DEROULE
+    gpio_reset_impulsions_cycle();
+    entrer_etat(ETAT_DEROULE);
+    ESP_LOGI(TAG, "sim_force_deroule : entree DEROULE depuis etat=%d", s_etat);
+    xSemaphoreGive(s_mutex);
+}
+#endif // CONFIG_IRRI_TEST_MODE
 
 // ---------------------------------------------------------------------------
 // Vitesse max theorique — basee sur t_rempl_min_s + t_vidange + dist_cycle

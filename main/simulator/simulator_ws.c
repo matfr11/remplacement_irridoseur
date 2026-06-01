@@ -53,9 +53,11 @@ static void apply_sim_key(const char *key, int val)
     else if (strcmp(key, "fin_course")   == 0) sim_gpio_set_level(PIN_FIN_COURSE,   val);
     else if (strcmp(key, "secu_spires")  == 0) sim_gpio_set_level(PIN_SECU_SPIRES,  val);
     else if (strcmp(key, "poumon_plein") == 0) sim_gpio_set_level(PIN_POUMON_PLEIN, val);
-    else if (strcmp(key, "vitesse_auto") == 0) sim_set_vitesse_auto((float)val);
-    else if (strcmp(key, "longueur")     == 0) state_machine_cmd_set_longueur((float)val);
-    else if (strcmp(key, "batt_v")       == 0) batterie_sim_set_voltage(val ? val / 10.0f : 0.0f);
+    else if (strcmp(key, "vitesse_auto")    == 0) sim_set_vitesse_auto((float)val);
+    else if (strcmp(key, "vitesse_deroule") == 0) sim_set_vitesse_auto(val > 0 ? (float)val * 100.0f : 0.0f);
+    else if (strcmp(key, "start_deroule")   == 0) state_machine_sim_force_deroule();
+    else if (strcmp(key, "longueur")        == 0) state_machine_cmd_set_longueur((float)val);
+    else if (strcmp(key, "batt_v")          == 0) batterie_sim_set_voltage(val ? val / 10.0f : 0.0f);
     else ESP_LOGW(TAG, "Clé inconnue: %s", key);
 }
 
