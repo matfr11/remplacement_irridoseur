@@ -100,6 +100,35 @@ static void test_correction_largeur(void)
     TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.5f, v120 / v60);
 }
 
+// 11 — SR 100C exact entry (p=4.5, buse=12.7 -> p_buse=4.0), dose=25, larg=48
+//      Q = 0.039 * 161.29 * sqrt(4.0) = 12.58 m3/h
+//      V = 12580 / (48*25) = 10.48 m/h
+static void test_sr100c_exact_buse127_d25(void)
+{
+    float debit = 0.0f;
+    float v = lookup_vitesse_cible(&ABAQUE_SR100C, 4.5f, 12.7f, 25.0f, 48.0f, &debit, NULL);
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, 10.48f, v);
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, 12.58f, debit);
+}
+
+// 12 — SR 100C exact entry (p=7.4, buse=19.0 -> p_buse=5.0), dose=30, larg=66
+//      Q = 0.039 * 361.0 * sqrt(5.0) = 31.48 m3/h
+//      V = 31480 / (66*30) = 15.90 m/h
+static void test_sr100c_exact_buse190_d30(void)
+{
+    float v = lookup_vitesse_cible(&ABAQUE_SR100C, 7.4f, 19.0f, 30.0f, 66.0f, NULL, NULL);
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, 15.90f, v);
+}
+
+// 13 — SR 100C IDW équidistant entre (4.9/15.2/p_buse=4.0) et (6.1/15.2/p_buse=5.0)
+//      p=5.5, d0=d1=0.12 -> p_buse=4.50
+//      Q = 0.039 * 231.04 * sqrt(4.5) = 19.11   V = 19110/(60*25) = 12.74 m/h
+static void test_sr100c_interp_buse152(void)
+{
+    float v = lookup_vitesse_cible(&ABAQUE_SR100C, 5.5f, 15.2f, 25.0f, 60.0f, NULL, NULL);
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, 12.74f, v);
+}
+
 void suite_calculs_hydraulique(void)
 {
     unity_suite_setup(NULL, NULL);
@@ -113,4 +142,7 @@ void suite_calculs_hydraulique(void)
     RUN_TEST(test_surface);
     RUN_TEST(test_dose_inst);
     RUN_TEST(test_correction_largeur);
+    RUN_TEST(test_sr100c_exact_buse127_d25);
+    RUN_TEST(test_sr100c_exact_buse190_d30);
+    RUN_TEST(test_sr100c_interp_buse152);
 }

@@ -16,6 +16,7 @@ set(PROD_SRCS
   ../../main/machines/st1bis_82_330.c
   ../../main/abaques/abaques.c
   ../../main/abaques/sr150c.c
+  ../../main/abaques/sr100c.c
   ../../main/config_nvs.c
   ../../main/state_machine.c
   ../../main/gpio_handler.c
