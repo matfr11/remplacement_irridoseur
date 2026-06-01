@@ -112,8 +112,9 @@ EN PREMIER dans `tick_state_machine()`, avant la lecture des entrées et le trai
 | `main/machines/machines.c` | Tableau profils + `machine_resoudre_double_entree()` |
 | `main/machines/st1bis_82_330.c` | Profil Irrifrance ST1 Bis Ø82-330m |
 | `main/abaques/abaques.h` | `canon_abaque_t`, `canon_entry_t`, `ABAQUES_LISTE[]` |
-| `main/abaques/abaques.c` | Tableau abaques + `abaque_get()` |
-| `main/abaques/sr150c.c` | Abaque Nelson SR 150C (13 entrées) |
+| `main/abaques/abaques.c` | Tableau abaques + `abaque_get()` — `ABAQUES_NB=2` |
+| `main/abaques/sr150c.c` | Abaque Nelson SR 150C (13 entrées) — index 0 |
+| `main/abaques/sr100c.c` | Abaque Irrifrance SR 100C (25 entrées) — index 1 |
 | `main/simulator/simulator.c` | Simulation GPIO + tâche `task_pulses` (4096 bytes stack, priorité 5) — **`simulator_init()` appelé depuis `webserver_init()`** |
 | `main/simulator/simulator_ws.c` | Routes `/ws_test` + commandes sim JSON (`vitesse_deroule`, `start_deroule` → `state_machine_sim_force_deroule()`) |
 | `main/simulator/simulator_ui.h` | Symboles UI simulateur embarquée |

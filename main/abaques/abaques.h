@@ -29,7 +29,7 @@ typedef struct {
 typedef struct {
     char          nom[32];
     char          constructeur[32];
-    canon_entry_t table[20];    // Max 20 lignes par abaque
+    canon_entry_t table[30];    // Max 30 lignes par abaque
     int           nb_entrees;
     float         k_q;             // Debit : Q(m3/h) = k_q * buse_mm^2 * sqrt(p_buse_bar)
     float         k_portee;        // Portee (rayon) : m / mm^portee_exp_buse
@@ -40,6 +40,7 @@ typedef struct {
 
 // Abaques disponibles
 extern const canon_abaque_t ABAQUE_SR150C;
+extern const canon_abaque_t ABAQUE_SR100C;
 
 // Tableau de tous les abaques (terminé par NULL)
 extern const canon_abaque_t * const ABAQUES_LISTE[];

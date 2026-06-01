@@ -136,7 +136,7 @@ const machine_profile_t MACHINE_MON_ENROULEUR = {
     .d_tuyau_ext_m     = 0.063f,       // diamètre extérieur tuyau (m)
     .r_tambour_vide_m  = 0.450f,       // rayon tambour vide (m) — mesurer
     .nb_etages         = 3,            // nombre d'étages tuyau
-    .abaque_idx        = 0,            // index abaque canon (0 = SR150C)
+    .abaque_idx        = 0,            // index abaque canon (0=SR150C, 1=SR100C)
     .largeur_bobine_m  = 0.0f,         // laisser 0 si spires_par_etage connu
     .spires_par_etage  = 11.0f,        // nombre de spires par étage
     .t_vidange_s       = 0.0f,         // à mesurer terrain
@@ -175,6 +175,17 @@ Dans `main/CMakeLists.txt`, ajouter `machines/mon_enrouleur.c` à la liste des s
 
 Dans l'UI web, onglet Config → sélectionner le nouveau profil machine → vérifier les calculs
 de vitesse cible dans le preview.
+
+---
+
+## Abaques canon disponibles
+
+| Index | Fichier | Nom | Constructeur | Nb entrées |
+|-------|---------|-----|--------------|-----------|
+| 0 | `main/abaques/sr150c.c` | SR 150C | Irrifrance / Nelson | 13 |
+| 1 | `main/abaques/sr100c.c` | SR 100C | Irrifrance | 25 |
+
+Coefficients SR 100C : `k_q=0.039`, `k_portee=7.70`, `portee_exp_buse=0.55`, `portee_exp_p=0.31`, `esp_factor=1.53`
 
 ---
 

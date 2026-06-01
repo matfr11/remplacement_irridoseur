@@ -15,6 +15,7 @@ set(SRCS
     "machines/st1bis_82_330.c"
     "abaques/abaques.c"
     "abaques/sr150c.c"
+    "abaques/sr100c.c"
 )
 
 if(CONFIG_IRRI_ENABLE_TESTS)
