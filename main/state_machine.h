@@ -204,6 +204,35 @@ float state_machine_calc_vitesse(float pression_bar, float buse_mm, float dose_m
                                   float largeur_m,
                                   float *debit_out, float *p_buse_out);
 
+// Vitesse max theorique basee sur t_rempl_min_s historique + t_vidange + dist_cycle.
+// Retourne 0 si dist_cycle non encore calibre.
+float state_machine_get_vitesse_max(void);
+
+// Preview complet pour /api/vitesse — toutes les donnees pour le formulaire programme.
+typedef struct {
+    float vitesse_m_h;
+    float debit_ls;         // debit en L/s (= m3/h / 3.6)
+    float p_buse_bar;
+    float portee_m;         // rayon du jet (sens constructeur Irrifrance)
+    float esp_nominal_m;    // espacement recommande = portee x esp_factor
+    float esp_pos_min;      // esp_nominal x 0.75
+    float esp_pos_max;      // esp_nominal x 1.10
+    float p_min, p_max;     // bornes pression abaque x 0.75 / x 1.25
+    float buse_min, buse_max;
+    float dose_min, dose_max; // 15 x 0.75 / 40 x 1.25
+    bool  w_pression_basse;
+    bool  w_pression_haute;
+    bool  w_buse_hors_plage;
+    bool  w_dose_hors_plage;
+    bool  w_esp_pos_chevauchement;
+    bool  w_esp_pos_insuf;
+    bool  w_vitesse_limite; // V_cible > V_max theorique
+    float v_max_m_h;        // pour message warning vitesse
+} programme_preview_t;
+
+programme_preview_t state_machine_programme_preview(float pression_bar, float buse_mm,
+                                                     float dose_mm, float largeur_m);
+
 #ifdef CONFIG_IRRI_ENABLE_TESTS
 void state_machine_test_injecter_etat(etat_machine_t etat);
 void state_machine_test_set_pression(bool pression_ok);

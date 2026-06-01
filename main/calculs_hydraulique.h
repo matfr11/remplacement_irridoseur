@@ -1,37 +1,44 @@
 #pragma once
 
 #include "abaques/abaques.h"
+#include <stdbool.h>
 
 // =============================================================================
-// calculs_hydraulique.h — Lookup vitesse cible + débit Irrifrance ESP32
+// calculs_hydraulique.h — Vitesse cible + validation programme Irrifrance ESP32
 //
-// Double interpolation :
-//   Niveau 1 — Ligne (p_enrouleur + buse_mm) : 2 voisins les plus proches
-//   Niveau 2 — Dose : interpolation linéaire entre colonnes D40/D30/D25/D20/D15
+// Formule analytique (loi de Torricelli) :
+//   Q (m3/h) = k_q * buse_mm^2 * sqrt(p_buse_bar)
+//   V (m/h)  = Q * 1000 / (largeur_m * dose_mm)
 //
-// Doses {40,30,25,20,15} mm — ordre DÉCROISSANT
-// Vitesse DIMINUE quand dose AUGMENTE
+// k_q, k_portee, portee_exp_buse, portee_exp_p, esp_factor : stockes dans l'abaque.
+// p_buse : interpole depuis l'abaque (2 voisins IDW sur p_enrouleur x buse_mm).
+// largeur_m : espacement entre positions — champ obligatoire (largeur_m < 0.1 -> erreur).
 // =============================================================================
-
-// Plage doses valides (mm)
-#define DOSE_MIN_MM   10.0f
-#define DOSE_MAX_MM   50.0f
 
 /**
- * Lookup vitesse cible — double interpolation sur l'abaque.
+ * Warnings non-bloquants retournes par valider_params_programme().
+ * Tous les champs false = programme valide.
+ */
+typedef struct {
+    bool pression_basse;        // p_enrouleur < p_min_abaque x 0.75
+    bool pression_haute;        // p_enrouleur > p_max_abaque x 1.25
+    bool buse_hors_plage;       // buse hors [buse_min x 0.75, buse_max x 1.25]
+    bool dose_hors_plage;       // dose hors [15 x 0.75, 40 x 1.25] mm
+    bool esp_pos_chevauchement; // espacement < esp_nominal x 0.75 (fort recroisement)
+    bool esp_pos_insuf;         // espacement > esp_nominal x 1.10 (risque sous-arrosage)
+} hydro_warnings_t;
+
+/**
+ * Vitesse cible (m/h) par formule analytique.
  *
- * L'abaque donne les vitesses pour l'espacement de référence esp_m.
- * La correction largeur_m ramène la vitesse à la largeur réelle configurée :
- *   v_cible = v_abaque × (esp_interpolé / largeur_m)
- *
- * @param abaque       Pointeur abaque actif
- * @param p_enrouleur  Pression manomètre (bar)
- * @param buse_mm      Diamètre buse (mm)
- * @param dose_mm      Dose cible mm — plage 10-50mm, extrapolation hors plage
- * @param largeur_m    Largeur position arrosée (m). 0 = utilise esp_m de l'abaque (compat)
- * @param debit_out    Débit résultant m³/h (NULL si non souhaité)
- * @param p_buse_out   Pression effective à la buse bar (NULL si non souhaité)
- * @return             Vitesse cible m/h (> 0 garanti si abaque valide)
+ * @param abaque       Abaque actif
+ * @param p_enrouleur  Pression manometre (bar)
+ * @param buse_mm      Diametre buse (mm)
+ * @param dose_mm      Dose cible (mm) — continu, pas de clamping
+ * @param largeur_m    Espacement entre positions (m) — OBLIGATOIRE (>0.1), sinon return 0
+ * @param debit_out    Debit m3/h (NULL si non souhaite)
+ * @param p_buse_out   Pression buse bar (NULL si non souhaite)
+ * @return             Vitesse cible m/h (0 si parametre invalide)
  */
 float lookup_vitesse_cible(const canon_abaque_t *abaque,
                             float p_enrouleur,
@@ -42,13 +49,28 @@ float lookup_vitesse_cible(const canon_abaque_t *abaque,
                             float *p_buse_out);
 
 /**
- * Calcule la surface arrosée en m².
- * surface = longueur_enroulee_m × largeur_m
+ * Valide les parametres d'un programme vis-a-vis de l'abaque.
+ * Non-bloquant : l'enregistrement peut avoir lieu meme si des warnings sont actifs.
+ */
+hydro_warnings_t valider_params_programme(const canon_abaque_t *abaque,
+                                           float p_enrouleur,
+                                           float buse_mm,
+                                           float dose_mm,
+                                           float largeur_m);
+
+/**
+ * Espacement nominal recommande (m) = portee x esp_factor.
+ * Portee = rayon du jet (au sens constructeur Irrifrance).
+ */
+float calcul_esp_nominal_m(const canon_abaque_t *abaque,
+                             float p_enrouleur, float buse_mm);
+
+/**
+ * Surface arrosee (m2) = longueur x largeur.
  */
 float calcul_surface_m2(float longueur_enroulee_m, float largeur_m);
 
 /**
- * Calcule la dose instantanée en mm.
- * dose = (debit_m3h / (vitesse_m_h × largeur_m)) × 1000
+ * Dose instantanee (mm) = debit / (vitesse x largeur) x 1000.
  */
 float calcul_dose_inst_mm(float debit_m3h, float vitesse_m_h, float largeur_m);

@@ -262,16 +262,17 @@ details>summary::-webkit-details-marker{display:none}
             <button class="prog-rename" onclick="renameProg()" title="Renommer">✏</button>
           </div>
           <div class="field-row">
-            <div class="field"><label>Dose (mm)</label><input id="p-dose" type="number" min="10" max="50" step="1" oninput="debouncePrevVitesse()"></div>
-            <div class="field"><label>Largeur (m)</label><input id="p-larg" type="number" min="1" max="100" step="0.5"></div>
+            <div class="field"><label>Dose (mm)</label><input id="p-dose" type="number" min="10" max="50" step="1" oninput="debouncePrevVitesse()"><span id="h-dose" style="font-size:11px;color:var(--muted)"></span></div>
+            <div class="field"><label>Espacement (m)</label><input id="p-larg" type="number" min="1" max="200" step="0.5" oninput="debouncePrevVitesse()"><span id="h-larg" style="font-size:11px;color:var(--muted)"></span></div>
           </div>
           <div class="field-row">
-            <div class="field"><label>Buse (mm)</label><input id="p-buse" type="number" min="10" max="30" step="1" oninput="debouncePrevVitesse()"></div>
-            <div class="field"><label>Pression (bar)</label><input id="p-pres" type="number" min="1" max="20" step="0.5" oninput="debouncePrevVitesse()"></div>
+            <div class="field"><label>Buse (mm)</label><input id="p-buse" type="number" min="10" max="30" step="1" oninput="debouncePrevVitesse()"><span id="h-buse" style="font-size:11px;color:var(--muted)"></span></div>
+            <div class="field"><label>Pression (bar)</label><input id="p-pres" type="number" min="1" max="20" step="0.5" oninput="debouncePrevVitesse()"><span id="h-pres" style="font-size:11px;color:var(--muted)"></span></div>
           </div>
           <div id="p-vitesse-preview" style="font-size:13px;color:var(--muted);padding:6px 0 2px;display:none">
-            Vitesse est. : <strong id="p-vitesse-val">--</strong> m/h &bull; Débit : <strong id="p-debit-val">--</strong> m³/h
+            Vitesse est. : <strong id="p-vitesse-val">--</strong> m/h &bull; D&eacute;bit : <strong id="p-debit-val">--</strong> L/s
           </div>
+          <div id="p-warnings" style="display:none;margin-top:4px;font-size:12px"></div>
           <div class="toggle-row">
             <label>Tempo départ</label>
             <label class="tgl"><input type="checkbox" id="p-td-on" onchange="toggleTempo('td')"><span class="tgl-slider"></span></label>
@@ -763,7 +764,7 @@ function saveProg() {
   const tempo_arrivee_s = parseFloat(document.getElementById('p-ta-s').value) || 0;
 
   if (dose_mm < 10 || dose_mm > 50) { alert('Dose : 10-50 mm'); return; }
-  if (largeur_m <= 0 || largeur_m > 100) { alert('Largeur : 0-100 m'); return; }
+  if (largeur_m <= 0 || largeur_m > 200) { alert('Espacement : 0-200 m'); return; }
   if (buse_mm < 10 || buse_mm > 30) { alert('Buse : 10-30 mm'); return; }
   if (pression_bar < 1 || pression_bar > 20) { alert('Pression : 1-20 bar'); return; }
 
@@ -985,22 +986,47 @@ async function fetchPrevVitesse() {
   const p = parseFloat(document.getElementById('p-pres').value);
   const b = parseFloat(document.getElementById('p-buse').value);
   const d = parseFloat(document.getElementById('p-dose').value);
+  const l = parseFloat(document.getElementById('p-larg').value) || 0;
   if (!p || !b || !d || p <= 0 || b <= 0 || d <= 0) {
-    show('p-vitesse-preview', false); return;
+    show('p-vitesse-preview', false);
+    show('p-warnings', false);
+    return;
   }
   try {
-    const l = parseFloat(document.getElementById('p-larg').value) || 0;
     const r = await fetch('/api/vitesse?p=' + p + '&b=' + b + '&d=' + d + '&l=' + l);
     if (!r.ok) { show('p-vitesse-preview', false); return; }
     const j = await r.json();
+    // Bornes
+    if (j.p_min != null)    document.getElementById('h-pres').textContent = '[' + j.p_min.toFixed(1) + ' - ' + j.p_max.toFixed(1) + ' bar]';
+    if (j.buse_min != null) document.getElementById('h-buse').textContent = '[' + j.buse_min.toFixed(0) + ' - ' + j.buse_max.toFixed(0) + ' mm]';
+    if (j.dose_min != null) document.getElementById('h-dose').textContent = '[' + j.dose_min.toFixed(0) + ' - ' + j.dose_max.toFixed(0) + ' mm]';
+    if (j.esp_pos_min != null) document.getElementById('h-larg').textContent = '[' + j.esp_pos_min.toFixed(0) + ' - ' + j.esp_pos_max.toFixed(0) + ' m]';
+    // Preview vitesse
     if (j.vitesse_m_h > 0) {
       document.getElementById('p-vitesse-val').textContent = j.vitesse_m_h.toFixed(1);
-      document.getElementById('p-debit-val').textContent = j.debit_m3h.toFixed(2);
+      document.getElementById('p-debit-val').textContent = j.debit_ls != null ? j.debit_ls.toFixed(2) : '--';
       show('p-vitesse-preview', true);
     } else {
       show('p-vitesse-preview', false);
     }
-  } catch(_) { show('p-vitesse-preview', false); }
+    // Warnings
+    const w = j.warnings || {};
+    const msgs = [];
+    if (w.pression_basse)        msgs.push('<span style="color:#e65100">&#9888; Pression trop basse (&lt; ' + (j.p_min||'').toFixed(1) + ' bar)</span>');
+    if (w.pression_haute)        msgs.push('<span style="color:#e65100">&#9888; Pression trop haute (&gt; ' + (j.p_max||'').toFixed(1) + ' bar)</span>');
+    if (w.buse_hors_plage)       msgs.push('<span style="color:#e65100">&#9888; Diametre buse hors plage abaque</span>');
+    if (w.dose_hors_plage)       msgs.push('<span style="color:#e65100">&#9888; Dose hors plage abaque</span>');
+    if (w.esp_pos_chevauchement) msgs.push('<span style="color:#f57c00">&#9888; Espacement serre &mdash; fort recroisement</span>');
+    if (w.esp_pos_insuf)         msgs.push('<span style="color:#f57c00">&#9888; Espacement eleve &mdash; risque sous-arrosage</span>');
+    if (w.vitesse_limite)        msgs.push('<span style="color:#f57c00">&#9888; Vitesse cible (' + j.vitesse_m_h.toFixed(1) + ' m/h) &gt; max theorique (' + (j.v_max_m_h||0).toFixed(1) + ' m/h) &mdash; dose sera recalculee en debut de session</span>');
+    const wd = document.getElementById('p-warnings');
+    if (msgs.length > 0) {
+      wd.innerHTML = msgs.join('<br>');
+      show('p-warnings', true);
+    } else {
+      show('p-warnings', false);
+    }
+  } catch(_) { show('p-vitesse-preview', false); show('p-warnings', false); }
 }
 
 // marquer dirty quand l'user édite un champ config

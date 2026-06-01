@@ -7,9 +7,14 @@
 // Conversion pouces : 0.68"=17.3 / 0.70"=17.8 / 0.80"=20.3 / 0.90"=22.9 / 1.00"=25.4 mm
 
 const canon_abaque_t ABAQUE_SR150C = {
-    .nom          = "SR 150C",
-    .constructeur = "Irrifrance",
-    .nb_entrees   = 13,
+    .nom              = "SR 150C",
+    .constructeur     = "Irrifrance",
+    .nb_entrees       = 13,
+    .k_q              = 0.039f,
+    .k_portee         = 7.06f,
+    .portee_exp_buse  = 0.557f,
+    .portee_exp_p     = 0.30f,
+    .esp_factor       = 1.55f,
     .table = {
      // p_enr   Q       p_buse  buse    esp     D40    D30    D25    D20    D15
         {4.9f,  23.0f,  3.5f,  17.3f,  60.0f,  9.6f, 12.3f, 15.3f, 19.2f, 25.6f},

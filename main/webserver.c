@@ -430,12 +430,42 @@ static esp_err_t vitesse_handler(httpd_req_t *req)
         if (httpd_query_key_value(buf, "d", val, sizeof(val)) == ESP_OK) sscanf(val, "%f", &d);
         if (httpd_query_key_value(buf, "l", val, sizeof(val)) == ESP_OK) sscanf(val, "%f", &l);
     }
-    float debit = 0.0f, p_buse = 0.0f;
-    float v = state_machine_calc_vitesse(p, b, d, l, &debit, &p_buse);
-    char resp[128];
+    programme_preview_t pr = state_machine_programme_preview(p, b, d, l);
+    char resp[768];
     int n = snprintf(resp, sizeof(resp),
-        "{\"vitesse_m_h\":%.2f,\"debit_m3h\":%.2f,\"p_buse_bar\":%.2f}",
-        v, debit, p_buse);
+        "{"
+        "\"vitesse_m_h\":%.2f,"
+        "\"debit_ls\":%.3f,"
+        "\"p_buse_bar\":%.2f,"
+        "\"portee_m\":%.1f,"
+        "\"esp_nominal_m\":%.1f,"
+        "\"esp_pos_min\":%.1f,"
+        "\"esp_pos_max\":%.1f,"
+        "\"p_min\":%.2f,\"p_max\":%.2f,"
+        "\"buse_min\":%.1f,\"buse_max\":%.1f,"
+        "\"dose_min\":%.1f,\"dose_max\":%.1f,"
+        "\"warnings\":{"
+          "\"pression_basse\":%s,"
+          "\"pression_haute\":%s,"
+          "\"buse_hors_plage\":%s,"
+          "\"dose_hors_plage\":%s,"
+          "\"esp_pos_chevauchement\":%s,"
+          "\"esp_pos_insuf\":%s,"
+          "\"vitesse_limite\":%s,"
+          "\"v_max_m_h\":%.2f"
+        "}"
+        "}",
+        pr.vitesse_m_h, pr.debit_ls, pr.p_buse_bar,
+        pr.portee_m, pr.esp_nominal_m, pr.esp_pos_min, pr.esp_pos_max,
+        pr.p_min, pr.p_max, pr.buse_min, pr.buse_max, pr.dose_min, pr.dose_max,
+        pr.w_pression_basse        ? "true" : "false",
+        pr.w_pression_haute        ? "true" : "false",
+        pr.w_buse_hors_plage       ? "true" : "false",
+        pr.w_dose_hors_plage       ? "true" : "false",
+        pr.w_esp_pos_chevauchement ? "true" : "false",
+        pr.w_esp_pos_insuf         ? "true" : "false",
+        pr.w_vitesse_limite        ? "true" : "false",
+        pr.v_max_m_h);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, resp, n);
     return ESP_OK;

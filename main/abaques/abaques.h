@@ -31,6 +31,11 @@ typedef struct {
     char          constructeur[32];
     canon_entry_t table[20];    // Max 20 lignes par abaque
     int           nb_entrees;
+    float         k_q;             // Debit : Q(m3/h) = k_q * buse_mm^2 * sqrt(p_buse_bar)
+    float         k_portee;        // Portee (rayon) : m / mm^portee_exp_buse
+    float         portee_exp_buse; // Exposant diametre buse dans formule portee
+    float         portee_exp_p;    // Exposant pression dans formule portee
+    float         esp_factor;      // Espacement = portee * esp_factor
 } canon_abaque_t;
 
 // Abaques disponibles

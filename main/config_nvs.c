@@ -283,3 +283,25 @@ esp_err_t config_nvs_sauver_batt_seuils(float warn_v, float crit_v)
     nvs_close(h);
     return ret;
 }
+
+esp_err_t config_nvs_lire_t_rempl_min(float *t_s)
+{
+    *t_s = 5.0f;
+    nvs_handle_t h;
+    if (nvs_open(NS_MACHINE, NVS_READONLY, &h) != ESP_OK) return ESP_OK;
+    size_t sz = sizeof(float);
+    if (nvs_get_blob(h, "t_rempl_min", t_s, &sz) != ESP_OK) *t_s = 5.0f;
+    nvs_close(h);
+    return ESP_OK;
+}
+
+esp_err_t config_nvs_sauver_t_rempl_min(float t_s)
+{
+    nvs_handle_t h;
+    esp_err_t ret = nvs_open(NS_MACHINE, NVS_READWRITE, &h);
+    if (ret != ESP_OK) return ret;
+    ret = nvs_set_blob(h, "t_rempl_min", &t_s, sizeof(float));
+    if (ret == ESP_OK) ret = nvs_commit(h);
+    nvs_close(h);
+    return ret;
+}

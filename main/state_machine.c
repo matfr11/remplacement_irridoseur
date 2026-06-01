@@ -86,6 +86,9 @@ static int64_t           s_heartbeat_ms       = 0;
 static float             s_vitesse_max_m_h    = 0.0f;
 static float             s_dose_corrigee_mm   = 0.0f;
 
+// Temps de remplissage minimum historique — reference pour V_max theorique
+static float             s_t_rempl_min_s      = 5.0f;
+
 #ifdef CONFIG_IRRI_ENABLE_TESTS
 static bool s_sim_active      = false;
 static bool s_sim_pression    = true;
@@ -166,6 +169,7 @@ void state_machine_init(void)
 
     charger_config_interne();
     config_nvs_lire_stats(&s_stats);
+    config_nvs_lire_t_rempl_min(&s_t_rempl_min_s);
 
     config_nvs_lire_longueur(&s_longueur_enroulee);
     config_nvs_lire_deroule(&s_longueur_deroule_m);
@@ -481,6 +485,13 @@ void tick_state_machine(void)
             if (fin_rempl) {
                 gpio_ev_poumon_set(false);
                 s_t_remplissage_ms = (float)(now_ms() - s_t_rempl_debut_ms);
+
+                // Mise a jour minimum historique — ecriture NVS uniquement si nouveau minimum
+                float t_rempl_s = s_t_remplissage_ms / 1000.0f;
+                if (t_rempl_s > 0.5f && t_rempl_s < s_t_rempl_min_s) {
+                    s_t_rempl_min_s = t_rempl_s;
+                    config_nvs_sauver_t_rempl_min(s_t_rempl_min_s);
+                }
 
                 // Distance par cycle : formule géométrique (indépendante du capteur pastilles)
                 int etage = calcul_etage_courant(s_longueur_enroulee, s_profil);
@@ -853,6 +864,8 @@ void state_machine_cmd_reset(void)
         s_longueur_session_m    = 0.0f;
         config_nvs_sauver_longueur(0.0f);
         regulation_reset_calibration();
+        s_t_rempl_min_s = 5.0f;
+        config_nvs_sauver_t_rempl_min(5.0f);
         config_nvs_sauver_machine(&s_cfg_machine);
         entrer_etat(ETAT_VEILLE);
     } else if (s_etat == ETAT_ARRET_FINAL) {
@@ -865,6 +878,8 @@ void state_machine_cmd_reset(void)
         config_nvs_sauver_longueur(0.0f);
         config_nvs_sauver_session_active(false);
         regulation_reset_calibration();
+        s_t_rempl_min_s = 5.0f;
+        config_nvs_sauver_t_rempl_min(5.0f);
         config_nvs_sauver_machine(&s_cfg_machine);
         memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
         entrer_etat(ETAT_VEILLE);
@@ -1044,6 +1059,67 @@ float state_machine_calc_vitesse(float pression_bar, float buse_mm, float dose_m
     return v;
 }
 
+programme_preview_t state_machine_programme_preview(float pression_bar, float buse_mm,
+                                                     float dose_mm, float largeur_m)
+{
+    programme_preview_t pr;
+    __builtin_memset(&pr, 0, sizeof(pr));
+
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    const canon_abaque_t *ab = s_abaque;
+
+    if (!ab || buse_mm <= 0.0f || dose_mm <= 0.0f) {
+        xSemaphoreGive(s_mutex);
+        return pr;
+    }
+
+    // Bornes abaque
+    float p_min = ab->table[0].p_enrouleur, p_max = p_min;
+    float b_min = ab->table[0].buse_mm,     b_max = b_min;
+    for (int i = 1; i < ab->nb_entrees; i++) {
+        float p = ab->table[i].p_enrouleur;
+        float b = ab->table[i].buse_mm;
+        if (p < p_min) { p_min = p; }
+        if (p > p_max) { p_max = p; }
+        if (b < b_min) { b_min = b; }
+        if (b > b_max) { b_max = b; }
+    }
+    pr.p_min    = p_min * 0.75f;  pr.p_max    = p_max * 1.25f;
+    pr.buse_min = b_min * 0.75f;  pr.buse_max = b_max * 1.25f;
+    pr.dose_min = 15.0f * 0.75f;  pr.dose_max = 40.0f * 1.25f;
+
+    // Vitesse et debit
+    float debit_m3h = 0.0f, p_buse = 0.0f;
+    pr.vitesse_m_h = lookup_vitesse_cible(ab, pression_bar, buse_mm, dose_mm,
+                                           largeur_m, &debit_m3h, &p_buse);
+    pr.debit_ls    = debit_m3h / 3.6f;
+    pr.p_buse_bar  = p_buse;
+
+    // Portee et espacement
+    pr.esp_nominal_m = calcul_esp_nominal_m(ab, pression_bar, buse_mm);
+    pr.portee_m      = (ab->esp_factor > 0.0f) ? pr.esp_nominal_m / ab->esp_factor : 0.0f;
+    pr.esp_pos_min   = pr.esp_nominal_m * 0.75f;
+    pr.esp_pos_max   = pr.esp_nominal_m * 1.10f;
+
+    // Warnings hydrauliques
+    hydro_warnings_t hw = valider_params_programme(ab, pression_bar, buse_mm, dose_mm, largeur_m);
+    pr.w_pression_basse       = hw.pression_basse;
+    pr.w_pression_haute       = hw.pression_haute;
+    pr.w_buse_hors_plage      = hw.buse_hors_plage;
+    pr.w_dose_hors_plage      = hw.dose_hors_plage;
+    pr.w_esp_pos_chevauchement= hw.esp_pos_chevauchement;
+    pr.w_esp_pos_insuf        = hw.esp_pos_insuf;
+
+    // Warning vitesse limite
+    float dist  = s_cfg_machine.dist_cycle_nvs;
+    float t_min = s_t_rempl_min_s + s_cfg_machine.t_vidange_s;
+    pr.v_max_m_h     = (dist > 0.0f && t_min > 0.0f) ? (dist / t_min) * 3600.0f : 0.0f;
+    pr.w_vitesse_limite = (pr.v_max_m_h > 0.0f && pr.vitesse_m_h > pr.v_max_m_h);
+
+    xSemaphoreGive(s_mutex);
+    return pr;
+}
+
 // ---------------------------------------------------------------------------
 // Hooks de test
 // ---------------------------------------------------------------------------
@@ -1086,3 +1162,15 @@ void state_machine_test_set_longueurs(float deroule_m, float session_m)
 }
 #endif
 
+// ---------------------------------------------------------------------------
+// Vitesse max theorique — basee sur t_rempl_min_s + t_vidange + dist_cycle
+// ---------------------------------------------------------------------------
+float state_machine_get_vitesse_max(void)
+{
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    float dist  = s_cfg_machine.dist_cycle_nvs;
+    float t_min = s_t_rempl_min_s + s_cfg_machine.t_vidange_s;
+    float v_max = (dist > 0.0f && t_min > 0.0f) ? (dist / t_min) * 3600.0f : 0.0f;
+    xSemaphoreGive(s_mutex);
+    return v_max;
+}

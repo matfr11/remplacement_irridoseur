@@ -5,6 +5,36 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [PR-18] — 2026-06-01 — Calculs hydrauliques analytiques + validation programme
+
+### Changed
+- `lookup_vitesse_cible()` : remplace la double interpolation (colonnes D40/D30/D25/D20/D15) par la formule analytique de Torricelli
+  - `Q (m³/h) = k_q × buse_mm² × √p_buse` — loi physique, continue pour toute dose
+  - `V (m/h) = Q × 1000 / (largeur_m × dose_mm)` — pas de clamping dose
+  - `p_buse` reste interpolé depuis l'abaque (2 voisins IDW sur p_enrouleur × buse_mm)
+  - `largeur_m` désormais **obligatoire** (< 0.1 → LOGE + return 0)
+- `canon_abaque_t` : 5 nouvelles constantes empiriques per-canon (`k_q`, `k_portee`, `portee_exp_buse`, `portee_exp_p`, `esp_factor`)
+- SR 150C : `k_q = 0.039` (erreur < 1.5 % sur les 13 entrées), `k_portee = 7.06`, `esp_factor = 1.55`
+- `/api/vitesse` : réponse étendue — débit en L/s, portée, esp_nominal, bornes min/max, warnings hydrauliques
+- UI formulaire programme : label "Espacement entre positions", hints `[min–max]` sous chaque champ, débit en L/s, alertes jaunes non-bloquantes
+
+### Added
+- `calcul_esp_nominal_m()` : espacement recommandé = portée × esp_factor
+- `valider_params_programme()` : retourne `hydro_warnings_t` (pression/buse/dose hors plage ±25 %, espacement trop serré/large, vitesse au-dessus du max théorique)
+- `state_machine_programme_preview()` : préview complet pour `/api/vitesse` — vitesse, débit, portée, bornes, warnings en un seul appel
+- `state_machine_get_vitesse_max()` : V_max = dist_cycle / (t_rempl_min + t_vidange) × 3600
+- `t_rempl_min_s` : temps de remplissage minimum historique — clé NVS séparée `t_rempl_min` (namespace irri_machine), défaut 5 s, mis à jour uniquement si nouvelle valeur inférieure (limite l'usure flash), remis à 5 s sur `cmd_reset()`
+- `programme_preview_t` dans `state_machine.h`
+- `hydro_warnings_t` dans `calculs_hydraulique.h`
+- `config_nvs_lire_t_rempl_min()` / `config_nvs_sauver_t_rempl_min()` dans `config_nvs.c`
+
+### Fixed
+- Tests unitaires `test_calculs_hydraulique.c` : valeurs attendues recalculées avec la formule analytique ; test `larg=0 → erreur` ajouté
+
+**Taille firmware** : 0xe3680 bytes (~933 KB) — 53% flash libre
+
+---
+
 ## [PR-17] — 2026-05-31 — Sécurité longueur SEC-L
 
 ### Added

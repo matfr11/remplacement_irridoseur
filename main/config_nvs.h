@@ -120,3 +120,9 @@ esp_err_t config_nvs_reset_stats(void);
 // Seuils batterie (namespace irri_machine, cles separees — pas de migration blob)
 esp_err_t config_nvs_lire_batt_seuils(float *warn_v, float *crit_v);
 esp_err_t config_nvs_sauver_batt_seuils(float warn_v, float crit_v);
+
+// Temps de remplissage minimum historique (namespace irri_machine, cle separee)
+// Defaut 5.0s — mis a jour si nouvelle valeur < courante (evite l'usure flash)
+// Remis a 5.0 lors d'un cmd_reset() complet.
+esp_err_t config_nvs_lire_t_rempl_min(float *t_s);
+esp_err_t config_nvs_sauver_t_rempl_min(float t_s);

@@ -5,41 +5,8 @@
 
 static const char *TAG = "calculs_hyd";
 
-// Doses constructeur — ordre DÉCROISSANT (vitesse diminue quand dose augmente)
-#define CANON_N_DOSES  5
-static const float CANON_DOSES_MM[CANON_N_DOSES] = {40.0f, 30.0f, 25.0f, 20.0f, 15.0f};
-
 // =============================================================================
-// Interpolation dose — niveau 2
-// Retourne la vitesse interpolée sur la dose pour une entrée donnée.
-// Utilise un array local explicite (pas de pointer arithmetic sur struct).
-// =============================================================================
-static float interpoler_dose(const canon_entry_t *e, float dose_mm)
-{
-    const float vitesses[CANON_N_DOSES] = {e->D40, e->D30, e->D25, e->D20, e->D15};
-
-    // Clamp haut — dose > 40mm → vitesse minimale (la plus lente)
-    if (dose_mm >= CANON_DOSES_MM[0]) {
-        return vitesses[0];
-    }
-    // Clamp bas — dose < 15mm → vitesse maximale (la plus rapide)
-    if (dose_mm <= CANON_DOSES_MM[CANON_N_DOSES - 1]) {
-        return vitesses[CANON_N_DOSES - 1];
-    }
-    // Interpolation linéaire entre deux colonnes adjacentes
-    for (int d = 0; d < CANON_N_DOSES - 1; d++) {
-        if (dose_mm <= CANON_DOSES_MM[d] && dose_mm >= CANON_DOSES_MM[d + 1]) {
-            float t = (CANON_DOSES_MM[d] - dose_mm)
-                    / (CANON_DOSES_MM[d] - CANON_DOSES_MM[d + 1]);
-            return vitesses[d] + t * (vitesses[d + 1] - vitesses[d]);
-        }
-    }
-    return vitesses[0];
-}
-
-// =============================================================================
-// Distance normalisée (p, buse) — niveau 1
-// Ranges calculés dynamiquement depuis l'abaque (robuste pour abaques futurs).
+// Distances normalisees (p, buse) — pour selection des 2 entrees les plus proches
 // =============================================================================
 static float distance_normalisee(const canon_entry_t *e, float p, float buse,
                                   float p_range, float buse_range)
@@ -49,7 +16,6 @@ static float distance_normalisee(const canon_entry_t *e, float p, float buse,
     return sqrtf(dp * dp + db * db);
 }
 
-// Calcule les ranges de normalisation depuis l'abaque
 static void calc_ranges(const canon_abaque_t *abaque,
                          float *p_range_out, float *buse_range_out)
 {
@@ -71,33 +37,15 @@ static void calc_ranges(const canon_abaque_t *abaque,
     *buse_range_out = (b_max - b_min > 1e-3f) ? (b_max - b_min) : 1.0f;
 }
 
-// =============================================================================
-// Lookup principal — double interpolation
-// =============================================================================
-float lookup_vitesse_cible(const canon_abaque_t *abaque,
-                            float p_enrouleur,
-                            float buse_mm,
-                            float dose_mm,
-                            float largeur_m,
-                            float *debit_out,
-                            float *p_buse_out)
+// Recherche des 2 entrees les plus proches (IDW) — retourne p_buse interpole.
+// Ecrit aussi esp_nominal_out si non NULL.
+static float interpoler_p_buse(const canon_abaque_t *abaque,
+                                 float p_enrouleur, float buse_mm,
+                                 float *esp_nominal_out)
 {
-    if (!abaque || abaque->nb_entrees <= 0) {
-        ESP_LOGE(TAG, "abaque NULL ou vide");
-        if (debit_out)  *debit_out  = 0.0f;
-        if (p_buse_out) *p_buse_out = 0.0f;
-        return 0.0f;
-    }
-
-    if (dose_mm < DOSE_MIN_MM || dose_mm > DOSE_MAX_MM) {
-        ESP_LOGW(TAG, "dose %.1fmm hors plage [%.0f-%.0f]",
-                 dose_mm, DOSE_MIN_MM, DOSE_MAX_MM);
-    }
-
     float p_range, buse_range;
     calc_ranges(abaque, &p_range, &buse_range);
 
-    // Trouver les 2 entrées les plus proches (nearest neighbor)
     int   idx0 = 0, idx1 = -1;
     float d0   = distance_normalisee(&abaque->table[0], p_enrouleur, buse_mm,
                                      p_range, buse_range);
@@ -114,44 +62,136 @@ float lookup_vitesse_cible(const canon_abaque_t *abaque,
         }
     }
 
-    float v0  = interpoler_dose(&abaque->table[idx0], dose_mm);
-    float esp = abaque->table[idx0].esp_m;  // esp de référence (défaut = plus proche)
-
-    // Un seul voisin valide ou matchs quasi-identiques → retourner le plus proche
     if (idx1 < 0 || d0 + d1 < 1e-6f) {
-        if (debit_out)  *debit_out  = abaque->table[idx0].q_m3h;
-        if (p_buse_out) *p_buse_out = abaque->table[idx0].p_buse;
-        float larg = (largeur_m > 0.1f) ? largeur_m : esp;
-        return v0 * (esp / larg);
+        if (esp_nominal_out) {
+            float portee = abaque->k_portee
+                         * powf(buse_mm, abaque->portee_exp_buse)
+                         * powf(abaque->table[idx0].p_buse / 3.5f, abaque->portee_exp_p);
+            *esp_nominal_out = portee * abaque->esp_factor;
+        }
+        return abaque->table[idx0].p_buse;
     }
 
-    float v1 = interpoler_dose(&abaque->table[idx1], dose_mm);
-
-    // Interpolation pondérée par l'inverse des distances (IDW = interp linéaire pour 2 points)
     float w0 = 1.0f / (d0 + 1e-6f);
     float w1 = 1.0f / (d1 + 1e-6f);
     float wt = w0 + w1;
 
-    float vitesse = (w0 * v0 + w1 * v1) / wt;
+    float p_buse = (w0 * abaque->table[idx0].p_buse + w1 * abaque->table[idx1].p_buse) / wt;
 
-    // Interpoler esp_m avec les mêmes poids — largeur de référence au point interpolé
-    esp = (w0 * abaque->table[idx0].esp_m + w1 * abaque->table[idx1].esp_m) / wt;
-
-    // Correction largeur : v_cible = v_abaque × (esp_ref / largeur_reelle)
-    // largeur_m = 0 → utilise esp_ref (comportement identique à l'ancien code)
-    float larg = (largeur_m > 0.1f) ? largeur_m : esp;
-    vitesse = vitesse * (esp / larg);
-
-    if (debit_out) {
-        *debit_out  = (w0 * abaque->table[idx0].q_m3h  + w1 * abaque->table[idx1].q_m3h)  / wt;
-    }
-    if (p_buse_out) {
-        *p_buse_out = (w0 * abaque->table[idx0].p_buse + w1 * abaque->table[idx1].p_buse) / wt;
+    if (esp_nominal_out) {
+        float portee = abaque->k_portee
+                     * powf(buse_mm, abaque->portee_exp_buse)
+                     * powf(p_buse / 3.5f, abaque->portee_exp_p);
+        *esp_nominal_out = portee * abaque->esp_factor;
     }
 
-    return vitesse;
+    return p_buse;
 }
 
+// =============================================================================
+// Lookup principal — formule analytique Torricelli
+// Q = k_q * buse_mm^2 * sqrt(p_buse)
+// V = Q * 1000 / (largeur_m * dose_mm)
+// =============================================================================
+float lookup_vitesse_cible(const canon_abaque_t *abaque,
+                            float p_enrouleur,
+                            float buse_mm,
+                            float dose_mm,
+                            float largeur_m,
+                            float *debit_out,
+                            float *p_buse_out)
+{
+    if (!abaque || abaque->nb_entrees <= 0) {
+        ESP_LOGE(TAG, "abaque NULL ou vide");
+        if (debit_out)  *debit_out  = 0.0f;
+        if (p_buse_out) *p_buse_out = 0.0f;
+        return 0.0f;
+    }
+
+    if (largeur_m < 0.1f) {
+        ESP_LOGE(TAG, "largeur_m non renseignee (%.2f) — champ obligatoire", largeur_m);
+        if (debit_out)  *debit_out  = 0.0f;
+        if (p_buse_out) *p_buse_out = 0.0f;
+        return 0.0f;
+    }
+
+    if (dose_mm < 10.0f || dose_mm > 50.0f) {
+        ESP_LOGW(TAG, "dose %.1fmm hors plage habituelle [10-50]", dose_mm);
+    }
+
+    float p_buse = interpoler_p_buse(abaque, p_enrouleur, buse_mm, NULL);
+
+    float Q = abaque->k_q * buse_mm * buse_mm * sqrtf(p_buse);
+    float V = Q * 1000.0f / (largeur_m * dose_mm);
+
+    if (debit_out)  *debit_out  = Q;
+    if (p_buse_out) *p_buse_out = p_buse;
+
+    return V;
+}
+
+// =============================================================================
+// Validation des parametres de programme — warnings non-bloquants
+// =============================================================================
+hydro_warnings_t valider_params_programme(const canon_abaque_t *abaque,
+                                           float p_enrouleur,
+                                           float buse_mm,
+                                           float dose_mm,
+                                           float largeur_m)
+{
+    hydro_warnings_t w = {0};
+
+    if (!abaque || abaque->nb_entrees <= 0) return w;
+
+    // Bornes abaque pour pression et buse
+    float p_min = abaque->table[0].p_enrouleur;
+    float p_max = p_min;
+    float b_min = abaque->table[0].buse_mm;
+    float b_max = b_min;
+    for (int i = 1; i < abaque->nb_entrees; i++) {
+        float p = abaque->table[i].p_enrouleur;
+        float b = abaque->table[i].buse_mm;
+        if (p < p_min) p_min = p;
+        if (p > p_max) p_max = p;
+        if (b < b_min) b_min = b;
+        if (b > b_max) b_max = b;
+    }
+
+    w.pression_basse = (p_enrouleur < p_min * 0.75f);
+    w.pression_haute = (p_enrouleur > p_max * 1.25f);
+    w.buse_hors_plage = (buse_mm < b_min * 0.75f || buse_mm > b_max * 1.25f);
+
+    // Bornes dose : D15=15mm / D40=40mm (colonnes extremes de la table constructeur)
+    w.dose_hors_plage = (dose_mm < 15.0f * 0.75f || dose_mm > 40.0f * 1.25f);
+
+    // Espacement entre positions vs portee calculee
+    if (largeur_m > 0.1f) {
+        float esp_nominal = 0.0f;
+        interpoler_p_buse(abaque, p_enrouleur, buse_mm, &esp_nominal);
+        if (esp_nominal > 0.1f) {
+            w.esp_pos_chevauchement = (largeur_m < esp_nominal * 0.75f);
+            w.esp_pos_insuf         = (largeur_m > esp_nominal * 1.10f);
+        }
+    }
+
+    return w;
+}
+
+// =============================================================================
+// Utilitaires espacement et portee
+// =============================================================================
+float calcul_esp_nominal_m(const canon_abaque_t *abaque,
+                             float p_enrouleur, float buse_mm)
+{
+    if (!abaque || abaque->nb_entrees <= 0) return 0.0f;
+    float esp = 0.0f;
+    interpoler_p_buse(abaque, p_enrouleur, buse_mm, &esp);
+    return esp;
+}
+
+// =============================================================================
+// Formules surface et dose instantanee
+// =============================================================================
 float calcul_surface_m2(float longueur_enroulee_m, float largeur_m)
 {
     return longueur_enroulee_m * largeur_m;
