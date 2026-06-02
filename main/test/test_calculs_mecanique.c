@@ -63,7 +63,7 @@ void test_calculs_mecanique_run(void)
     float l1 = calcul_longueur_etage_m(1, &profil);
     assert_near(61.78f, l1, "longueur etage 1");
 
-    // cumul 4 étages ≈ 288.68m (géométrie tambour, ≠ 330m physique)
+    // cumul 4 étages ≈ 288.68m (géométrie tambour)
     float l_tot = 0.0f;
     for (int n = 1; n <= 4; n++) l_tot += calcul_longueur_etage_m(n, &profil);
     if (fabsf(l_tot - 288.68f) > 0.1f) {
@@ -72,13 +72,29 @@ void test_calculs_mecanique_run(void)
         ESP_LOGI(TAG, "PASS longueur totale 4 etages : %.2fm", l_tot);
     }
 
+    // rayon étage 5 : 0.690 + 4.5 × 0.082 = 1.059m
+    float r5 = calcul_rayon_etage(5, &profil);
+    assert_near(1.059f, r5, "rayon etage 5");
+
+    // longueur étage 5 (dernier, 6 spires) : 6 × 2π × 1.059 ≈ 39.92m
+    float l5 = calcul_longueur_etage_m(5, &profil);
+    if (fabsf(l5 - 39.92f) > 0.1f) {
+        ESP_LOGE(TAG, "FAIL longueur etage 5 : attendu~39.92 recu=%.2f", l5);
+    } else {
+        ESP_LOGI(TAG, "PASS longueur etage 5 (6 spires) : %.2fm", l5);
+    }
+
     // étage courant 70m → étage 2 (L1≈61.78m < 70m ≤ L1+L2≈130.48m)
     int e70 = calcul_etage_courant(70.0f, &profil);
     assert_near(2.0f, (float)e70, "etage courant 70m");
 
-    // étage courant 330m > cumul géo (≈288.68m) → clamp nb_etages = 4
+    // étage courant 295m → étage 5 (cumul étages 1-4 = 288.68m)
+    int e295 = calcul_etage_courant(295.0f, &profil);
+    assert_near(5.0f, (float)e295, "etage courant 295m");
+
+    // étage courant 330m > cumul géo (≈328.6m) → clamp nb_etages = 5
     int e330 = calcul_etage_courant(330.0f, &profil);
-    assert_near(4.0f, (float)e330, "etage courant 330m clamp");
+    assert_near(5.0f, (float)e330, "etage courant 330m clamp");
 
     // C1 : impulsions insuffisantes (49 < 50) → refus
     ok = calcul_facteur_etalonnage(100.0f, 105.0f, 49, &facteur);

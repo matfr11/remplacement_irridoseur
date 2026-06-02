@@ -47,14 +47,16 @@ static void test_longueur_etage1(void)
     TEST_ASSERT_FLOAT_WITHIN(0.1f, 61.78f, calcul_longueur_etage_m(1, &s_profil));
 }
 
-// 6 — étage courant : 0m → étage 1, 70m → étage 2, 330m (>géo) → étage 4
+// 6 — étage courant : 0m→1, 70m→2, 295m→5, 330m→5
+//     cumuls : 61.8 / 130.5 / 206.1 / 288.7 / 328.6m (dernier étage = 6 spires)
 static void test_etage_courant(void)
 {
     s_profil = MACHINE_ST1BIS_82_330;
     machine_resoudre_double_entree(&s_profil);
     TEST_ASSERT_EQUAL_INT(1, calcul_etage_courant(0.0f,   &s_profil));
     TEST_ASSERT_EQUAL_INT(2, calcul_etage_courant(70.0f,  &s_profil));
-    TEST_ASSERT_EQUAL_INT(4, calcul_etage_courant(330.0f, &s_profil));
+    TEST_ASSERT_EQUAL_INT(5, calcul_etage_courant(295.0f, &s_profil));
+    TEST_ASSERT_EQUAL_INT(5, calcul_etage_courant(330.0f, &s_profil));
 }
 
 // 7 — étalonnage : facteur hors plage (3.0) refusé, facteur 1.05 accepté
@@ -64,6 +66,22 @@ static void test_etalonnage(void)
     TEST_ASSERT_FALSE(calcul_facteur_etalonnage(100.0f, 300.0f, 100, &facteur));
     TEST_ASSERT_TRUE(calcul_facteur_etalonnage(100.0f, 105.0f, 100, &facteur));
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 1.05f, facteur);
+}
+
+// 8 — rayon étage 5 : 0.690 + 4.5 × 0.082 = 1.059m
+static void test_rayon_etage5(void)
+{
+    s_profil = MACHINE_ST1BIS_82_330;
+    machine_resoudre_double_entree(&s_profil);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 1.059f, calcul_rayon_etage(5, &s_profil));
+}
+
+// 9 — longueur étage 5 (dernier, 6 spires) : 6 × 2π × 1.059 ≈ 39.92m
+static void test_longueur_dernier_etage(void)
+{
+    s_profil = MACHINE_ST1BIS_82_330;
+    machine_resoudre_double_entree(&s_profil);
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 39.92f, calcul_longueur_etage_m(5, &s_profil));
 }
 
 void suite_calculs_mecanique(void)
@@ -76,4 +94,6 @@ void suite_calculs_mecanique(void)
     RUN_TEST(test_longueur_etage1);
     RUN_TEST(test_etage_courant);
     RUN_TEST(test_etalonnage);
+    RUN_TEST(test_rayon_etage5);
+    RUN_TEST(test_longueur_dernier_etage);
 }

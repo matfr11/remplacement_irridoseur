@@ -29,7 +29,10 @@ float calcul_dist_cycle_m(float r_etage_m, float cycles_par_tour)
 float calcul_longueur_etage_m(int n, const machine_profile_t *profil)
 {
     float r = calcul_rayon_etage(n, profil);
-    return profil->spires_par_etage * 2.0f * (float)M_PI * r;
+    float spires = (n == profil->nb_etages && profil->spires_dernier > 0.0f)
+                   ? profil->spires_dernier
+                   : profil->spires_par_etage;
+    return spires * 2.0f * (float)M_PI * r;
 }
 
 int calcul_etage_courant(float longueur_enroulee_m, const machine_profile_t *profil)

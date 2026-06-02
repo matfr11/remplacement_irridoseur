@@ -25,7 +25,8 @@ typedef struct {
     // Double entrée — renseigner UN SEUL des deux.
     // L'autre est calculé automatiquement au chargement.
     float   largeur_bobine_m;       // Mesure terrain (mètre ruban)
-    float   spires_par_etage;       // Valeur constructeur ou comptage
+    float   spires_par_etage;       // Valeur constructeur ou comptage (étages 1..nb_etages-1)
+    float   spires_dernier;         // Spires étage final (0 = même que spires_par_etage)
 
     // Cycles poumon par tour de bobine — caractéristique constructeur
     float   cycles_par_tour;        // ex: 40 sur ST1 Bis (valeur physique, pas terrain)
