@@ -42,7 +42,8 @@ Suite à une panne irréparable, ce projet remplace la carte d'origine par un **
 | Tuyau PE | Ø82mm extérieur — épaisseur 6mm — 330m |
 | Rayon tambour nu | 690mm (calculé) |
 | Nombre d'étages de spires | 5 couches |
-| Spires par étage | 13,45 (constructeur) |
+| Spires par étage (étages 1-4) | 13,45 (constructeur) |
+| Spires dernier étage (5) | 6 (mesuré terrain) |
 | Capteur vitesse | 10 pastilles / tour |
 | Alimentation | Batterie 12V / 24Ah + panneau solaire |
 
@@ -86,7 +87,7 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 |---|---|---|
 | **ESP32 Quad MOS Switch Module** | ESP32-32E intégré, 4 canaux MOSFET 5-60V DC, buck 12V intégré | 1 |
 | Boîtier étanche IP65 | ~200×150×80mm | 1 |
-| Bornier DIN rail 12 voies | Connexions terrain | 1 |
+| Bornier DIN rail 14 voies | Connexions terrain | 1 |
 | Rail DIN 15cm | Fixé dans boîtier | 1 |
 | Résistances 10 kΩ × 4 | Pull-up contacts NC — soudées sur fils + gaine thermo | 4 |
 | Diviseur 10 kΩ + 3,3 kΩ | Capteur vitesse 12V → 3V — soudé sur fil + gaine thermo | 1 set |
@@ -152,7 +153,7 @@ main/
 ├── securites.c/h           — watchdog SEC-1 / SEC-2 / SEC-P — exécuté en premier dans le tick
 ├── batterie.c/h            — mesure tension ADC1 GPIO 36, seuils NVS configurables, simulation
 ├── state_machine.c/h       — 10 états, sous-états poumon, pause pression, cmd_resume, stats campagne
-├── calculs_hydraulique.c/h — double interpolation abaque (p_enrouleur + buse + dose + p_buse_out)
+├── calculs_hydraulique.c/h — formule analytique Torricelli + interpolation IDW p_buse — validation programme
 ├── calculs_mecanique.c/h   — rayon étage, dist/cycle, étage courant, étalonnage
 ├── regulation.c/h          — feedforward T_attente, correction Kp, moyenne dist_cycle
 ├── config_nvs.c/h          — NVS 4 namespaces, 5 programmes, stats campagne persistantes
@@ -167,7 +168,7 @@ main/
 ├── abaques/
 │   ├── abaques.h           — abaques constructeur (canon_abaque_t)
 │   ├── sr150c.c            — Nelson SR 150C — 13 entrées
-│   └── sr100c.c            — Nelson SR 100C — 9 entrées
+│   └── sr100c.c            — Nelson SR 100C — 24 entrées
 └── test/                   — tests unitaires embarqués (CONFIG_IRRI_ENABLE_TESTS)
 
 test/host/                  — tests unitaires PC (Unity/CMake, sans matériel)
@@ -175,7 +176,7 @@ test/host/                  — tests unitaires PC (Unity/CMake, sans matériel)
 ├── mock/                   — stubs ESP-IDF (GPIO, NVS, FreeRTOS, log, timer)
 ├── helpers/                — helpers de test (config NVS valide/invalide)
 ├── scenarios/              — scénarios d'intégration (cycle complet, urgences, modes dégradés)
-└── test_*.c                — 96 tests unitaires (96/96 verts en CI)
+└── test_*.c                — 71 tests unitaires (71/71 verts en CI)
 ```
 
 ### Tâches FreeRTOS
@@ -304,8 +305,8 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | Paramètre | Comment mesurer | Défaut / valeur connue |
 |---|---|---|
 | `PIN_EV_CANON` / `PIN_EV_POUMON` | Identifier OUT1/OUT2 sur schéma Quad MOS | GPIO 25/26 provisoires ⚠️ |
-| `t_vidange_s` | Chrono depuis EV_POUMON=OFF jusqu'à détection reprise capteur | 0,0 s ⚠️ |
-| `cycles_par_tour` | Compter les pastilles sur le tambour (mesure physique) | **40** sur ST1 Bis ✅ |
+| `t_vidange_s` | Chrono depuis EV_POUMON=OFF jusqu'à détection reprise capteur | 2,0 s ⚠️ à affiner terrain |
+| `cycles_par_tour` | Compter les cycles poumon pour 1 tour complet de bobine | **40** sur ST1 Bis ✅ |
 
 > Avec `cycles_par_tour > 0`, la vitesse est automatiquement estimée depuis les cycles poumon (mode dégradé vitesse transparent) — le capteur optionnel de vitesse reste utile pour la calibration.
 
