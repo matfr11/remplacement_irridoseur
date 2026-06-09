@@ -107,11 +107,14 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 | **35** | INPUT | Fin de course canon | Pull-up 10 kΩ — contact NC |
 | **32** | INPUT | Sécurité spires | Pull-up 10 kΩ — contact NC |
 | **33** | INPUT | Contact poumon plein | Pull-up 10 kΩ — contact NC |
-| **27** | INPUT | Pressostat | Pull-up 10 kΩ — contact NC |
+| **27** | INPUT | Pressostat ⚠️ | Pull-up 10 kΩ — contact NC — **conflit : GPIO 27 = QMOS OUT4** — à recâbler |
 | **36** | INPUT (ADC1) | Mesure tension batterie | Diviseur 100 kΩ/27 kΩ — plage 0-14V → 0-3V |
-| **2** | OUTPUT | Heartbeat RC fail-safe (LED bleue) | Toggle 1 Hz — activable depuis Config → Machine |
-| **A** | OUTPUT | EV_CANON 12V | GPIO à identifier carte Quad MOS |
-| **B** | OUTPUT | EV_POUMON 12V | GPIO à identifier carte Quad MOS |
+| **0** | INPUT | Bouton physique carte | Bouton intégré carte Quad MOS |
+| **16** | OUTPUT | EV_CANON 12V | QMOS OUT1 carte Quad MOS |
+| **17** | OUTPUT | EV_POUMON 12V | QMOS OUT2 carte Quad MOS |
+| **23** | OUTPUT | Heartbeat RC fail-safe (LED carte) | Toggle 1 Hz — activable depuis Config → Machine |
+| **26** | — | QMOS OUT3 (non utilisé) | Canal MOSFET carte Quad MOS — libre |
+| **27** | — | QMOS OUT4 (non utilisé) | Canal MOSFET carte Quad MOS — **conflit pressostat** |
 
 ### Logique des signaux — contacts NC (Normalement Fermés)
 
@@ -134,10 +137,10 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 | 4 | Fin de course → GPIO 35 via pull-up |
 | 5 | Sécurité spires → GPIO 32 via pull-up |
 | 6 | Contact poumon plein → GPIO 33 via pull-up |
-| 7 | Pressostat → GPIO 27 via pull-up |
+| 7 | Pressostat → GPIO 27 ⚠️ conflit QMOS OUT4 — à recâbler |
 | 8 | GND capteurs |
-| 9-10 | EV_CANON + / − |
-| 11-12 | EV_POUMON + / − |
+| 9-10 | EV_CANON + / − → GPIO 16 (QMOS OUT1) |
+| 11-12 | EV_POUMON + / − → GPIO 17 (QMOS OUT2) |
 | 13 | Batterie + → GPIO 36 via diviseur 100 kΩ/27 kΩ |
 | 14 | GND mesure batterie |
 
@@ -304,7 +307,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 
 | Paramètre | Comment mesurer | Défaut / valeur connue |
 |---|---|---|
-| `PIN_EV_CANON` / `PIN_EV_POUMON` | Identifier OUT1/OUT2 sur schéma Quad MOS | GPIO 25/26 provisoires ⚠️ |
+| `PIN_EV_CANON` / `PIN_EV_POUMON` | QMOS OUT1/OUT2 carte Quad MOS | GPIO **16** / **17** ✅ |
 | `t_vidange_s` | Chrono depuis EV_POUMON=OFF jusqu'à détection reprise capteur | 2,0 s ⚠️ à affiner terrain |
 | `cycles_par_tour` | Compter les cycles poumon pour 1 tour complet de bobine | **40** sur ST1 Bis ✅ |
 

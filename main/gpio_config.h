@@ -3,22 +3,21 @@
 // =============================================================================
 // gpio_config.h — Affectation GPIO Irrifrance ESP32
 //
-// ⚠️  AVANT PR-02 : identifier PIN_EV_CANON et PIN_EV_POUMON
-//     depuis le schéma technique de la carte ESP32 Quad MOS Switch.
-//     Mettre à jour les deux defines marqués TODO ci-dessous,
-//     puis supprimer les lignes #warning.
+// Carte : ESP32 Quad MOS Switch Module
+//   QMOS outputs : GPIO 16 (OUT1), 17 (OUT2), 26 (OUT3), 27 (OUT4)
+//   LED carte    : GPIO 23
+//   Bouton carte : GPIO 0
 // =============================================================================
 
 // -----------------------------------------------------------------------------
-// SORTIES — Électrovannes
-// Carte ESP32 Quad MOS Switch — GPIO à identifier sur schéma technique
+// SORTIES — Électrovannes (canaux MOSFET carte Quad MOS)
 // -----------------------------------------------------------------------------
 
-#define PIN_EV_CANON    25      // TODO : identifier canal MOSFET OUT1 sur carte Quad MOS
-#define PIN_EV_POUMON   26      // TODO : identifier canal MOSFET OUT2 sur carte Quad MOS
-
-#warning "PIN_EV_CANON et PIN_EV_POUMON sont des valeurs provisoires (GPIO 25/26)."
-#warning "Verifier sur le schema de la carte Quad MOS avant toute mise sous tension."
+#define PIN_EV_CANON    16      // QMOS OUT1
+#define PIN_EV_POUMON   17      // QMOS OUT2
+// GPIO 26 = QMOS OUT3 — non utilisé
+// GPIO 27 = QMOS OUT4 — non utilisé
+// ⚠️  PIN_PRESSOSTAT était sur GPIO 27 (QMOS OUT4) — à recâbler sur une autre broche libre
 
 // -----------------------------------------------------------------------------
 // ENTRÉES — Capteurs et contacts
@@ -43,11 +42,11 @@
 
 // Pressostat — pull-up externe 10kΩ, contact NC
 // LOW = pression présente (normal) | HIGH = pression absente (pause/attente)
+// ⚠️  GPIO 27 était utilisé ici mais c'est un QMOS OUT4 — recâbler sur broche libre
 #define PIN_PRESSOSTAT          27
 
 // -----------------------------------------------------------------------------
 // Capteur vitesse — paramètres ISR
-// Déplacé ici depuis calculs_mecanique.h (paramètre hardware, pas calcul)
 // -----------------------------------------------------------------------------
 
 // Nombre de pastilles métalliques sur la couronne de la bobine
@@ -57,13 +56,19 @@
 #define DEBOUNCE_VITESSE_MS     50
 
 // -----------------------------------------------------------------------------
-// Mesure tension batterie — ADC1 canal 0, diviseur R1=100kΩ/R2=27kΩ
+// Mesure tension batterie — ADC1, diviseur R1=100kΩ/R2=27kΩ
 // -----------------------------------------------------------------------------
 #define PIN_BATT_ADC            36
 
 // -----------------------------------------------------------------------------
+// LED et bouton intégrés à la carte Quad MOS
+// -----------------------------------------------------------------------------
+#define PIN_LED_CARTE            23     // LED verte de la carte
+#define PIN_BOUTON_CARTE          0     // Bouton physique de la carte
+
+// -----------------------------------------------------------------------------
 // Heartbeat circuit RC fail-safe (optionnel — activé via Config → Machine)
-// Toggle 1Hz → LED bleue intégrée + signal circuit RC
+// Toggle 1Hz → LED carte GPIO 23 + signal circuit RC
 // Inactif par défaut (heartbeat_rc_on = false dans config_machine_t)
 // -----------------------------------------------------------------------------
-#define PIN_HEARTBEAT            2
+#define PIN_HEARTBEAT            23
