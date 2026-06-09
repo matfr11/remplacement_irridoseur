@@ -46,10 +46,6 @@ void gpio_reset_impulsions_cycle(void);
 // Incrémente le compteur de cycles sans impulsion (appelé à chaque tick 100ms)
 void gpio_handler_tick_cycle(void);
 
-// Mise à jour de la distance par impulsion (calculée par calculs_mecanique)
-// À appeler quand l'étage courant change — reçoit calcul_dist_pulse_m(R_etage)
-void gpio_handler_set_dist_pulse_m(float dist_pulse_m);
-
 // Paramètres NVS (appelé à l'init depuis config_nvs)
 void gpio_handler_set_params(int fenetre_vitesse, int max_cycles_si);
 
@@ -65,6 +61,7 @@ void gpio_handler_set_vitesse_estimee(float vitesse_m_h);
 // Permettent l'injection de timestamps d'impulsion sans matériel
 // -----------------------------------------------------------------------------
 #if defined(CONFIG_IRRI_ENABLE_TESTS) || defined(CONFIG_IRRI_TEST_MODE)
+void gpio_handler_set_dist_pulse_m(float dist_pulse_m);
 void gpio_handler_test_injecter_pulse(int64_t timestamp_us);
 void gpio_handler_test_reset(void);
 #endif

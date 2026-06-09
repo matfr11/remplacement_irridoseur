@@ -214,6 +214,18 @@ esp_err_t config_nvs_lire_deroule(float *deroule_m)
     return ret;
 }
 
+esp_err_t config_nvs_sauver_position(float longueur_m, float deroule_m)
+{
+    nvs_handle_t h;
+    esp_err_t ret = nvs_open(NS_STATE, NVS_READWRITE, &h);
+    if (ret != ESP_OK) return ret;
+    ret = nvs_set_blob(h, "longueur_m", &longueur_m, sizeof(float));
+    if (ret == ESP_OK) ret = nvs_set_blob(h, "deroule_m", &deroule_m, sizeof(float));
+    if (ret == ESP_OK) ret = nvs_commit(h);
+    nvs_close(h);
+    return ret;
+}
+
 bool config_programme_est_valide(const config_programme_t *prog)
 {
     return prog->dose_mm > 0.0f  &&
@@ -277,9 +289,9 @@ esp_err_t config_nvs_sauver_batt_seuils(float warn_v, float crit_v)
     nvs_handle_t h;
     esp_err_t ret = nvs_open(NS_MACHINE, NVS_READWRITE, &h);
     if (ret != ESP_OK) return ret;
-    nvs_set_blob(h, "batt_warn", &warn_v, sizeof(float));
-    nvs_set_blob(h, "batt_crit", &crit_v, sizeof(float));
-    ret = nvs_commit(h);
+    ret = nvs_set_blob(h, "batt_warn", &warn_v, sizeof(float));
+    if (ret == ESP_OK) ret = nvs_set_blob(h, "batt_crit", &crit_v, sizeof(float));
+    if (ret == ESP_OK) ret = nvs_commit(h);
     nvs_close(h);
     return ret;
 }

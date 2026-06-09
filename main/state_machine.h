@@ -240,6 +240,10 @@ programme_preview_t state_machine_programme_preview(float pression_bar, float bu
 void state_machine_sim_force_deroule(void);
 #endif
 
+#ifdef CONFIG_IRRI_WOKWI_MODE
+void state_machine_wokwi_set_pression(bool pression_ok);
+#endif
+
 #ifdef CONFIG_IRRI_ENABLE_TESTS
 void state_machine_test_injecter_etat(etat_machine_t etat);
 void state_machine_test_set_pression(bool pression_ok);

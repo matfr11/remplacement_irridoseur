@@ -98,7 +98,8 @@ static void test_reprise_depuis_pause(void)
     state_machine_test_set_pression(true);
     tick_state_machine();
     mock_time_advance_ms(100);
-    TEST_ASSERT_EQUAL_INT(ETAT_EN_COURS, state_machine_get_etat());
+    // Reprise via REMPLISSAGE_POUMON avant EN_COURS
+    TEST_ASSERT_EQUAL_INT(ETAT_REMPLISSAGE_POUMON, state_machine_get_etat());
     state_machine_test_reset();
 }
 

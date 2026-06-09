@@ -22,6 +22,6 @@ const machine_profile_t MACHINE_ST1BIS_82_330 = {
     .spires_par_etage  = 13.45f,    // Étages 1-4 (tableau constructeur ST.1 Bis)
     .spires_dernier    = 6.0f,      // Étage 5 — mesuré terrain
     .cycles_par_tour   = 40.0f,     // Mesure physique : 40 cycles poumon par tour
-    .t_vidange_s       = 0.0f,      // ⚠️ À mesurer terrain
+    .t_vidange_s       = 2.0f,      // ⚠️ À affiner terrain
     .facteur_correction = 1.0f,
 };

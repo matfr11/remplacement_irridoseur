@@ -1,0 +1,30 @@
+name: PAUSE_PRESSION reprise via REMPLISSAGE_POUMON
+version: 1
+steps:
+  - wait-serial:
+      text: "machine initialisee"
+      timeout: 15000
+  - wait-serial:
+      text: "0 -> 1"
+      timeout: 3000
+  - wait-serial:
+      text: "1 -> 3"
+      timeout: 12000
+  - wait-serial:
+      text: "3 -> 4"
+      timeout: 8000
+  - wait-serial:
+      text: "SIM:P0"
+      timeout: 8000
+  - wait-serial:
+      text: "4 -> 5"
+      timeout: 2000
+  - wait-serial:
+      text: "SIM:P1"
+      timeout: 5000
+  - wait-serial:
+      text: "5 -> 3"
+      timeout: 2000
+  - wait-serial:
+      text: "3 -> 4"
+      timeout: 8000

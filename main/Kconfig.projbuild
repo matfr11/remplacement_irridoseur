@@ -16,4 +16,12 @@ menu "Irrifrance ESP32"
             Remplace gpio_get_level() par sim_gpio_get_level() via READ_GPIO.
             À désactiver impérativement en production.
 
+    config IRRI_WOKWI_MODE
+        bool "Mode Wokwi (tests e2e sans WiFi)"
+        default n
+        help
+            Désactive webserver/OTA/telemetry et injecte une config programme
+            de test dans NVS pour permettre à la machine d'états de démarrer.
+            À utiliser uniquement avec les firmwares de test Wokwi.
+
 endmenu

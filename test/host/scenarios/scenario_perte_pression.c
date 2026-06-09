@@ -38,7 +38,7 @@ static void local_setUp(void)
 
 static void local_tearDown(void) { state_machine_test_reset(); }
 
-// Scénario 3 — perte pression en EN_COURS → PAUSE_PRESSION → reprise → EN_COURS
+// Scénario 3 — perte pression en EN_COURS → PAUSE_PRESSION → reprise → REMPLISSAGE_POUMON → EN_COURS
 static void test_scenario_pause_reprise(void)
 {
     state_machine_test_injecter_etat(ETAT_EN_COURS);
@@ -49,15 +49,21 @@ static void test_scenario_pause_reprise(void)
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_PAUSE_PRESSION, state_machine_get_etat());
 
-    // Rétablir la pression
+    // Rétablir la pression → reprise via REMPLISSAGE_POUMON
     set_pression(true);
     avancer(1);
+    TEST_ASSERT_EQUAL_INT(ETAT_REMPLISSAGE_POUMON, state_machine_get_etat());
+
+    // Poumon plein → EN_COURS
+    gpio_set_level(PIN_POUMON_PLEIN, 1);
+    avancer(1);
+    gpio_set_level(PIN_POUMON_PLEIN, 0);
     TEST_ASSERT_EQUAL_INT(ETAT_EN_COURS, state_machine_get_etat());
 
     state_machine_cmd_stop();
 }
 
-// Scénario 4 — perte pression pendant REMPLISSAGE_POUMON → PAUSE_PRESSION → reprise
+// Scénario 4 — perte pression pendant REMPLISSAGE_POUMON → PAUSE_PRESSION → reprise → REMPLISSAGE_POUMON → EN_COURS
 static void test_scenario_perte_pendant_remplissage(void)
 {
     state_machine_test_injecter_etat(ETAT_REMPLISSAGE_POUMON);
@@ -67,8 +73,15 @@ static void test_scenario_perte_pendant_remplissage(void)
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_PAUSE_PRESSION, state_machine_get_etat());
 
+    // Reprise via REMPLISSAGE_POUMON
     set_pression(true);
     avancer(1);
+    TEST_ASSERT_EQUAL_INT(ETAT_REMPLISSAGE_POUMON, state_machine_get_etat());
+
+    // Poumon plein → EN_COURS
+    gpio_set_level(PIN_POUMON_PLEIN, 1);
+    avancer(1);
+    gpio_set_level(PIN_POUMON_PLEIN, 0);
     TEST_ASSERT_EQUAL_INT(ETAT_EN_COURS, state_machine_get_etat());
 
     state_machine_cmd_stop();

@@ -78,8 +78,23 @@ static const char *etat_to_str(etat_machine_t etat)
     }
 }
 
+static void json_escape(const char *src, char *dst, size_t dst_len)
+{
+    size_t j = 0;
+    for (size_t i = 0; src[i] && j < dst_len - 2; i++) {
+        if (src[i] == '"' || src[i] == '\\') dst[j++] = '\\';
+        dst[j++] = src[i];
+    }
+    dst[j] = '\0';
+}
+
 static int status_to_json(const machine_status_t *s, char *buf, size_t len)
 {
+    char prog_nom[42], machine_nom[64], abaque_nom[64], raison_arret[128];
+    json_escape(s->prog_nom,    prog_nom,    sizeof(prog_nom));
+    json_escape(s->machine_nom, machine_nom, sizeof(machine_nom));
+    json_escape(s->abaque_nom,  abaque_nom,  sizeof(abaque_nom));
+    json_escape(s->raison_arret, raison_arret, sizeof(raison_arret));
     return snprintf(buf, len,
         "{"
         "\"etat\":\"%s\",\"etat_code\":%d,"
@@ -151,9 +166,9 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         "\"dose_corrigee_mm\":%.1f"
         "}",
         etat_to_str(s->etat), (int)s->etat,
-        s->prog_nom,
-        s->machine_nom,
-        s->abaque_nom,
+        prog_nom,
+        machine_nom,
+        abaque_nom,
         s->longueur_deroulee_m,
         s->longueur_enroulee_m,
         s->vitesse_m_h, s->vitesse_cible_m_h,
@@ -181,7 +196,7 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         s->mode_degrade_poumon    ? "true" : "false",
         s->mode_degrade_spires    ? "true" : "false",
         s->facteur_correction,
-        s->raison_arret,
+        raison_arret,
         s->cfg_valide           ? "true" : "false",
         s->cfg_t_vidange_s,
         s->cfg_kp_regulation,

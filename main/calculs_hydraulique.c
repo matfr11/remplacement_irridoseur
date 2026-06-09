@@ -162,7 +162,7 @@ hydro_warnings_t valider_params_programme(const canon_abaque_t *abaque,
     w.buse_hors_plage = (buse_mm < b_min * 0.75f || buse_mm > b_max * 1.25f);
 
     // Bornes dose : D15=15mm / D40=40mm (colonnes extremes de la table constructeur)
-    w.dose_hors_plage = (dose_mm < 15.0f * 0.75f || dose_mm > 40.0f * 1.25f);
+    w.dose_hors_plage = (dose_mm < DOSE_MIN_MM * 0.75f || dose_mm > DOSE_MAX_MM * 1.25f);
 
     // Espacement entre positions vs portee calculee
     if (largeur_m > 0.1f) {

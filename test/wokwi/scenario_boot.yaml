@@ -1,0 +1,9 @@
+name: Boot et abaque_nom
+version: 1
+steps:
+  - wait-serial:
+      text: "abaque=SR 150C"
+      timeout: 15000
+  - wait-serial:
+      text: "machine initialisee"
+      timeout: 3000

@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "author": "Irrifrance",
+  "editor": "wokwi",
+  "parts": [
+    { "id": "esp", "type": "board-esp32-devkit-c-v4", "top": 0, "left": 0, "attrs": {} },
+
+    { "id": "r_pressostat",  "type": "wokwi-resistor", "attrs": { "value": "10000" }, "top": 100, "left": 300 },
+    { "id": "r_poumon",      "type": "wokwi-resistor", "attrs": { "value": "10000" }, "top": 140, "left": 300 },
+    { "id": "r_fin_course",  "type": "wokwi-resistor", "attrs": { "value": "10000" }, "top": 180, "left": 300 },
+    { "id": "r_secu_spires", "type": "wokwi-resistor", "attrs": { "value": "10000" }, "top": 220, "left": 300 },
+    { "id": "r_vitesse",     "type": "wokwi-resistor", "attrs": { "value": "10000" }, "top": 260, "left": 300 },
+
+    { "id": "btn_pressostat", "type": "wokwi-pushbutton", "top": 100, "left": 450, "attrs": { "color": "red" } },
+    { "id": "btn_poumon",     "type": "wokwi-pushbutton", "top": 140, "left": 450, "attrs": { "color": "green" } }
+  ],
+  "connections": [
+    ["esp:TX0", "$serialMonitor:RX", "", []],
+    ["esp:RX0", "$serialMonitor:TX", "", []],
+
+    ["esp:GPIO27",  "r_pressostat:1",  "green", []],
+    ["r_pressostat:2", "esp:GND.1", "black", []],
+    ["esp:GPIO27",  "btn_pressostat:1.l", "green", []],
+    ["btn_pressostat:2.l", "esp:3V3.1",  "red", []],
+
+    ["esp:GPIO33",  "r_poumon:1",      "blue", []],
+    ["r_poumon:2",  "esp:GND.1",    "black", []],
+    ["esp:GPIO33",  "btn_poumon:1.l",  "blue", []],
+    ["btn_poumon:2.l",  "esp:3V3.1",  "red", []],
+
+    ["esp:GPIO35",  "r_fin_course:1",  "gray", []],
+    ["r_fin_course:2",  "esp:GND.1","black", []],
+
+    ["esp:GPIO32",  "r_secu_spires:1", "gray", []],
+    ["r_secu_spires:2", "esp:GND.1","black", []],
+
+    ["esp:GPIO34",  "r_vitesse:1",     "gray", []],
+    ["r_vitesse:2",     "esp:GND.1","black", []]
+  ]
+}

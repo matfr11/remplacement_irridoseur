@@ -47,13 +47,12 @@ static void IRAM_ATTR isr_capteur_vitesse(void *arg)
 {
     (void)arg;
     int64_t now = esp_timer_get_time();
-
+    portENTER_CRITICAL_ISR(&s_mux);
     if (now - s_last_isr_us < (int64_t)DEBOUNCE_VITESSE_MS * 1000) {
+        portEXIT_CRITICAL_ISR(&s_mux);
         return;
     }
     s_last_isr_us = now;
-
-    portENTER_CRITICAL_ISR(&s_mux);
     s_ts_pulses[s_pulse_head] = now;
     s_pulse_head = (s_pulse_head + 1) % VITESSE_FENETRE_MAX;
     if (s_pulse_count < VITESSE_FENETRE_MAX) s_pulse_count++;
@@ -135,13 +134,6 @@ void gpio_all_ev_off(void)
 // =============================================================================
 // Setters runtime
 // =============================================================================
-
-void gpio_handler_set_dist_pulse_m(float dist_pulse_m)
-{
-    portENTER_CRITICAL(&s_mux);
-    s_dist_pulse_m = dist_pulse_m;
-    portEXIT_CRITICAL(&s_mux);
-}
 
 void gpio_handler_set_params(int fenetre_vitesse, int max_cycles_si)
 {
@@ -245,6 +237,13 @@ void gpio_handler_tick_cycle(void)
 
 #if defined(CONFIG_IRRI_ENABLE_TESTS) || defined(CONFIG_IRRI_TEST_MODE)
 
+void gpio_handler_set_dist_pulse_m(float dist_pulse_m)
+{
+    portENTER_CRITICAL(&s_mux);
+    s_dist_pulse_m = dist_pulse_m;
+    portEXIT_CRITICAL(&s_mux);
+}
+
 void gpio_handler_test_injecter_pulse(int64_t timestamp_us)
 {
     portENTER_CRITICAL(&s_mux);
@@ -262,10 +261,12 @@ void gpio_handler_test_reset(void)
     s_pulse_head            = 0;
     s_pulse_count           = 0;
     s_impulsions            = 0;
+    s_last_isr_us           = 0;
     s_cycles_sans_impulsion = 0;
     s_dist_pulse_m          = 0.0f;
     s_mode_degrade_a        = false;
     s_vitesse_estimee_mh    = 0.0f;
+    memset((void *)s_ts_pulses, 0, sizeof(s_ts_pulses));
     portEXIT_CRITICAL(&s_mux);
 }
 

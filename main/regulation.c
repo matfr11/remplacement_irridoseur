@@ -51,7 +51,9 @@ float correction_vitesse(float t_attente_s,
     float erreur = vitesse_cible_m_h - vitesse_reelle_m_h;
     float correction = kp * (erreur / vitesse_cible_m_h) * t_attente_s;
     float t_corrige = t_attente_s + correction;
-    return (t_corrige < 0.0f) ? 0.0f : t_corrige;
+    if (t_corrige < 0.0f)   return 0.0f;
+    if (t_corrige > 300.0f) return 300.0f;
+    return t_corrige;
 }
 
 float regulation_update_dist_par_cycle(float nouvelle_dist_m)

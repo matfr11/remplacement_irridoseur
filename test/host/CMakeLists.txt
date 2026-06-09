@@ -41,6 +41,11 @@ add_executable(irrifrance_tests
   scenarios/scenario_perte_pression.c
   scenarios/scenario_urgences.c
   scenarios/scenario_modes_degrades.c
+  scenarios/scenario_remplissage_poumon.c
+  scenarios/scenario_operateur.c
+  scenarios/scenario_arrivee_canon.c
+  scenarios/scenario_cycle_poumon.c
+  scenarios/scenario_reboot.c
   ${PROD_SRCS}
 )
 

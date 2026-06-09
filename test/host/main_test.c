@@ -14,6 +14,11 @@ void suite_scenario_cycle_normal(void);
 void suite_scenario_perte_pression(void);
 void suite_scenario_urgences(void);
 void suite_scenario_modes_degrades(void);
+void suite_scenario_remplissage_poumon(void);
+void suite_scenario_operateur(void);
+void suite_scenario_arrivee_canon(void);
+void suite_scenario_cycle_poumon(void);
+void suite_scenario_reboot(void);
 
 int main(void)
 {
@@ -27,6 +32,11 @@ int main(void)
     suite_scenario_perte_pression();
     suite_scenario_urgences();
     suite_scenario_modes_degrades();
+    suite_scenario_remplissage_poumon();
+    suite_scenario_operateur();
+    suite_scenario_arrivee_canon();
+    suite_scenario_cycle_poumon();
+    suite_scenario_reboot();
 
     return UNITY_END();
 }

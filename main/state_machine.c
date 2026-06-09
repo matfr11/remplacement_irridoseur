@@ -48,10 +48,11 @@ static float    s_longueur_deroule_m        = 0.0f;  // longueur déployée en c
 static float    s_longueur_session_m        = 0.0f;  // progression depuis début session — croît de 0 à déroulée (affiché "Enroulé")
 
 // Cycle poumon
-static int64_t  s_t_rempl_debut_ms   = 0;
-static float    s_t_remplissage_ms   = 0.0f;
-static float    s_t_attente_ms       = 0.0f;
-static int      s_nb_tentatives      = 0;
+static int64_t  s_t_rempl_debut_ms         = 0;
+static int64_t  s_t_retry_vidange_fin_ms   = 0;
+static float    s_t_remplissage_ms         = 0.0f;
+static int32_t  s_t_attente_ms             = 0;
+static int      s_nb_tentatives            = 0;
 
 // Pause pression
 static int64_t  s_t_pause_debut_ms   = 0;
@@ -89,6 +90,11 @@ static float             s_dose_corrigee_mm   = 0.0f;
 // Temps de remplissage minimum historique — reference pour V_max theorique
 static float             s_t_rempl_min_s      = 5.0f;
 
+#ifdef CONFIG_IRRI_WOKWI_MODE
+static volatile bool s_wokwi_pression_ok = true;
+void state_machine_wokwi_set_pression(bool ok) { s_wokwi_pression_ok = ok; }
+#endif
+
 #ifdef CONFIG_IRRI_ENABLE_TESTS
 static bool s_sim_active      = false;
 static bool s_sim_pression    = true;
@@ -108,7 +114,7 @@ static inline int64_t now_ms(void)
 
 static void entrer_etat(etat_machine_t nouvel_etat)
 {
-    ESP_LOGI(TAG, "État : %d → %d", s_etat, nouvel_etat);
+    ESP_LOGI(TAG, "%d -> %d", s_etat, nouvel_etat);
     s_etat     = nouvel_etat;
     s_t_etat_ms = now_ms();
 }
@@ -137,6 +143,9 @@ static void charger_config_interne(void)
     s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
     strncpy(s_status.prog_nom,    s_cfg_prog.nom,             sizeof(s_status.prog_nom) - 1);
     strncpy(s_status.machine_nom, s_profil ? s_profil->nom : "", sizeof(s_status.machine_nom) - 1);
+    strncpy(s_status.abaque_nom,  s_abaque ? s_abaque->nom : "", sizeof(s_status.abaque_nom) - 1);
+    ESP_LOGI(TAG, "Config chargee: prog=%s machine=%s abaque=%s",
+             s_status.prog_nom, s_status.machine_nom, s_status.abaque_nom);
     s_status.prog_dose_mm         = s_cfg_prog.dose_mm;
     s_status.prog_largeur_m       = s_cfg_prog.largeur_m;
     s_status.prog_buse_mm         = s_cfg_prog.buse_mm;
@@ -192,9 +201,13 @@ void state_machine_init(void)
     }
 
     // Résolution double entrée profil
-    machine_profile_t profil_copy = *s_profil;
-    if (!machine_resoudre_double_entree(&profil_copy)) {
-        ESP_LOGE(TAG, "Profil machine invalide (largeur et spires tous les deux à 0)");
+    if (s_profil) {
+        machine_profile_t profil_copy = *s_profil;
+        if (!machine_resoudre_double_entree(&profil_copy)) {
+            ESP_LOGE(TAG, "Profil machine invalide (largeur et spires tous les deux à 0)");
+        }
+    } else {
+        ESP_LOGE(TAG, "Profil machine introuvable (machine_active=%d)", s_cfg_machine.machine_active);
     }
 
     // Détection coupure de courant : session_active=1 sans raison d'urgence
@@ -230,7 +243,351 @@ void state_machine_init(void)
 
     gpio_all_ev_off();
     entrer_etat(ETAT_VEILLE);
-    ESP_LOGI(TAG, "Machine d'états initialisée");
+    ESP_LOGI(TAG, "machine initialisee");
+}
+
+// ---------------------------------------------------------------------------
+// Handlers d'état — un par case du switch principal
+// ---------------------------------------------------------------------------
+
+static void handle_veille(const entrees_t *e, int64_t t_dans_etat)
+{
+    (void)t_dans_etat;
+    s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
+    if (s_fc_deroule_prev && !e->fin_course) {
+        s_mesure_deroule_m = 0.0f;
+        gpio_reset_impulsions_cycle();
+        entrer_etat(ETAT_DEROULE);
+        s_fc_deroule_prev = e->fin_course;
+        return;
+    }
+    s_fc_deroule_prev = e->fin_course;
+    if (s_demarrage_autorise && e->pression_ok && !e->fin_course && s_status.cfg_valide) {
+        s_demarrage_autorise = false;
+        s_coupure_detectee = false;
+        config_nvs_sauver_session_active(true);
+        gpio_ev_canon_set(true);
+        entrer_etat(ETAT_OUVERTURE_CANON);
+    }
+}
+
+static void handle_ouverture_canon(const entrees_t *e, int64_t t_dans_etat)
+{
+    (void)t_dans_etat;
+    static int s_tick_pression_stable = 0;
+    if (e->pression_ok) {
+        s_tick_pression_stable++;
+    } else {
+        s_tick_pression_stable = 0;
+    }
+    if (s_tick_pression_stable >= 30) {
+        s_tick_pression_stable = 0;
+        s_t_session_debut_ms = now_ms();
+        s_duree_pause_ms = 0;
+        s_bilan_envoye   = false;
+        regulation_reset_calibration();
+        if (s_cfg_prog.tempo_depart_on && s_cfg_prog.tempo_depart_s > 0) {
+            entrer_etat(ETAT_TEMPO_DEPART);
+        } else {
+            gpio_ev_poumon_set(true);
+            s_nb_tentatives = 0;
+            entrer_etat(ETAT_REMPLISSAGE_POUMON);
+        }
+    }
+}
+
+static void handle_tempo_depart(const entrees_t *e, int64_t t_dans_etat)
+{
+    if (!e->pression_ok) {
+        gpio_ev_canon_set(false);
+        entrer_etat(ETAT_PAUSE_PRESSION);
+    } else if (t_dans_etat >= (int64_t)s_cfg_prog.tempo_depart_s * 1000) {
+        gpio_ev_poumon_set(true);
+        s_nb_tentatives = 0;
+        entrer_etat(ETAT_REMPLISSAGE_POUMON);
+    }
+}
+
+static void handle_remplissage_poumon(const entrees_t *e, int64_t t_dans_etat)
+{
+    if (s_nb_tentatives > 0 && !gpio_get_level(PIN_EV_POUMON)) {
+        if (now_ms() < s_t_retry_vidange_fin_ms) return;
+        gpio_ev_poumon_set(true);
+        s_t_rempl_debut_ms = now_ms();
+    }
+    int64_t t_rempl_ms = (s_cfg_machine.t_rempl_fixe_s > 0.0f)
+                         ? (int64_t)(s_cfg_machine.t_rempl_fixe_s * 1000.0f)
+                         : 20000;
+    bool poumon_ok = e->poumon_plein ||
+                     (s_cfg_machine.mode_deg_poumon && t_dans_etat >= t_rempl_ms);
+    if (!e->pression_ok) {
+        gpio_all_ev_off();
+        entrer_etat(ETAT_PAUSE_PRESSION);
+    } else if (poumon_ok) {
+        gpio_ev_poumon_set(false);
+        if (e->fin_course) {
+            if (s_cfg_prog.tempo_arrivee_on && s_cfg_prog.tempo_arrivee_s > 0) {
+                gpio_ev_canon_set(true);
+                entrer_etat(ETAT_TEMPO_ARRIVEE);
+            } else {
+                gpio_ev_canon_set(false);
+                entrer_etat(ETAT_ARRET_FINAL);
+            }
+        } else {
+            gpio_ev_canon_set(true);
+            entrer_etat(ETAT_EN_COURS);
+            entrer_sous_etat(SOUS_VIDANGE);
+        }
+    } else if (t_dans_etat >= 20000) {
+        gpio_ev_poumon_set(false);
+        s_nb_tentatives++;
+        if (s_nb_tentatives >= 2) {
+            gpio_ev_canon_set(false);
+            state_machine_declencher_urgence("Remplissage poumon echoue (2/2)");
+        } else {
+            s_t_retry_vidange_fin_ms = now_ms() + (int64_t)(s_cfg_machine.t_vidange_s * 1000.0f);
+            entrer_etat(ETAT_REMPLISSAGE_POUMON);
+        }
+    }
+}
+
+static void handle_en_cours(const entrees_t *e, int64_t t_dans_etat)
+{
+    (void)t_dans_etat;
+    if (!e->pression_ok) {
+        gpio_all_ev_off();
+        s_t_pause_debut_ms = now_ms();
+        entrer_etat(ETAT_PAUSE_PRESSION);
+        return;
+    }
+    if (e->fin_course && s_sous_etat != SOUS_REMPLISSAGE) {
+        gpio_ev_poumon_set(false);
+        if (s_cfg_prog.tempo_arrivee_on && s_cfg_prog.tempo_arrivee_s > 0) {
+            entrer_etat(ETAT_TEMPO_ARRIVEE);
+        } else {
+            gpio_ev_canon_set(false);
+            entrer_etat(ETAT_ARRET_FINAL);
+        }
+        return;
+    }
+
+    gpio_handler_tick_cycle();
+
+    switch (s_sous_etat) {
+
+    case SOUS_VIDANGE: {
+        int64_t t_vidange_ms = (int64_t)(s_cfg_machine.t_vidange_s * 1000.0f);
+        if (t_vidange_ms <= 0) t_vidange_ms = 1;
+        if (now_ms() - s_t_sous_etat_ms >= t_vidange_ms) {
+            entrer_sous_etat(SOUS_ATTENTE);
+        }
+        break;
+    }
+
+    case SOUS_ATTENTE: {
+        int64_t t_attente_ms = (int64_t)s_t_attente_ms;
+        if (now_ms() - s_t_sous_etat_ms >= t_attente_ms) {
+            gpio_ev_poumon_set(true);
+            gpio_reset_impulsions_cycle();
+            s_t_rempl_debut_ms = now_ms();
+            s_nb_tentatives = 0;
+            entrer_sous_etat(SOUS_REMPLISSAGE);
+        }
+        break;
+    }
+
+    case SOUS_REMPLISSAGE: {
+        int64_t t_timeout_ms = (int64_t)(s_cfg_machine.t_rempl_fixe_s > 0
+                                          ? s_cfg_machine.t_rempl_fixe_s * 1000.0f
+                                          : 20000.0f);
+        bool fin_rempl = false;
+
+        if (s_cfg_machine.mode_deg_poumon) {
+            fin_rempl = (now_ms() - s_t_rempl_debut_ms >= t_timeout_ms);
+        } else {
+            if (e->poumon_plein) {
+                fin_rempl = true;
+            } else if (now_ms() - s_t_rempl_debut_ms >= t_timeout_ms) {
+                s_nb_tentatives++;
+                if (s_nb_tentatives >= 2) {
+                    gpio_all_ev_off();
+                    state_machine_declencher_urgence("Timeout poumon cycle");
+                    break;
+                }
+                gpio_ev_poumon_set(false);
+                entrer_sous_etat(SOUS_VIDANGE);
+                break;
+            }
+        }
+
+        if (fin_rempl) {
+            gpio_ev_poumon_set(false);
+            s_t_remplissage_ms = (float)(now_ms() - s_t_rempl_debut_ms);
+
+            float t_rempl_s = s_t_remplissage_ms / 1000.0f;
+            if (t_rempl_s > 0.5f && t_rempl_s < s_t_rempl_min_s) {
+                s_t_rempl_min_s = t_rempl_s;
+                config_nvs_sauver_t_rempl_min(s_t_rempl_min_s);
+            }
+
+            if (!s_profil) {
+                ESP_LOGE(TAG, "fin_rempl : profil NULL - accumulation longueur impossible");
+                entrer_sous_etat(SOUS_VIDANGE);
+                break;
+            }
+            int etage = calcul_etage_courant(s_longueur_enroulee, s_profil);
+            float r   = calcul_rayon_etage(etage, s_profil);
+            float dist_cycle = calcul_dist_cycle_m(r, s_cfg_machine.cycles_par_tour);
+
+            if (dist_cycle > 0.0f) {
+                float dist_moy = regulation_update_dist_par_cycle(dist_cycle);
+                s_cfg_machine.dist_cycle_nvs = dist_moy;
+                s_longueur_enroulee  += dist_cycle;
+                s_longueur_session_m += dist_cycle;
+                if (s_longueur_enroulee - s_longueur_derniere_nvs >= 5.0f) {
+                    config_nvs_sauver_longueur(s_longueur_enroulee);
+                    s_longueur_derniere_nvs = s_longueur_enroulee;
+                }
+
+                float debit_tmp = 0.0f;
+                float v_cible_m_h = lookup_vitesse_cible(
+                    s_abaque,
+                    s_cfg_prog.pression_bar,
+                    (float)s_cfg_prog.buse_mm,
+                    s_cfg_prog.dose_mm,
+                    s_cfg_prog.largeur_m,
+                    &debit_tmp, NULL);
+                s_vitesse_cible_m_h = v_cible_m_h;
+                float v_cible_m_s = v_cible_m_h / 3600.0f;
+                bool alerte = false;
+                float t_att = calcul_t_attente_s(
+                    dist_moy, v_cible_m_s,
+                    s_t_remplissage_ms / 1000.0f,
+                    s_cfg_machine.t_vidange_s,
+                    &alerte);
+
+                if (regulation_get_nb_cycles() >= s_cfg_machine.n_cycles_calib) {
+                    float v_reel = gpio_get_vitesse_m_h(s_cfg_machine.facteur_correction);
+                    t_att = correction_vitesse(t_att, v_reel, v_cible_m_h, s_cfg_machine.kp_regulation);
+                }
+
+                s_t_attente_ms = (int32_t)(t_att * 1000.0f);
+                s_status.alerte_pression_insuff = alerte;
+
+                if (alerte) {
+                    float t_min_s = s_t_remplissage_ms / 1000.0f + s_cfg_machine.t_vidange_s;
+                    s_vitesse_max_m_h = (t_min_s > 0.0f)
+                                        ? (dist_moy / t_min_s) * 3600.0f : 0.0f;
+                    s_dose_corrigee_mm = (s_vitesse_max_m_h > 0.0f && s_cfg_prog.largeur_m > 0.0f)
+                                         ? calcul_dose_inst_mm(debit_tmp, s_vitesse_max_m_h,
+                                                               s_cfg_prog.largeur_m)
+                                         : 0.0f;
+                } else {
+                    s_vitesse_max_m_h  = 0.0f;
+                    s_dose_corrigee_mm = 0.0f;
+                }
+            }
+
+            entrer_sous_etat(SOUS_VIDANGE);
+        }
+        break;
+    }
+    }  // switch sous_etat
+}
+
+static void handle_pause_pression(const entrees_t *e)
+{
+    s_duree_pause_ms += 100;
+    if (e->pression_ok) {
+        gpio_ev_canon_set(true);
+        gpio_ev_poumon_set(true);
+        s_nb_tentatives = 0;
+        entrer_etat(ETAT_REMPLISSAGE_POUMON);
+    }
+}
+
+static void handle_tempo_arrivee(const entrees_t *e, int64_t t_dans_etat)
+{
+    if (!e->pression_ok) {
+        gpio_ev_canon_set(false);
+        entrer_etat(ETAT_ARRET_FINAL);
+    } else if (t_dans_etat >= (int64_t)s_cfg_prog.tempo_arrivee_s * 1000) {
+        gpio_ev_canon_set(false);
+        entrer_etat(ETAT_ARRET_FINAL);
+    }
+}
+
+static void handle_arret_final(const entrees_t *e)
+{
+    if (!s_bilan_envoye) {
+        s_session.longueur_m              = s_longueur_enroulee;
+        s_session.surface_m2              = s_status.surface_m2;
+        s_session.dose_moy_mm             = s_status.dose_inst_mm;
+        s_session.volume_m3               = s_status.surface_m2 * s_status.dose_inst_mm / 1000.0f;
+        s_session.duree_s                 = s_status.duree_s;
+        s_session.nb_cycles               = (uint32_t)regulation_get_nb_cycles();
+        s_session.duree_pause_pression_s  = s_duree_pause_ms / 1000;
+        {
+            float surf_ha = s_status.surface_m2 / 10000.0f;
+            float vol_m3  = s_status.surface_m2 * (s_status.dose_inst_mm / 1000.0f);
+            float dur_h   = (float)s_status.duree_s / 3600.0f;
+            float tot_surf = s_stats.total_surface_ha + surf_ha;
+            if (tot_surf > 0.0f)
+                s_stats.dose_moy_mm = (s_stats.dose_moy_mm * s_stats.total_surface_ha
+                                     + s_status.dose_inst_mm * surf_ha) / tot_surf;
+            float tot_dur = s_stats.total_duree_h + dur_h;
+            if (tot_dur > 0.0f)
+                s_stats.vitesse_moy_m_h = (s_stats.vitesse_moy_m_h * s_stats.total_duree_h
+                                          + s_status.vitesse_cible_m_h * dur_h) / tot_dur;
+            s_stats.total_surface_ha += surf_ha;
+            s_stats.total_volume_m3  += vol_m3;
+            s_stats.total_duree_h    += dur_h;
+            s_stats.nb_sessions++;
+            config_nvs_sauver_stats(&s_stats);
+        }
+        telemetry_envoyer_bilan(&s_session);
+        s_bilan_envoye = true;
+    }
+    if (!e->fin_course) {
+        s_longueur_enroulee     = 0.0f;
+        s_longueur_derniere_nvs = 0.0f;
+        s_longueur_session_m    = 0.0f;
+        config_nvs_sauver_longueur(0.0f);
+        config_nvs_sauver_session_active(false);
+        regulation_reset_calibration();
+        config_nvs_sauver_machine(&s_cfg_machine);
+        memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
+        charger_config_interne();
+        entrer_etat(ETAT_VEILLE);
+    }
+}
+
+static void handle_deroule(const entrees_t *e)
+{
+    uint32_t impl = gpio_get_impulsions();
+    if (impl > 0 && s_profil && s_profil->longueur_tuyau_m > 0.0f) {
+        gpio_reset_impulsions_cycle();
+        float pos_abs = s_profil->longueur_tuyau_m - s_mesure_deroule_m;
+        int   etage = calcul_etage_courant(pos_abs, s_profil);
+        float r     = calcul_rayon_etage(etage, s_profil);
+        float d     = calcul_dist_pulse_m(r) * s_cfg_machine.facteur_correction * (float)impl;
+        if (s_mesure_deroule_m + d <= s_profil->longueur_tuyau_m)
+            s_mesure_deroule_m += d;
+    } else if (impl > 0) {
+        gpio_reset_impulsions_cycle();
+    }
+    s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
+    if (s_demarrage_autorise && e->pression_ok && !e->fin_course && s_status.cfg_valide) {
+        s_demarrage_autorise = false;
+        float total = s_profil ? s_profil->longueur_tuyau_m : 0.0f;
+        s_longueur_deroule_m = s_mesure_deroule_m;
+        s_longueur_enroulee  = (total > 0.0f) ? total - s_mesure_deroule_m : 0.0f;
+        s_longueur_session_m = 0.0f;
+        s_longueur_derniere_nvs = s_longueur_enroulee;
+        config_nvs_sauver_position(s_longueur_enroulee, s_longueur_deroule_m);
+        gpio_ev_canon_set(true);
+        entrer_etat(ETAT_OUVERTURE_CANON);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -250,6 +607,9 @@ void tick_state_machine(void)
 
     entrees_t e;
     gpio_handler_lire_entrees(&e);
+#ifdef CONFIG_IRRI_WOKWI_MODE
+    e.pression_ok = s_wokwi_pression_ok;
+#endif
 #ifdef CONFIG_IRRI_ENABLE_TESTS
     if (s_sim_active) {
         e.pression_ok  = s_sim_pression;
@@ -270,10 +630,12 @@ void tick_state_machine(void)
             bool p = e.poumon_plein;
             if (p && !s_rearm_prev) {  // front montant
                 int64_t t = now_ms();
-                if (s_rearm_count > 0 && (t - s_rearm_last_ms) > 1500) {
-                    s_rearm_count = 0;
+                if (s_rearm_count == 0) {
+                    s_rearm_last_ms = t;  // démarre la fenêtre au 1er appui
+                } else if (t - s_rearm_last_ms > 5000) {
+                    s_rearm_count   = 0;  // séquence trop longue — repart à 1
+                    s_rearm_last_ms = t;
                 }
-                s_rearm_last_ms = t;
                 s_rearm_count++;
                 if (s_rearm_count >= 3) {
                     s_rearm_count = 0;
@@ -301,375 +663,16 @@ void tick_state_machine(void)
     }
 
     switch (s_etat) {
-
-    // -----------------------------------------------------------------------
-    case ETAT_VEILLE:
-        s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
-        // Déploiement automatique : flanc descendant fin_course → bobine pleine libérée
-        if (s_fc_deroule_prev && !e.fin_course) {
-            s_mesure_deroule_m = 0.0f;
-            gpio_reset_impulsions_cycle();
-            entrer_etat(ETAT_DEROULE);
-            s_fc_deroule_prev = e.fin_course;
-            break;
-        }
-        s_fc_deroule_prev = e.fin_course;
-        if (s_demarrage_autorise && e.pression_ok && !e.fin_course && s_status.cfg_valide) {
-            s_demarrage_autorise = false;
-            s_coupure_detectee = false;
-            config_nvs_sauver_session_active(true);  // session démarre
-            gpio_ev_canon_set(true);
-            entrer_etat(ETAT_OUVERTURE_CANON);
-        }
-        break;
-
-    // -----------------------------------------------------------------------
-    case ETAT_OUVERTURE_CANON: {
-        static int s_tick_pression_stable = 0;
-        if (e.pression_ok) {
-            s_tick_pression_stable++;
-        } else {
-            s_tick_pression_stable = 0;
-        }
-        if (s_tick_pression_stable >= 30) {  // 30 × 100ms = 3s
-            s_tick_pression_stable = 0;
-            s_t_session_debut_ms = now_ms();
-            s_duree_pause_ms = 0;
-            s_bilan_envoye   = false;
-            regulation_reset_calibration();
-            // s_longueur_enroulee conservée : NVS=0 après fin normale, NVS=position après reboot
-            if (s_cfg_prog.tempo_depart_on && s_cfg_prog.tempo_depart_s > 0) {
-                entrer_etat(ETAT_TEMPO_DEPART);
-            } else {
-                gpio_ev_poumon_set(true);
-                s_nb_tentatives = 0;
-                entrer_etat(ETAT_REMPLISSAGE_POUMON);
-            }
-        }
-        break;
-    }
-
-    // -----------------------------------------------------------------------
-    case ETAT_TEMPO_DEPART:
-        if (!e.pression_ok) {
-            gpio_ev_canon_set(false);
-            entrer_etat(ETAT_PAUSE_PRESSION);
-        } else if (t_dans_etat >= (int64_t)s_cfg_prog.tempo_depart_s * 1000) {
-            gpio_ev_poumon_set(true);
-            s_nb_tentatives = 0;
-            entrer_etat(ETAT_REMPLISSAGE_POUMON);
-        }
-        break;
-
-    // -----------------------------------------------------------------------
-    case ETAT_REMPLISSAGE_POUMON: {
-        bool canon_deja_ouvert = (s_nb_tentatives > 0) || (s_etat == ETAT_REMPLISSAGE_POUMON);
-        // EV_CANON=ON si re-remplissage pendant cycle (poumon déjà allumé depuis avant)
-        // EV_CANON=OFF au premier remplissage initial (sera mis ON en entrant EN_COURS)
-        (void)canon_deja_ouvert;
-
-        int64_t t_rempl_ms = (s_cfg_machine.t_rempl_fixe_s > 0.0f)
-                             ? (int64_t)(s_cfg_machine.t_rempl_fixe_s * 1000.0f)
-                             : 20000;
-        bool poumon_ok = e.poumon_plein ||
-                         (s_cfg_machine.mode_deg_poumon && t_dans_etat >= t_rempl_ms);
-        if (!e.pression_ok) {
-            gpio_all_ev_off();
-            entrer_etat(ETAT_PAUSE_PRESSION);
-        } else if (poumon_ok) {
-            gpio_ev_poumon_set(false);
-            if (e.fin_course) {
-                // Fin de bobine detectee apres remplissage — arret propre
-                if (s_cfg_prog.tempo_arrivee_on && s_cfg_prog.tempo_arrivee_s > 0) {
-                    gpio_ev_canon_set(true);
-                    entrer_etat(ETAT_TEMPO_ARRIVEE);
-                } else {
-                    gpio_ev_canon_set(false);
-                    entrer_etat(ETAT_ARRET_FINAL);
-                }
-            } else {
-                gpio_ev_canon_set(true);
-                entrer_etat(ETAT_EN_COURS);
-                entrer_sous_etat(SOUS_VIDANGE);
-            }
-        } else if (t_dans_etat >= 20000) {  // timeout 20s tentative (mode normal uniquement)
-            gpio_ev_poumon_set(false);
-            s_nb_tentatives++;
-            if (s_nb_tentatives >= 2) {
-                gpio_ev_canon_set(false);
-                state_machine_declencher_urgence("Remplissage poumon echoue (2/2)");
-            } else {
-                // Attendre t_vidange puis retenter
-                entrer_etat(ETAT_REMPLISSAGE_POUMON);  // ré-entrée — t_vidange géré PR-05
-            }
-        }
-        break;
-    }
-
-    // -----------------------------------------------------------------------
-    case ETAT_EN_COURS: {
-        if (!e.pression_ok) {
-            gpio_all_ev_off();
-            s_t_pause_debut_ms = now_ms();
-            entrer_etat(ETAT_PAUSE_PRESSION);
-            break;
-        }
-
-        // Fin de course : transition vers arrivée ou arrêt final
-        // Guard SOUS_REMPLISSAGE : laisser le cycle de remplissage se terminer avant d'arrêter.
-        // Couper EV_POUMON en cours de remplissage peut rétracter le cliquet et relâcher
-        // le capteur de fin de course → boucle infinie.
-        if (e.fin_course && s_sous_etat != SOUS_REMPLISSAGE) {
-            gpio_ev_poumon_set(false);  // défensif — déjà OFF en VIDANGE/ATTENTE
-            if (s_cfg_prog.tempo_arrivee_on && s_cfg_prog.tempo_arrivee_s > 0) {
-                entrer_etat(ETAT_TEMPO_ARRIVEE);
-            } else {
-                gpio_ev_canon_set(false);
-                entrer_etat(ETAT_ARRET_FINAL);
-            }
-            break;
-        }
-
-        gpio_handler_tick_cycle();
-
-        switch (s_sous_etat) {
-
-        case SOUS_VIDANGE: {
-            int64_t t_vidange_ms = (int64_t)(s_cfg_machine.t_vidange_s * 1000.0f);
-            if (t_vidange_ms <= 0) t_vidange_ms = 1;  // sécurité minimum
-            if (now_ms() - s_t_sous_etat_ms >= t_vidange_ms) {
-                entrer_sous_etat(SOUS_ATTENTE);
-            }
-            break;
-        }
-
-        case SOUS_ATTENTE: {
-            int64_t t_attente_ms = (int64_t)s_t_attente_ms;
-            if (now_ms() - s_t_sous_etat_ms >= t_attente_ms) {
-                gpio_ev_poumon_set(true);
-                gpio_reset_impulsions_cycle();
-                s_t_rempl_debut_ms = now_ms();
-                s_nb_tentatives = 0;
-                entrer_sous_etat(SOUS_REMPLISSAGE);
-            }
-            break;
-        }
-
-        case SOUS_REMPLISSAGE: {
-            int64_t t_timeout_ms = (int64_t)(s_cfg_machine.t_rempl_fixe_s > 0
-                                              ? s_cfg_machine.t_rempl_fixe_s * 1000.0f
-                                              : 20000.0f);
-            bool fin_rempl = false;
-
-            if (s_cfg_machine.mode_deg_poumon) {
-                // Mode dégradé B : temporisé
-                fin_rempl = (now_ms() - s_t_rempl_debut_ms >= t_timeout_ms);
-            } else {
-                // Mode normal : contact poumon plein
-                if (e.poumon_plein) {
-                    fin_rempl = true;
-                } else if (now_ms() - s_t_rempl_debut_ms >= t_timeout_ms) {
-                    s_nb_tentatives++;
-                    if (s_nb_tentatives >= 2) {
-                        gpio_all_ev_off();
-                        state_machine_declencher_urgence("Timeout poumon cycle");
-                        break;
-                    }
-                    // Retour VIDANGE pour retenter
-                    gpio_ev_poumon_set(false);
-                    entrer_sous_etat(SOUS_VIDANGE);
-                    break;
-                }
-            }
-
-            if (fin_rempl) {
-                gpio_ev_poumon_set(false);
-                s_t_remplissage_ms = (float)(now_ms() - s_t_rempl_debut_ms);
-
-                // Mise a jour minimum historique — ecriture NVS uniquement si nouveau minimum
-                float t_rempl_s = s_t_remplissage_ms / 1000.0f;
-                if (t_rempl_s > 0.5f && t_rempl_s < s_t_rempl_min_s) {
-                    s_t_rempl_min_s = t_rempl_s;
-                    config_nvs_sauver_t_rempl_min(s_t_rempl_min_s);
-                }
-
-                // Distance par cycle : formule géométrique (indépendante du capteur pastilles)
-                int etage = calcul_etage_courant(s_longueur_enroulee, s_profil);
-                float r   = calcul_rayon_etage(etage, s_profil);
-                float dist_cycle = calcul_dist_cycle_m(r, s_cfg_machine.cycles_par_tour);
-
-                if (dist_cycle > 0.0f) {
-                    float dist_moy = regulation_update_dist_par_cycle(dist_cycle);
-                    s_cfg_machine.dist_cycle_nvs = dist_moy;
-                    s_longueur_enroulee  += dist_cycle;   // interne, calculs mécaniques
-                    s_longueur_session_m += dist_cycle;   // affiché "Enroulé"
-                    if (s_longueur_enroulee - s_longueur_derniere_nvs >= 5.0f) {
-                        config_nvs_sauver_longueur(s_longueur_enroulee);
-                        s_longueur_derniere_nvs = s_longueur_enroulee;
-                    }
-
-                    // Recalcul T_attente feedforward
-                    float debit_tmp = 0.0f;
-                    float v_cible_m_h = lookup_vitesse_cible(
-                        s_abaque,
-                        s_cfg_prog.pression_bar,
-                        (float)s_cfg_prog.buse_mm,
-                        s_cfg_prog.dose_mm,
-                        s_cfg_prog.largeur_m,
-                        &debit_tmp, NULL);
-                    s_vitesse_cible_m_h = v_cible_m_h;
-                    float v_cible_m_s = v_cible_m_h / 3600.0f;
-                    bool alerte = false;
-                    float t_att = calcul_t_attente_s(
-                        dist_moy, v_cible_m_s,
-                        s_t_remplissage_ms / 1000.0f,
-                        s_cfg_machine.t_vidange_s,
-                        &alerte);
-
-                    // Correction Kp après n_cycles_calib
-                    if (regulation_get_nb_cycles() >= s_cfg_machine.n_cycles_calib) {
-                        float v_reel = gpio_get_vitesse_m_h(s_cfg_machine.facteur_correction);
-                        t_att = correction_vitesse(t_att, v_reel, v_cible_m_h, s_cfg_machine.kp_regulation);
-                    }
-
-                    s_t_attente_ms = t_att * 1000.0f;
-                    s_status.alerte_pression_insuff = alerte;
-
-                    // Vitesse max et dose corrigée (utiles si alerte active)
-                    if (alerte) {
-                        float t_min_s = s_t_remplissage_ms / 1000.0f + s_cfg_machine.t_vidange_s;
-                        s_vitesse_max_m_h = (t_min_s > 0.0f)
-                                            ? (dist_moy / t_min_s) * 3600.0f : 0.0f;
-                        s_dose_corrigee_mm = (s_vitesse_max_m_h > 0.0f && s_cfg_prog.largeur_m > 0.0f)
-                                             ? calcul_dose_inst_mm(debit_tmp, s_vitesse_max_m_h,
-                                                                   s_cfg_prog.largeur_m)
-                                             : 0.0f;
-                    } else {
-                        s_vitesse_max_m_h  = 0.0f;
-                        s_dose_corrigee_mm = 0.0f;
-                    }
-                }
-
-                entrer_sous_etat(SOUS_VIDANGE);
-            }
-            break;
-        }
-        }  // switch sous_etat
-        break;
-    }
-
-    // -----------------------------------------------------------------------
-    case ETAT_PAUSE_PRESSION:
-        s_duree_pause_ms += 100;
-        // Reprise automatique au retour pression
-        if (e.pression_ok) {
-            gpio_ev_canon_set(true);
-            entrer_etat(ETAT_EN_COURS);
-            entrer_sous_etat(SOUS_VIDANGE);
-        }
-        break;
-
-    // -----------------------------------------------------------------------
-    case ETAT_TEMPO_ARRIVEE:
-        if (!e.pression_ok) {
-            gpio_ev_canon_set(false);
-            entrer_etat(ETAT_ARRET_FINAL);
-        } else if (t_dans_etat >= (int64_t)s_cfg_prog.tempo_arrivee_s * 1000) {
-            gpio_ev_canon_set(false);
-            entrer_etat(ETAT_ARRET_FINAL);
-        }
-        break;
-
-    // -----------------------------------------------------------------------
-    case ETAT_ARRET_FINAL:
-        if (!s_bilan_envoye) {
-            s_session.longueur_m              = s_longueur_enroulee;
-            s_session.surface_m2              = s_status.surface_m2;
-            s_session.dose_moy_mm             = s_status.dose_inst_mm;
-            s_session.volume_m3               = s_status.surface_m2 * s_status.dose_inst_mm / 1000.0f;
-            s_session.duree_s                 = s_status.duree_s;
-            s_session.nb_cycles               = (uint32_t)regulation_get_nb_cycles();
-            s_session.duree_pause_pression_s  = s_duree_pause_ms / 1000;
-            // Mise à jour stats campagne NVS
-            {
-                float surf_ha = s_status.surface_m2 / 10000.0f;
-                float vol_m3  = s_status.surface_m2 * (s_status.dose_inst_mm / 1000.0f);
-                float dur_h   = (float)s_status.duree_s / 3600.0f;
-                float tot_surf = s_stats.total_surface_ha + surf_ha;
-                if (tot_surf > 0.0f)
-                    s_stats.dose_moy_mm = (s_stats.dose_moy_mm * s_stats.total_surface_ha
-                                         + s_status.dose_inst_mm * surf_ha) / tot_surf;
-                float tot_dur = s_stats.total_duree_h + dur_h;
-                if (tot_dur > 0.0f)
-                    s_stats.vitesse_moy_m_h = (s_stats.vitesse_moy_m_h * s_stats.total_duree_h
-                                              + s_status.vitesse_cible_m_h * dur_h) / tot_dur;
-                s_stats.total_surface_ha += surf_ha;
-                s_stats.total_volume_m3  += vol_m3;
-                s_stats.total_duree_h    += dur_h;
-                s_stats.nb_sessions++;
-                config_nvs_sauver_stats(&s_stats);
-            }
-            telemetry_envoyer_bilan(&s_session);
-            s_bilan_envoye = true;
-        }
-        // Retour VEILLE automatique quand l'opérateur déroule (fin_course disparaît)
-        if (!e.fin_course) {
-            s_longueur_enroulee     = 0.0f;
-            s_longueur_derniere_nvs = 0.0f;
-            s_longueur_session_m    = 0.0f;
-            // s_longueur_deroule_m conservée : l'opérateur redéploiera la même longueur
-            config_nvs_sauver_longueur(0.0f);
-            config_nvs_sauver_session_active(false);  // fin propre
-            regulation_reset_calibration();
-            config_nvs_sauver_machine(&s_cfg_machine);
-            memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
-            charger_config_interne();  // recharge programme depuis NVS (peut avoir changé pendant la session)
-            // s_demarrage_autorise conservé tel quel :
-            //   - fin normale (fin_course) : reste true  → VEILLE auto-démarre au prochain cycle
-            //   - arrêt cmd_stop           : reste false → VEILLE attend un Démarrer explicite
-            entrer_etat(ETAT_VEILLE);
-        }
-        break;
-
-    // -----------------------------------------------------------------------
-    case ETAT_ARRET_URGENCE:
-        // Rien — cmd_reset manuel requis
-        break;
-
-    // -----------------------------------------------------------------------
-    case ETAT_DEROULE: {
-        // Mesure longueur déployée via pastilles (bobine tourne pendant que tracteur tire le tuyau)
-        uint32_t impl = gpio_get_impulsions();
-        if (impl > 0) {
-            gpio_reset_impulsions_cycle();
-            float pos_abs = (s_profil && s_profil->longueur_tuyau_m > 0.0f)
-                            ? (s_profil->longueur_tuyau_m - s_mesure_deroule_m)
-                            : 0.0f;
-            int   etage = calcul_etage_courant(pos_abs, s_profil);
-            float r     = calcul_rayon_etage(etage, s_profil);
-            float d     = calcul_dist_pulse_m(r) * s_cfg_machine.facteur_correction * (float)impl;
-            float maxi  = s_profil ? s_profil->longueur_tuyau_m : 0.0f;
-            if (maxi > 0.0f && s_mesure_deroule_m + d <= maxi)
-                s_mesure_deroule_m += d;
-        }
-        // Démarrage : mêmes conditions que VEILLE (cfg_valide + pression + fin_course libéré)
-        s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
-        if (s_demarrage_autorise && e.pression_ok && !e.fin_course && s_status.cfg_valide) {
-            s_demarrage_autorise = false;
-            // Appliquer la longueur mesurée comme point de départ de session
-            float total = s_profil ? s_profil->longueur_tuyau_m : 0.0f;
-            s_longueur_deroule_m = s_mesure_deroule_m;
-            s_longueur_enroulee  = (total > 0.0f) ? total - s_mesure_deroule_m : 0.0f;
-            s_longueur_session_m = 0.0f;
-            s_longueur_derniere_nvs = s_longueur_enroulee;
-            config_nvs_sauver_longueur(s_longueur_enroulee);
-            config_nvs_sauver_deroule(s_longueur_deroule_m);
-            gpio_ev_canon_set(true);
-            entrer_etat(ETAT_OUVERTURE_CANON);
-        }
-        break;
-    }
-
+    case ETAT_VEILLE:             handle_veille(&e, t_dans_etat);             break;
+    case ETAT_OUVERTURE_CANON:    handle_ouverture_canon(&e, t_dans_etat);    break;
+    case ETAT_TEMPO_DEPART:       handle_tempo_depart(&e, t_dans_etat);       break;
+    case ETAT_REMPLISSAGE_POUMON: handle_remplissage_poumon(&e, t_dans_etat); break;
+    case ETAT_EN_COURS:           handle_en_cours(&e, t_dans_etat);           break;
+    case ETAT_PAUSE_PRESSION:     handle_pause_pression(&e);                  break;
+    case ETAT_TEMPO_ARRIVEE:      handle_tempo_arrivee(&e, t_dans_etat);      break;
+    case ETAT_ARRET_FINAL:        handle_arret_final(&e);                     break;
+    case ETAT_ARRET_URGENCE:                                                   break;
+    case ETAT_DEROULE:            handle_deroule(&e);                         break;
     }  // switch etat
 
     // Vitesse depuis timing des cycles poumon (voie principale quand cycles_par_tour calibré)
@@ -697,7 +700,7 @@ void tick_state_machine(void)
         s_status.duree_s = (int32_t)((now_ms() - s_t_session_debut_ms) / 1000);
     }
     s_status.t_remplissage_ms = (int32_t)s_t_remplissage_ms;
-    s_status.t_attente_ms     = (int32_t)s_t_attente_ms;
+    s_status.t_attente_ms     = s_t_attente_ms;
     s_status.cycles_total     = (uint32_t)regulation_get_nb_cycles();
     s_status.facteur_correction   = s_cfg_machine.facteur_correction;
     s_status.heure_synchro        = s_heure_synchro;
@@ -941,16 +944,16 @@ void state_machine_set_time(int64_t timestamp_unix)
 
 void state_machine_cmd_ev_canon_set(bool actif)
 {
-    if (s_etat == ETAT_VEILLE) {
-        gpio_ev_canon_set(actif);
-    }
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (s_etat == ETAT_VEILLE) gpio_ev_canon_set(actif);
+    xSemaphoreGive(s_mutex);
 }
 
 void state_machine_cmd_ev_poumon_set(bool actif)
 {
-    if (s_etat == ETAT_VEILLE) {
-        gpio_ev_poumon_set(actif);
-    }
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (s_etat == ETAT_VEILLE) gpio_ev_poumon_set(actif);
+    xSemaphoreGive(s_mutex);
 }
 
 void state_machine_cmd_start_deroule(void)
@@ -1066,7 +1069,7 @@ programme_preview_t state_machine_programme_preview(float pression_bar, float bu
                                                      float dose_mm, float largeur_m)
 {
     programme_preview_t pr;
-    __builtin_memset(&pr, 0, sizeof(pr));
+    memset(&pr, 0, sizeof(pr));
 
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     const canon_abaque_t *ab = s_abaque;
@@ -1089,7 +1092,7 @@ programme_preview_t state_machine_programme_preview(float pression_bar, float bu
     }
     pr.p_min    = p_min * 0.75f;  pr.p_max    = p_max * 1.25f;
     pr.buse_min = b_min * 0.75f;  pr.buse_max = b_max * 1.25f;
-    pr.dose_min = 15.0f * 0.75f;  pr.dose_max = 40.0f * 1.25f;
+    pr.dose_min = DOSE_MIN_MM * 0.75f;  pr.dose_max = DOSE_MAX_MM * 1.25f;
 
     // Vitesse et debit
     float debit_m3h = 0.0f, p_buse = 0.0f;
@@ -1144,6 +1147,7 @@ void state_machine_test_reset(void)
 {
     s_etat               = ETAT_VEILLE;
     s_sous_etat          = SOUS_VIDANGE;
+    s_t_sous_etat_ms     = 0;
     s_longueur_enroulee  = 0.0f;
     s_longueur_session_m = 0.0f;
     s_longueur_deroule_m = 0.0f;

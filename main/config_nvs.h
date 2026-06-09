@@ -52,7 +52,7 @@ typedef struct {
 // Valeurs par défaut
 #define CFG_MACHINE_DEFAUT { \
     .machine_active    = 0,     \
-    .t_vidange_s       = 0.0f,  \
+    .t_vidange_s       = 2.0f,  \
     .facteur_correction= 1.0f,  \
     .dist_cycle_nvs    = 0.0f,  \
     .kp_regulation     = 0.1f,  \
@@ -99,6 +99,8 @@ esp_err_t config_nvs_sauver_longueur(float longueur_m);
 esp_err_t config_nvs_lire_longueur(float *longueur_m);
 esp_err_t config_nvs_sauver_deroule(float deroule_m);
 esp_err_t config_nvs_lire_deroule(float *deroule_m);
+// Sauvegarde atomique longueur + deroule dans une seule transaction NVS
+esp_err_t config_nvs_sauver_position(float longueur_m, float deroule_m);
 
 // Valide qu'un programme est utilisable (dose, largeur, buse, pression > 0)
 bool config_programme_est_valide(const config_programme_t *prog);

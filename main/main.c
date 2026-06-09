@@ -24,6 +24,20 @@ static void state_machine_task(void *arg)
     }
 }
 
+#ifdef CONFIG_IRRI_WOKWI_MODE
+// Simule une perte de pression à t=12s puis restaure à t=15s
+static void wokwi_pression_task(void *arg)
+{
+    vTaskDelay(pdMS_TO_TICKS(12000));
+    state_machine_wokwi_set_pression(false);
+    ESP_LOGI(TAG, "SIM:P0");
+    vTaskDelay(pdMS_TO_TICKS(3000));
+    state_machine_wokwi_set_pression(true);
+    ESP_LOGI(TAG, "SIM:P1");
+    vTaskDelete(NULL);
+}
+#endif
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "=== Irrifrance ESP32 — démarrage ===");
@@ -54,14 +68,33 @@ void app_main(void)
     gpio_handler_init();
 
     // Machine d'états
+#ifdef CONFIG_IRRI_WOKWI_MODE
+    config_programme_t prog_test = {
+        .nom = "Test Wokwi",
+        .dose_mm = 25.0f, .largeur_m = 10.0f,
+        .buse_mm = 5, .pression_bar = 3.0f,
+        .tempo_depart_on = false, .tempo_arrivee_on = false,
+    };
+    config_nvs_sauver_programme(0, &prog_test);
+    // mode_deg_poumon : auto-transition REMPLISSAGE_POUMON→EN_COURS après 5 s sans capteur
+    config_machine_t cfg_wokwi = CFG_MACHINE_DEFAUT;
+    cfg_wokwi.mode_deg_poumon = true;
+    cfg_wokwi.t_rempl_fixe_s  = 5.0f;
+    config_nvs_sauver_machine(&cfg_wokwi);
+#endif
     state_machine_init();
+#ifdef CONFIG_IRRI_WOKWI_MODE
+    xTaskCreate(wokwi_pression_task, "wokwi_pression", 2048, NULL, 5, NULL);
+#endif
 
-    // Réseau + Web UI + OTA (squelettes PR-08)
+#ifndef CONFIG_IRRI_WOKWI_MODE
+    // Réseau + Web UI + OTA
     ESP_ERROR_CHECK(webserver_init());
     ESP_ERROR_CHECK(ota_init());
 
     // Telemetry WebSocket 500ms
     ESP_ERROR_CHECK(telemetry_init());
+#endif
 
     // Tâche machine d'états (priorité 10 — au-dessus du Wifi)
     xTaskCreate(state_machine_task, "state_machine", 8192, NULL, 10, NULL);

@@ -1,0 +1,9 @@
+# sdkconfig.defaults.wokwi — build dédié aux tests e2e Wokwi
+# Usage : idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.wokwi" build
+
+# Mode Wokwi : pas de WiFi, config programme injectée automatiquement
+CONFIG_IRRI_WOKWI_MODE=y
+
+# Désactiver le TWDT pour la simulation (la tâche WiFi n'existe pas, mais
+# d'autres tâches système pourraient manquer leur reset en simulation lente)
+CONFIG_ESP_TASK_WDT_EN=n

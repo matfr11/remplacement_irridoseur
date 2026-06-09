@@ -11,7 +11,7 @@ static const char *TAG = "calculs_mec";
 
 float calcul_rayon_etage(int n, const machine_profile_t *profil)
 {
-    // R_n = r_tambour_vide + (n - 0.5) × d_tuyau_ext
+    if (!profil) return 0.0f;
     return profil->r_tambour_vide_m + ((float)n - 0.5f) * profil->d_tuyau_ext_m;
 }
 
@@ -28,6 +28,7 @@ float calcul_dist_cycle_m(float r_etage_m, float cycles_par_tour)
 
 float calcul_longueur_etage_m(int n, const machine_profile_t *profil)
 {
+    if (!profil) return 0.0f;
     float r = calcul_rayon_etage(n, profil);
     float spires = (n == profil->nb_etages && profil->spires_dernier > 0.0f)
                    ? profil->spires_dernier
@@ -37,6 +38,7 @@ float calcul_longueur_etage_m(int n, const machine_profile_t *profil)
 
 int calcul_etage_courant(float longueur_enroulee_m, const machine_profile_t *profil)
 {
+    if (!profil) return 1;
     float cumul = 0.0f;
     for (int n = 1; n <= profil->nb_etages; n++) {
         cumul += calcul_longueur_etage_m(n, profil);

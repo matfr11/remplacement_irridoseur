@@ -15,6 +15,9 @@
 // largeur_m : espacement entre positions — champ obligatoire (largeur_m < 0.1 -> erreur).
 // =============================================================================
 
+#define DOSE_MIN_MM  15.0f
+#define DOSE_MAX_MM  40.0f
+
 /**
  * Warnings non-bloquants retournes par valider_params_programme().
  * Tous les champs false = programme valide.
