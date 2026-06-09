@@ -17,7 +17,6 @@
 #define PIN_EV_POUMON   17      // QMOS OUT2
 // GPIO 26 = QMOS OUT3 — non utilisé
 // GPIO 27 = QMOS OUT4 — non utilisé
-// ⚠️  PIN_PRESSOSTAT était sur GPIO 27 (QMOS OUT4) — à recâbler sur une autre broche libre
 
 // -----------------------------------------------------------------------------
 // ENTRÉES — Capteurs et contacts
@@ -42,8 +41,7 @@
 
 // Pressostat — pull-up externe 10kΩ, contact NC
 // LOW = pression présente (normal) | HIGH = pression absente (pause/attente)
-// ⚠️  GPIO 27 était utilisé ici mais c'est un QMOS OUT4 — recâbler sur broche libre
-#define PIN_PRESSOSTAT          27
+#define PIN_PRESSOSTAT          25
 
 // -----------------------------------------------------------------------------
 // Capteur vitesse — paramètres ISR
