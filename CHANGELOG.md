@@ -5,6 +5,39 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [PR-19] — 2026-06-09 — Surveillance MOSFETs INA3221 + basculement relais secours
+
+### Added
+- `ina3221.c/h` : driver I2C INA3221 3 canaux (legacy `driver/i2c.h`, I2C_NUM_0, 400 kHz, GPIO21 SDA / GPIO22 SCL)
+  - CH1 = EV_CANON, CH2 = EV_POUMON, CH3 = Batterie 12V
+  - `ina3221_init()`, `ina3221_lire_canal(canal)` → `{tension_v, courant_ma}`, `ina3221_lire_tension(canal)`, `ina3221_est_ok()`
+  - Shunt R = 0,1 Ω → courant_mA = shunt_µV / 100
+- `mosfet_surveillance.c/h` : surveillance MOSFET + basculement automatique sur relais secours
+  - Détection `MOSFET_GRILLE_CC` : tension > 6 V alors que GPIO = LOW
+  - Détection `MOSFET_HS_OUVERT` : tension < 1 V alors que GPIO = HIGH
+  - Détection `MOSFET_EV_DEBRANCHEE` : courant < 50 mA alors que GPIO = HIGH et tension OK
+  - `mosfet_surveillance_init()`, `mosfet_test_demarrage()`, `mosfet_verifier_avant()`, `mosfet_verifier_apres()`
+  - `basculer_sur_secours()` : synchronise OUT3/OUT4 avec l'état courant AVANT d'activer le relais (anti-glitch)
+  - Double panne (principal + secours) → `state_machine_declencher_urgence()`
+- `test/test_mosfet_surveillance.c` : 9 tests unitaires embarqués sous `CONFIG_IRRI_ENABLE_TESTS`
+  - Simulation INA3221 via `mosfet_sim_set_mesure()` / `mosfet_sim_enable()`
+- Champs `mosfet_canon_secours`, `mosfet_poumon_secours`, `mosfet_canon_etat`, `mosfet_poumon_etat` dans `machine_status_t` et JSON WebSocket
+
+### Changed
+- `batterie.c/h` : mesure tension batterie migrée ADC1 GPIO36 → INA3221 CH3 ; `batterie_init()` devient no-op si INA3221 déjà initialisé
+- `gpio_handler.c` : `gpio_ev_canon_set()` / `gpio_ev_poumon_set()` intègrent le routage secours MOSFET (`mosfet_verifier_avant/apres()`)
+- `gpio_handler_init()` : init GPIO26/27 (OUT3/OUT4 secours) en OUTPUT LOW
+- `gpio_all_ev_off()` : coupe également GPIO26/27 (arrêt urgence inconditionnel)
+- `gpio_config.h` : ajout PIN_RELAIS_CANON (GPIO2), PIN_RELAIS_POUMON (GPIO4), PIN_MOSFET_SECOURS_CANON (GPIO26), PIN_MOSFET_SECOURS_POUMON (GPIO27), I2C_SDA_PIN (GPIO21), I2C_SCL_PIN (GPIO22), seuils de détection ; suppression PIN_BATT_ADC 36
+- `CMakeLists.txt` : ajout `ina3221.c`, `mosfet_surveillance.c`, `test/test_mosfet_surveillance.c` ; suppression composant `esp_adc`
+
+### Hardware
+- Deux modules relais SPDT 12V/3,3V signal ajoutés : LOW = repos = NC = MOSFET principal, HIGH = basculé = NO = secours
+- Cavalier physique sur les modules relais configuré sur déclenchement niveau HAUT
+- Bornier réduit de 14 à 12 voies (GPIO36 ADC supprimé)
+
+---
+
 ## [PR-18] — 2026-06-01 — Calculs hydrauliques analytiques + validation programme
 
 ### Changed

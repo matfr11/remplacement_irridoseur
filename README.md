@@ -87,13 +87,16 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 |---|---|---|
 | **ESP32 Quad MOS Switch Module** | ESP32-32E intégré, 4 canaux MOSFET 5-60V DC, buck 12V intégré | 1 |
 | Boîtier étanche IP65 | ~200×150×80mm | 1 |
-| Bornier DIN rail 14 voies | Connexions terrain | 1 |
+| Bornier DIN rail 12 voies | Connexions terrain | 1 |
 | Rail DIN 15cm | Fixé dans boîtier | 1 |
 | Résistances 10 kΩ × 4 | Pull-up contacts NC — soudées sur fils + gaine thermo | 4 |
 | Diviseur 10 kΩ + 3,3 kΩ | Capteur vitesse 12V → 3V — soudé sur fil + gaine thermo | 1 set |
-| Diviseur 100 kΩ + 27 kΩ | Mesure tension batterie GPIO 36 — 14V → 3V — soudé | 1 set |
+| **Module INA3221 3 canaux I2C** | MCU-3221, shunts 0,1 Ω intégrés, CH1=EV_CANON CH2=EV_POUMON CH3=Batterie | 1 |
+| **Module relais 1 canal 12V × 2** | Optocouplé, NC/NO/COM, cavalier HIGH level trigger, bobine 12V | 2 |
 
 > ⚠️ **GPIO EV_CANON et EV_POUMON** (canaux MOSFET OUT1/OUT2) sont à identifier sur le schéma technique de la carte Quad MOS avant mise sous tension. Voir `main/gpio_config.h`.
+>
+> Les **modules relais** doivent être configurés en **HIGH level trigger** (cavalier physique sur le module). VCC signal : 3,3V — JD-VCC bobine : 12V (alimentation séparée).
 
 ---
 
@@ -108,13 +111,16 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 | **32** | INPUT | Sécurité spires | Pull-up 10 kΩ — contact NC |
 | **33** | INPUT | Contact poumon plein | Pull-up 10 kΩ — contact NC |
 | **25** | INPUT | Pressostat | Pull-up 10 kΩ — contact NC |
-| **36** | INPUT (ADC1) | Mesure tension batterie | Diviseur 100 kΩ/27 kΩ — plage 0-14V → 0-3V |
 | **0** | INPUT | Bouton physique carte | Bouton intégré carte Quad MOS |
-| **16** | OUTPUT | EV_CANON 12V | QMOS OUT1 carte Quad MOS |
-| **17** | OUTPUT | EV_POUMON 12V | QMOS OUT2 carte Quad MOS |
+| **16** | OUTPUT | EV_CANON 12V — MOSFET principal | QMOS OUT1 carte Quad MOS |
+| **17** | OUTPUT | EV_POUMON 12V — MOSFET principal | QMOS OUT2 carte Quad MOS |
+| **26** | OUTPUT | EV_CANON — MOSFET secours | QMOS OUT3 — activé si OUT1 défaillant |
+| **27** | OUTPUT | EV_POUMON — MOSFET secours | QMOS OUT4 — activé si OUT2 défaillant |
+| **2** | OUTPUT | Relais basculement EV_CANON | LOW=principal (NC), HIGH=secours (NO) |
+| **4** | OUTPUT | Relais basculement EV_POUMON | LOW=principal (NC), HIGH=secours (NO) |
+| **21** | I2C SDA | INA3221 | Bus I2C partageable |
+| **22** | I2C SCL | INA3221 | Bus I2C partageable |
 | **23** | OUTPUT | Heartbeat RC fail-safe (LED carte) | Toggle 1 Hz — activable depuis Config → Machine |
-| **26** | — | QMOS OUT3 (non utilisé) | Canal MOSFET carte Quad MOS — libre |
-| **27** | — | QMOS OUT4 (non utilisé) | Canal MOSFET carte Quad MOS — libre |
 
 ### Logique des signaux — contacts NC (Normalement Fermés)
 
@@ -127,7 +133,7 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 | Contact poumon | En cours ✅ | Poumon plein | → Timeout → mode dégradé |
 | Pressostat | Pression OK ✅ | Pas de pression | → Pause/attente |
 
-### Bornier 14 voies
+### Bornier 12 voies
 
 | Borne | Signal |
 |---|---|
@@ -139,10 +145,10 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 | 6 | Contact poumon plein → GPIO 33 via pull-up |
 | 7 | Pressostat → GPIO 25 via pull-up |
 | 8 | GND capteurs |
-| 9-10 | EV_CANON + / − → GPIO 16 (QMOS OUT1) |
-| 11-12 | EV_POUMON + / − → GPIO 17 (QMOS OUT2) |
-| 13 | Batterie + → GPIO 36 via diviseur 100 kΩ/27 kΩ |
-| 14 | GND mesure batterie |
+| 9-10 | EV_CANON + / − → COM relais 1 → (NC→OUT1 / NO→OUT3) → INA3221 CH1 |
+| 11-12 | EV_POUMON + / − → COM relais 2 → (NC→OUT2 / NO→OUT4) → INA3221 CH2 |
+
+> La mesure tension batterie (anciennement bornes 13-14 + diviseur 100 kΩ/27 kΩ) est désormais assurée par l'INA3221 CH3 câblé directement sur les bornes 1 (12V) et 2 (GND).
 
 ---
 
@@ -152,9 +158,11 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 main/
 ├── gpio_config.h           — affectation GPIO centralisée (⚠️ identifier OUT1/OUT2 Quad MOS)
 ├── main.c                  — app_main, init, tâches FreeRTOS
-├── gpio_handler.c/h        — config GPIO, ISR vitesse, contacts NC fail-safe
+├── gpio_handler.c/h        — config GPIO, ISR vitesse, contacts NC fail-safe, routage secours MOSFET
+├── ina3221.c/h             — driver I2C INA3221 3 canaux — tension + courant EV/batterie
+├── mosfet_surveillance.c/h — détection panne MOSFET (CC, HS, EV débranchée), basculement relais secours
 ├── securites.c/h           — watchdog SEC-1 / SEC-2 / SEC-P — exécuté en premier dans le tick
-├── batterie.c/h            — mesure tension ADC1 GPIO 36, seuils NVS configurables, simulation
+├── batterie.c/h            — tension batterie via INA3221 CH3, seuils NVS configurables, simulation
 ├── state_machine.c/h       — 10 états, sous-états poumon, pause pression, cmd_resume, stats campagne
 ├── calculs_hydraulique.c/h — formule analytique Torricelli + interpolation IDW p_buse — validation programme
 ├── calculs_mecanique.c/h   — rayon étage, dist/cycle, étage courant, étalonnage
@@ -340,6 +348,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | **PR-17** | ✅ Fait | Sécurité longueur SEC-L — arrêt urgence si longueur enroulée > longueur déployée + seuil |
 | **PR-18** | ✅ Fait | Calculs hydrauliques analytiques Torricelli — validation programme — hints bornes UI — warnings |
 | **Post PR-18** | ✅ Fait | Abaque SR 100C — sélection canon UI — mode jour/nuit UI — fix profil ST1 Bis 5 étages — tests Wokwi e2e — preview vitesse au chargement programme |
+| **PR-19** | ✅ Fait | Surveillance MOSFETs INA3221 I2C — mesure tension+courant EV/batterie — détection CC/HS/EV débranchée — basculement automatique sur relais secours OUT3/OUT4 — 9 tests unitaires embarqués |
 
 ---
 
