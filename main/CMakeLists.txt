@@ -28,6 +28,7 @@ if(CONFIG_IRRI_ENABLE_TESTS)
         "test/test_regulation.c"
         "test/test_state_machine.c"
         "test/test_config_nvs.c"
+        "test/test_mosfet_surveillance.c"
     )
 endif()
 

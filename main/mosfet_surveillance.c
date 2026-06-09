@@ -14,6 +14,12 @@ static const char *TAG = "mosfet";
 static ev_canal_t s_canon  = {MOSFET_OK, MOSFET_OK, false};
 static ev_canal_t s_poumon = {MOSFET_OK, MOSFET_OK, false};
 
+#ifdef CONFIG_IRRI_ENABLE_TESTS
+static bool            s_sim_active = false;
+static ina3221_mesure_t s_sim_canon  = {0.0f, 0.0f};
+static ina3221_mesure_t s_sim_poumon = {0.0f, 0.0f};
+#endif
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 static int get_ina_canal(int pin_ev)
@@ -40,9 +46,20 @@ static ev_canal_t *get_canal(int pin_ev)
 
 static mosfet_etat_t verifier_coherence(int pin_ev, bool gpio_commande)
 {
-    if (!ina3221_est_ok()) return MOSFET_OK;
+    ina3221_mesure_t m;
 
-    ina3221_mesure_t m = ina3221_lire_canal(get_ina_canal(pin_ev));
+#ifdef CONFIG_IRRI_ENABLE_TESTS
+    if (s_sim_active) {
+        m = (pin_ev == PIN_EV_CANON) ? s_sim_canon : s_sim_poumon;
+    } else if (!ina3221_est_ok()) {
+        return MOSFET_OK;
+    } else {
+        m = ina3221_lire_canal(get_ina_canal(pin_ev));
+    }
+#else
+    if (!ina3221_est_ok()) return MOSFET_OK;
+    m = ina3221_lire_canal(get_ina_canal(pin_ev));
+#endif
 
     bool ev_alimentee = (m.tension_v  > SEUIL_TENSION_EV_V);
     bool courant_ok   = (m.courant_ma > SEUIL_COURANT_EV_MA);
@@ -198,3 +215,36 @@ const char *mosfet_etat_str(mosfet_etat_t etat)
         default:                    return "inconnu";
     }
 }
+
+// =============================================================================
+// Hooks de test
+// =============================================================================
+
+#ifdef CONFIG_IRRI_ENABLE_TESTS
+
+void mosfet_sim_set_mesure(int pin_ev, float tension_v, float courant_ma)
+{
+    ina3221_mesure_t *m = (pin_ev == PIN_EV_CANON) ? &s_sim_canon : &s_sim_poumon;
+    m->tension_v  = tension_v;
+    m->courant_ma = courant_ma;
+}
+
+void mosfet_sim_enable(bool enable)
+{
+    s_sim_active = enable;
+}
+
+void mosfet_test_reset(void)
+{
+    s_canon  = (ev_canal_t){MOSFET_OK, MOSFET_OK, false};
+    s_poumon = (ev_canal_t){MOSFET_OK, MOSFET_OK, false};
+    gpio_set_level(PIN_RELAIS_CANON,          0);
+    gpio_set_level(PIN_RELAIS_POUMON,         0);
+    gpio_set_level(PIN_MOSFET_SECOURS_CANON,  0);
+    gpio_set_level(PIN_MOSFET_SECOURS_POUMON, 0);
+    s_sim_active  = false;
+    s_sim_canon   = (ina3221_mesure_t){0.0f, 0.0f};
+    s_sim_poumon  = (ina3221_mesure_t){0.0f, 0.0f};
+}
+
+#endif

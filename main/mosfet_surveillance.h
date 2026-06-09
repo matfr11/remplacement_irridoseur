@@ -41,3 +41,13 @@ bool mosfet_secours_actif(int pin_ev);
 
 // Chaîne décrivant l'état du MOSFET (pour JSON/log).
 const char *mosfet_etat_str(mosfet_etat_t etat);
+
+// -----------------------------------------------------------------------------
+// Hooks de test (CONFIG_IRRI_ENABLE_TESTS uniquement)
+// Permettent d'injecter des mesures INA3221 simulées sans matériel
+// -----------------------------------------------------------------------------
+#ifdef CONFIG_IRRI_ENABLE_TESTS
+void mosfet_sim_set_mesure(int pin_ev, float tension_v, float courant_ma);
+void mosfet_sim_enable(bool enable);
+void mosfet_test_reset(void);
+#endif

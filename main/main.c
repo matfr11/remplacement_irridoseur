@@ -54,12 +54,14 @@ void app_main(void)
     extern void test_regulation_run(void);
     extern void test_state_machine_run(void);
     extern void test_config_nvs_run(void);
+    extern void test_mosfet_surveillance_run(void);
     test_calculs_hydraulique_run();
     test_calculs_mecanique_run();
     test_gpio_run();
     test_regulation_run();
     test_state_machine_run();
     test_config_nvs_run();
+    test_mosfet_surveillance_run();
     ESP_LOGI(TAG, "=== Tests terminés ===");
 #endif
 
