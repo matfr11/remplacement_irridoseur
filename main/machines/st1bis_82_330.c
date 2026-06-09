@@ -17,7 +17,7 @@ const machine_profile_t MACHINE_ST1BIS_82_330 = {
     .d_tuyau_ext_m     = 0.082f,    // Ø EXTÉRIEUR (épaisseur 6mm → Ø int = 70mm)
     .r_tambour_vide_m  = 0.690f,    // Calculé depuis L_spire_étage4 = 6.14m
     .nb_etages         = 5,         // 4 étages complets + 1 partiel (mesuré terrain)
-    .abaque_idx        = 0,
+    .abaque_idx        = 1,         // SR 100C (idx 1 dans ABAQUES_LISTE)
     .largeur_bobine_m  = 0.0f,      // Calculée auto : 13.45 × 0.082 ≈ 1.103m
     .spires_par_etage  = 13.45f,    // Étages 1-4 (tableau constructeur ST.1 Bis)
     .spires_dernier    = 6.0f,      // Étage 5 — mesuré terrain

@@ -38,7 +38,7 @@ Suite à une panne irréparable, ce projet remplace la carte d'origine par un **
 | Paramètre | Valeur |
 |---|---|
 | Modèle | Irrifrance Structure 1 bis |
-| Canon | Nelson SR 150C |
+| Canon | Nelson SR 100C |
 | Tuyau PE | Ø82mm extérieur — épaisseur 6mm — 330m |
 | Rayon tambour nu | 690mm (calculé) |
 | Nombre d'étages de spires | 5 couches |
@@ -357,8 +357,8 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 
 | Machine | Tuyau | Étages | Abaque | Statut |
 |---|---|---|---|---|
-| Irrifrance Structure 1 bis | PE Ø82mm — 330m | 5 | Nelson SR 150C | ✅ Testé (machine de référence) |
-| Irrifrance Structure 1 bis | PE Ø82mm — 330m | 5 | Nelson SR 100C | ✅ Abaque intégré — sélectionnable depuis l'UI |
+| Irrifrance Structure 1 bis | PE Ø82mm — 330m | 5 | Nelson SR 100C | ✅ Testé (machine de référence) |
+| Irrifrance Structure 1 bis | PE Ø82mm — 330m | 5 | Nelson SR 150C | ✅ Abaque intégré — sélectionnable depuis l'UI |
 | Autre enrouleur | — | — | — | Contribuer — voir [CONTRIBUER.md](docs/dev/CONTRIBUER.md) |
 
 ---
@@ -402,4 +402,4 @@ Contributions bienvenues via Pull Request sur GitHub.
 
 ---
 
-*Installation de référence : Irrifrance Structure 1 bis — tuyau PE Ø82mm / 330m — canon SR 150C — terrain plat*
+*Installation de référence : Irrifrance Structure 1 bis — tuyau PE Ø82mm / 330m — canon SR 100C — terrain plat*
