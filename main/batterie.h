@@ -3,8 +3,7 @@
 #include "esp_err.h"
 
 // =============================================================================
-// batterie.h — Mesure tension batterie via ADC1 GPIO 36
-// Diviseur R1=100kΩ / R2=27kΩ — plage 0..14V → 0..3V
+// batterie.h — Mesure tension batterie via INA3221 CH3
 // =============================================================================
 
 // Seuils de tension (V)
@@ -14,14 +13,7 @@
 #define BATT_V_FAIBLE_MIN    11.5f   // Faible — alerte
 #define BATT_V_CRITIQUE_MIN  11.0f   // Critique — alarme
 
-// Diviseur de tension
-#define BATT_R1_KOHM         100.0f
-#define BATT_R2_KOHM          27.0f
-#define BATT_V_MAX            14.0f  // Tension max mesurable
-
-// ADC
-#define BATT_ADC_CHANNEL     ADC_CHANNEL_0   // GPIO 36
-#define BATT_ADC_NB_SAMPLES  16              // Moyenne anti-bruit
+#define BATT_V_MAX            14.0f  // Tension max raisonnable
 
 typedef enum {
     BATT_ETAT_CHARGE,    // > 13.5V
@@ -37,26 +29,26 @@ typedef struct {
     int         pourcentage;   // Indicatif 0..100 (11.0V=0%, 12.6V=100%)
 } batt_status_t;
 
-// Initialise ADC1 pour la mesure batterie. Appeler dans app_main().
+// Initialise le module (no-op : INA3221 déjà init par ina3221_init()).
 esp_err_t batterie_init(void);
 
-// Lit la tension instantanee (moyenne BATT_ADC_NB_SAMPLES lectures).
+// Lit la tension instantanée via INA3221 CH3.
 float batterie_lire_voltage(void);
 
-// Retourne le statut complet (voltage + etat + pourcentage).
+// Retourne le statut complet (voltage + état + pourcentage).
 batt_status_t batterie_get_status(void);
 
-// Met a jour les seuils configurables (charge par state_machine depuis NVS).
+// Met à jour les seuils configurables (chargés depuis NVS par state_machine).
 void batterie_set_seuils(float warn_v, float crit_v);
 
-// Etat sous forme de chaine ASCII.
+// État sous forme de chaîne ASCII.
 const char* batterie_etat_str(batt_etat_t etat);
 
-// Couleur CSS associee a l'etat (pour web UI).
+// Couleur CSS associée à l'état (pour web UI).
 const char* batterie_etat_couleur(batt_etat_t etat);
 
 // Simulation (CONFIG_IRRI_TEST_MODE uniquement)
-// Injecte une tension fixe ; 0.0 = desactive, utilise l'ADC reel.
+// Injecte une tension fixe ; 0.0 = désactivé, utilise INA3221.
 #ifdef CONFIG_IRRI_TEST_MODE
 void batterie_sim_set_voltage(float v);
 #endif

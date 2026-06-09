@@ -7,6 +7,8 @@ set(SRCS
     "calculs_mecanique.c"
     "regulation.c"
     "batterie.c"
+    "ina3221.c"
+    "mosfet_surveillance.c"
     "config_nvs.c"
     "webserver.c"
     "telemetry.c"
@@ -57,5 +59,4 @@ idf_component_register(
         lwip
         newlib
         app_update
-        esp_adc
 )
