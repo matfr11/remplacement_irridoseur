@@ -710,6 +710,7 @@ function loadConfigFromStatus() {
     const sel = document.getElementById('prog-idx');
     if (sel && sel.options[idx]) sel.options[idx].text = s.prog_nom;
   }
+  debouncePrevVitesse();
 }
 
 function onSelectProg() {
