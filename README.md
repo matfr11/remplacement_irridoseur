@@ -41,7 +41,7 @@ Suite à une panne irréparable, ce projet remplace la carte d'origine par un **
 | Canon | Nelson SR 150C |
 | Tuyau PE | Ø82mm extérieur — épaisseur 6mm — 330m |
 | Rayon tambour nu | 690mm (calculé) |
-| Nombre d'étages de spires | 4 couches |
+| Nombre d'étages de spires | 5 couches |
 | Spires par étage | 13,45 (constructeur) |
 | Capteur vitesse | 10 pastilles / tour |
 | Alimentation | Batterie 12V / 24Ah + panneau solaire |
@@ -165,7 +165,8 @@ main/
 │   └── st1bis_82_330.c     — Irrifrance ST1 Bis Ø82-330m (profil référence)
 ├── abaques/
 │   ├── abaques.h           — abaques constructeur (canon_abaque_t)
-│   └── sr150c.c            — Nelson SR 150C — 13 entrées
+│   ├── sr150c.c            — Nelson SR 150C — 13 entrées
+│   └── sr100c.c            — Nelson SR 100C — 9 entrées
 └── test/                   — tests unitaires embarqués (CONFIG_IRRI_ENABLE_TESTS)
 
 test/host/                  — tests unitaires PC (Unity/CMake, sans matériel)
@@ -173,7 +174,7 @@ test/host/                  — tests unitaires PC (Unity/CMake, sans matériel)
 ├── mock/                   — stubs ESP-IDF (GPIO, NVS, FreeRTOS, log, timer)
 ├── helpers/                — helpers de test (config NVS valide/invalide)
 ├── scenarios/              — scénarios d'intégration (cycle complet, urgences, modes dégradés)
-└── test_*.c                — 47 tests unitaires (47/47 verts en CI)
+└── test_*.c                — 96 tests unitaires (96/96 verts en CI)
 ```
 
 ### Tâches FreeRTOS
@@ -223,7 +224,7 @@ Affiché en ARRET_URGENCE / ARRET_FINAL uniquement si une session était en cour
 
 ### Preview vitesse programme
 
-Dans l'onglet Config, dès que l'opérateur renseigne pression / buse / dose, la vitesse cible estimée s'affiche en temps réel sous les champs (appel `/api/vitesse?p=X&b=Y&d=Z`).
+Dans l'onglet Config, dès que l'opérateur renseigne pression / buse / dose, la vitesse cible estimée s'affiche en temps réel sous les champs (appel `/api/vitesse?p=X&b=Y&d=Z`). Le preview s'affiche aussi automatiquement au chargement d'un programme déjà configuré.
 
 ### Mode IRRITESTEUR
 
@@ -327,6 +328,12 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | **Post PR-11** | ✅ Fait | Fix vitesse m/h (×3600), cmd_resume, stats session calculées, campagne NVS, preview vitesse programme, ETAT_DEROULE, estimation heure arrivée, mode_deg_spires, calcul dist_cycle_m |
 | **PR-12** | ✅ Fait | Mesure tension batterie ADC1 GPIO 36 — diviseur 100kΩ/27kΩ — seuils NVS — barre UI — simulateur slider |
 | **PR-13** | ✅ Fait | Reprendre après sécurité débordement bobine — alertes UI état capteur — 3-tap reprendre (longueurs préservées) |
+| **PR-14** | ✅ Fait | Robustesse — TWDT + détection coupure secteur + heartbeat GPIO RC fail-safe + alerte UI coupure |
+| **PR-15** | ✅ Fait | Correction fin de course — arrêt normal vs SEC-1 — seuil configurable `fin_course_seuil_m` |
+| **PR-16** | ✅ Fait | Alerte dose trop basse — vitesse max physique + dose corrigée exposées dans UI |
+| **PR-17** | ✅ Fait | Sécurité longueur SEC-L — arrêt urgence si longueur enroulée > longueur déployée + seuil |
+| **PR-18** | ✅ Fait | Calculs hydrauliques analytiques Torricelli — validation programme — hints bornes UI — warnings |
+| **Post PR-18** | ✅ Fait | Abaque SR 100C — sélection canon UI — mode jour/nuit UI — fix profil ST1 Bis 5 étages — tests Wokwi e2e — preview vitesse au chargement programme |
 
 ---
 
@@ -349,7 +356,8 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 
 | Machine | Tuyau | Étages | Abaque | Statut |
 |---|---|---|---|---|
-| Irrifrance Structure 1 bis | PE Ø82mm — 330m | 4 | Nelson SR 150C | ✅ Testé (machine de référence) |
+| Irrifrance Structure 1 bis | PE Ø82mm — 330m | 5 | Nelson SR 150C | ✅ Testé (machine de référence) |
+| Irrifrance Structure 1 bis | PE Ø82mm — 330m | 5 | Nelson SR 100C | ✅ Abaque intégré — sélectionnable depuis l'UI |
 | Autre enrouleur | — | — | — | Contribuer — voir [CONTRIBUER.md](docs/dev/CONTRIBUER.md) |
 
 ---
