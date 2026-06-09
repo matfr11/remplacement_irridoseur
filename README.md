@@ -108,6 +108,7 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 | **33** | INPUT | Contact poumon plein | Pull-up 10 kΩ — contact NC |
 | **27** | INPUT | Pressostat | Pull-up 10 kΩ — contact NC |
 | **36** | INPUT (ADC1) | Mesure tension batterie | Diviseur 100 kΩ/27 kΩ — plage 0-14V → 0-3V |
+| **2** | OUTPUT | Heartbeat RC fail-safe (LED bleue) | Toggle 1 Hz — activable depuis Config → Machine |
 | **A** | OUTPUT | EV_CANON 12V | GPIO à identifier carte Quad MOS |
 | **B** | OUTPUT | EV_POUMON 12V | GPIO à identifier carte Quad MOS |
 
