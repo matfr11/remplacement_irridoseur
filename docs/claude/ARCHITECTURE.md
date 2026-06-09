@@ -144,15 +144,18 @@ main.c
 
 | GPIO | Direction | Signal | Logique | Conditionnement |
 |---|---|---|---|---|
-| **25** | SORTIE | EV_CANON (⚠️ provisoire) | HIGH = ouvert | Canal MOSFET Quad MOS OUT1 |
-| **26** | SORTIE | EV_POUMON (⚠️ provisoire) | HIGH = ouvert | Canal MOSFET Quad MOS OUT2 |
-| **27** | ENTRÉE | Pressostat | LOW = pression OK, HIGH = absent | Pull-up 10kΩ externe, NC |
+| **0** | ENTRÉE | Bouton physique carte | — | Bouton intégré Quad MOS |
+| **16** | SORTIE | EV_CANON | HIGH = ouvert | Canal MOSFET Quad MOS OUT1 |
+| **17** | SORTIE | EV_POUMON | HIGH = ouvert | Canal MOSFET Quad MOS OUT2 |
+| **23** | SORTIE | LED carte / Heartbeat RC | toggle 1Hz si `heartbeat_rc_on=true` | LED verte carte — défaut OFF |
+| **25** | ENTRÉE | Pressostat | LOW = pression OK, HIGH = absent | Pull-up 10kΩ externe, NC |
+| **26** | — | QMOS OUT3 (non utilisé) | — | Canal MOSFET Quad MOS libre |
+| **27** | — | QMOS OUT4 (non utilisé) | — | Canal MOSFET Quad MOS libre |
 | **32** | ENTRÉE | Sécurité spires (débordement) | LOW = normal, HIGH = SEC-2 | Pull-up 10kΩ externe, NC |
 | **33** | ENTRÉE | Contact poumon plein | LOW = en cours, HIGH = plein | Pull-up 10kΩ externe, NC |
 | **34** | ENTRÉE | Capteur vitesse (impulsions) | flancs montants ISR | Diviseur 10kΩ/3.3kΩ (12V→3V) |
 | **35** | ENTRÉE | Fin de course canon | LOW = canon dehors, HIGH = rentré (SEC-1) | Pull-up 10kΩ externe, NC |
 | **36** | ENTRÉE | Tension batterie (ADC1) | analogique 0..3.3V | Diviseur R1=100kΩ / R2=27kΩ |
-| **2** | SORTIE | Heartbeat circuit RC (optionnel) | toggle 1Hz si `heartbeat_rc_on=true` | LED bleue intégrée ESP32 — défaut OFF |
 
 **Logique universelle NC** : LOW = repos/normal, HIGH = danger/actif.
 Fil coupé → HIGH → sécurité active → fail-safe.
@@ -164,7 +167,7 @@ Fil coupé → HIGH → sécurité active → fail-safe.
 | Clé | Type | Valeur défaut | Rôle |
 |---|---|---|---|
 | `machine_active` | i32 | 0 | Index profil machine |
-| `t_vidange` | float (blob) | 0.0 | Durée vidange mécanique (s) ⚠️ à mesurer |
+| `t_vidange` | float (blob) | 2.0 | Durée vidange mécanique (s) ⚠️ à affiner terrain |
 | `facteur_cor` | float | 1.0 | Étalonnage longueur |
 | `dist_cycle` | float | 0.0 | Dernière dist/cycle connue (m) |
 | `kp` | float | 0.1 | Gain correction vitesse |
@@ -178,7 +181,7 @@ Fil coupé → HIGH → sécurité active → fail-safe.
 | `cycles_tour` | float | 0.0 | Cycles poumon par tour de bobine |
 | `batt_warn_v` | float | 11.5 | Seuil alerte batterie (V) |
 | `batt_crit_v` | float | 11.0 | Seuil critique batterie (V) |
-| `hb_rc` | u8 (bool) | 0 | Heartbeat GPIO 2 pour circuit RC (défaut OFF) |
+| `hb_rc` | u8 (bool) | 0 | Heartbeat GPIO 23 (LED carte) pour circuit RC (défaut OFF) |
 | `t_rempl_min` | float | 5.0 | Temps remplissage min historique (s) — V_max theorique ; mis a jour uniquement si nouvelle valeur < courante ; remis a 5.0 sur cmd_reset |
 
 ### Namespace `irri_prog0` .. `irri_prog4`

@@ -75,7 +75,7 @@ idf.py build
 
 **Résultat attendu** : `Project build complete. [...] bytes free.`
 
-Taille actuelle : ~900 KB, 53% flash libre sur ESP32 4MB.
+Taille actuelle : ~933 KB, 53% flash libre sur ESP32 4MB.
 
 ---
 
@@ -99,8 +99,8 @@ Quitter le monitor : `Ctrl+]`
 ## Connexion WiFi et accès Web UI
 
 1. L'ESP32 démarre en **Point d'Accès WiFi** (AP)
-2. SSID : `IRRIDOSEUR-XXXX` (XXXX = 4 derniers octets MAC)
-3. Mot de passe : aucun (réseau ouvert)
+2. SSID : `Irrifrance-ESP32`
+3. Mot de passe : `irrigation` (WPA2)
 4. Ouvrir un navigateur → `http://192.168.4.1`
 
 L'IP `192.168.4.1` est l'adresse AP par défaut d'ESP-IDF. Elle est fixe.

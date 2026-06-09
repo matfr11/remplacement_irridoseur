@@ -16,7 +16,6 @@ Diffusé toutes les **500ms** à tous les clients connectés.
   // ── État machine ──────────────────────────────────────────────────────────
   "etat": "EN_COURS",       // string, voir tableau états ci-dessous
   "etat_code": 4,           // int 0-9, même signification
-  "sous_etat": 2,           // int 0-2, valide uniquement si etat_code=4
   "raison_arret": "",       // string, vide sauf si ARRET_URGENCE
 
   // ── Identité session ──────────────────────────────────────────────────────
@@ -57,7 +56,7 @@ Diffusé toutes les **500ms** à tous les clients connectés.
 
   // ── Mécanique bobine ──────────────────────────────────────────────────────
   "etage_courant": 2,             // int, 1..nb_etages
-  "nb_etages": 4,                 // int
+  "nb_etages": 5,                 // int
 
   // ── GPIO temps réel ───────────────────────────────────────────────────────
   "ev_canon": true,               // bool, true = EV ouverte
@@ -95,7 +94,8 @@ Diffusé toutes les **500ms** à tous les clients connectés.
   // ── Batterie ──────────────────────────────────────────────────────────────
   "batterie_v": 12.5,             // float, tension mesurée (V)
   "batterie_pct": 83,             // int, indicatif 0-100%
-  "batterie_etat": 2,             // int, voir tableau états batterie
+  "batterie_etat": "CORRECTE",    // string, voir tableau états batterie
+  "batterie_couleur": "#4caf50",  // string, couleur CSS pour l'UI
   "cfg_batt_warn_v": 11.5,        // float, seuil alerte configurable (V)
   "cfg_batt_crit_v": 11.0,        // float, seuil critique configurable (V)
 
@@ -109,11 +109,12 @@ Diffusé toutes les **500ms** à tous les clients connectés.
   "cfg_t_rempl_fixe_s": 0.0,
   "cfg_denivele_m": 0.0,
   "cfg_machine_active": 0,
+  "cfg_abaque_idx": 1,
   "cfg_cycles_par_tour": 40.0,
 
   // ── Robustesse (PR-14) ────────────────────────────────────────────────────
   "coupure_detectee": false,      // bool, true si session interrompue par coupure de courant
-  "cfg_heartbeat_rc_on": false,   // bool, heartbeat GPIO 2 pour circuit RC (défaut OFF)
+  "cfg_heartbeat_rc_on": false,   // bool, heartbeat GPIO 23 (LED carte) pour circuit RC (défaut OFF)
 
   // ── Fin de course (PR-15) ─────────────────────────────────────────────────
   "cfg_fin_course_seuil_m": 10.0, // float, longueur restante sous laquelle fin_course = fin normale
@@ -139,23 +140,19 @@ Diffusé toutes les **500ms** à tous les clients connectés.
 | 8 | `ARRET_URGENCE` | Incident matériel — voir `raison_arret` |
 | 9 | `DEROULE` | Mesure longueur déployée |
 
-### Codes `sous_etat` (valide si `etat_code` = 4)
+> **Note** : le sous-état du cycle poumon (`SOUS_VIDANGE` / `SOUS_ATTENTE` / `SOUS_REMPLISSAGE`)
+> est une variable interne du firmware — il n'est **pas** sérialisé dans le JSON WebSocket.
+> L'UI déduit l'état du cycle depuis `ev_poumon` et les timings.
 
-| Code | Nom | EV_POUMON |
-|---|---|---|
-| 0 | `SOUS_VIDANGE` | OFF |
-| 1 | `SOUS_ATTENTE` | OFF |
-| 2 | `SOUS_REMPLISSAGE` | ON |
+### Valeurs `batterie_etat`
 
-### Codes `batterie_etat`
-
-| Code | État | Tension |
-|---|---|---|
-| 0 | Charge (panneau actif) | > 13.5V |
-| 1 | Pleine | 12.4..13.5V |
-| 2 | Correcte | 11.8..12.4V |
-| 3 | Faible | cfg_batt_warn_v..11.8V |
-| 4 | Critique | < cfg_batt_crit_v |
+| Valeur (string) | Tension |
+|---|---|
+| `"CHARGE"` | > 13.5V (panneau solaire actif) |
+| `"PLEINE"` | 12.4..13.5V |
+| `"CORRECTE"` | 11.8..12.4V |
+| `"FAIBLE"` | cfg_batt_warn_v..11.8V |
+| `"CRITIQUE"` | < cfg_batt_crit_v |
 
 ---
 
@@ -366,9 +363,8 @@ ESP32 → Client : {"etat":"OUVERTURE_CANON","etat_code":1,"ev_canon":true,...}
 ESP32 → Client : {"etat":"REMPLISSAGE_POUMON","etat_code":3,"ev_poumon":true,...}
 
 // Poumon plein
-ESP32 → Client : {"etat":"EN_COURS","etat_code":4,"sous_etat":0,...}  // SOUS_VIDANGE
-ESP32 → Client : {"etat":"EN_COURS","sous_etat":1,...}                  // SOUS_ATTENTE
-ESP32 → Client : {"etat":"EN_COURS","sous_etat":2,"ev_poumon":true,...} // SOUS_REMPLISSAGE
+ESP32 → Client : {"etat":"EN_COURS","etat_code":4,"ev_poumon":false,...} // SOUS_VIDANGE/ATTENTE
+ESP32 → Client : {"etat":"EN_COURS","ev_poumon":true,...}               // SOUS_REMPLISSAGE
 // ... cycles répétés pendant 2h ...
 
 // Fin de course détectée
@@ -399,7 +395,7 @@ Route distincte de `/ws`. Toutes les commandes ont la forme :
 
 | Clé | Valeur | Effet |
 |---|---|---|
-| `pressostat` | 0/1 | Simule pression OK/perdue (GPIO 27) |
+| `pressostat` | 0/1 | Simule pression OK/perdue (GPIO 25) |
 | `fin_course` | 0/1 | Simule fin de course inactif/actif (GPIO 35) |
 | `secu_spires` | 0/1 | Simule débordement bobine (GPIO 32) |
 | `poumon_plein` | 0/1 | Simule contact poumon plein (GPIO 33) |

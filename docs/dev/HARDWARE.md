@@ -13,12 +13,14 @@ Carte de développement AliExpress avec ESP32-D0WD-V3 (ESP32-32E) et 4 canaux MO
 │  [USB-C]  ←── programmation + alimentation          │
 │  [12V IN] ←── alimentation terrain (batterie 12V)  │
 │                                                     │
-│  OUT1  → EV_CANON  12V   ⚠️ GPIO provisoire (25)   │
-│  OUT2  → EV_POUMON 12V   ⚠️ GPIO provisoire (26)   │
-│  OUT3  → non utilisé                               │
-│  OUT4  → non utilisé                               │
+│  OUT1 (GPIO 16) → EV_CANON  12V                    │
+│  OUT2 (GPIO 17) → EV_POUMON 12V                    │
+│  OUT3 (GPIO 26) → non utilisé                      │
+│  OUT4 (GPIO 27) → non utilisé                      │
 │                                                     │
-│  GPIO 27 ←── Pressostat (NC, pull-up 10kΩ)         │
+│  GPIO  0 ←── Bouton physique carte                 │
+│  GPIO 23  ──► LED carte (heartbeat RC 1Hz)         │
+│  GPIO 25 ←── Pressostat (NC, pull-up 10kΩ)         │
 │  GPIO 32 ←── Sécurité spires (NC, pull-up 10kΩ)    │
 │  GPIO 33 ←── Contact poumon plein (NC, pull-up 10kΩ)│
 │  GPIO 34 ←── Capteur vitesse (diviseur 10k/3.3k)   │
@@ -27,21 +29,17 @@ Carte de développement AliExpress avec ESP32-D0WD-V3 (ESP32-32E) et 4 canaux MO
 └─────────────────────────────────────────────────────┘
 ```
 
-> **⚠️ Action requise avant mise en service** : identifier les pins OUT1/OUT2 sur le schéma
-> technique de la carte Quad MOS et mettre à jour `PIN_EV_CANON` et `PIN_EV_POUMON` dans
-> `main/gpio_config.h`. Des `#warning` à la compilation rappellent cette action.
-
 ---
 
-## Bornier 12 voies — tableau complet
+## Bornier 14 voies — tableau complet
 
 | # | Signal | Direction | Câble | Conditionnement |
 |---|---|---|---|---|
 | 1 | 12V+ batterie | IN | Rouge | Directement sur borne alim carte |
 | 2 | GND | — | Noir | Masse commune |
-| 3 | EV_CANON 12V (+) | OUT | — | Via MOSFET OUT1, 12V commuté |
-| 4 | EV_POUMON 12V (+) | OUT | — | Via MOSFET OUT2, 12V commuté |
-| 5 | Pressostat A | IN | — | Pull-up 10kΩ vers 3.3V → GPIO 27 |
+| 3 | EV_CANON 12V (+) | OUT | — | Via MOSFET OUT1 (GPIO 16), 12V commuté |
+| 4 | EV_POUMON 12V (+) | OUT | — | Via MOSFET OUT2 (GPIO 17), 12V commuté |
+| 5 | Pressostat A | IN | — | Pull-up 10kΩ vers 3.3V → GPIO 25 |
 | 6 | Pressostat B | IN | — | GND |
 | 7 | Fin de course A | IN | — | Pull-up 10kΩ vers 3.3V → GPIO 35 |
 | 8 | Fin de course B | IN | — | GND |
@@ -75,7 +73,7 @@ anomalie (HIGH) plutôt que d'ignorer le problème.
 
 | GPIO | Signal | LOW signifie | HIGH signifie |
 |---|---|---|---|
-| 27 | Pressostat | Pression présente ✅ | Pression absente ⚠️ |
+| 25 | Pressostat | Pression présente ✅ | Pression absente ⚠️ |
 | 32 | Sécurité spires | Normal ✅ | Débordement bobine 🔴 |
 | 33 | Contact poumon | Remplissage en cours | Poumon plein ✅ |
 | 34 | Capteur vitesse | — | Front montant = impulsion |
@@ -143,13 +141,17 @@ GPIO 36 = ADC1 canal 0, pas de pull-up interne.
 
 ---
 
-## Circuit RC fail-safe (si implémenté)
+## Circuit RC fail-safe (heartbeat GPIO 23)
 
-> [À IMPLÉMENTER si décidé] — Non présent dans le firmware actuel.
+La carte génère un signal **toggle 1Hz sur GPIO 23** (LED verte carte) si l'option
+`heartbeat_rc_on` est activée dans Config → Machine. Ce signal peut alimenter un circuit RC
+externe qui coupe les EV si l'ESP32 plante (watchdog HW).
 
-Un circuit RC matériel pourrait forcer EV=OFF si l'ESP32 plante (watchdog HW).
-Concept : condensateur chargé régulièrement par une impulsion GPIO de l'ESP32 ; si l'impulsion
-cesse (plantage), le condensateur se décharge et un transistor coupe les EV.
+Concept : condensateur chargé régulièrement par le toggle GPIO 23 ; si le signal cesse
+(plantage ESP32), le condensateur se décharge et un transistor coupe les EV.
+
+GPIO 23 = `PIN_HEARTBEAT` = `PIN_LED_CARTE` (même broche — le clignotement 1Hz est visible
+sur la LED verte de la carte). Désactivé par défaut (`heartbeat_rc_on = false`).
 
 ---
 
