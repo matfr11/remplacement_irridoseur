@@ -350,6 +350,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | **Post PR-18** | ✅ Fait | Abaque SR 100C — sélection canon UI — mode jour/nuit UI — fix profil ST1 Bis 5 étages — tests Wokwi e2e — preview vitesse au chargement programme |
 | **PR-19** | ✅ Fait | Surveillance MOSFETs INA3221 I2C — mesure tension+courant EV/batterie — détection CC/HS/EV débranchée — basculement automatique sur relais secours OUT3/OUT4 — 9 tests unitaires embarqués |
 | **fix/PR-19** | ✅ Fait | 8 corrections post-revue : bug critique lecture pin secours, verifier_apres hors mutex, guard INA3221 sur fil EV commun, retour bool basculement, reset relais urgence, filtre tension batterie |
+| **fix/code-review** | ✅ Fait | 10 corrections revue complète : mutex récursif urgence (critique), guards NaN/sqrtf/powf hydraulique, validation NVS floats, guards mécanique, taille OTA, stack telemetry, null-termination strings |
 
 ---
 

@@ -5,6 +5,25 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [fix/code-review] — 2026-06-10 — Corrections revue complète codebase (10 bugs)
+
+### Fixed
+- **C1 (CRITIQUE)** `state_machine_declencher_urgence()` : migration vers mutex récursif — la fonction prenait le mutex nulle part et était appelée depuis `mosfet_verifier_post_tick()` (hors mutex) en lecture/écriture directe sur `s_etat`/`s_status`
+- **C3** `ota.c` : validation taille firmware avant écriture (rejet si ≤ 0 ou > 2 Mo)
+- **C5** `calculs_hydraulique.c` : guard `buse_mm > 0 && p_buse > 0` avant `powf()` dans `interpoler_p_buse()` — `powf(x, y)` retourne NaN pour x ≤ 0 avec y non-entier
+- **C6** `calculs_hydraulique.c` : guard `p_buse > 0` avant `sqrtf()` et `dose_mm ≥ 1mm` avant division dans `lookup_vitesse_cible()`
+- **M1** `state_machine.c` : null-termination explicite après chaque `strncpy()` sur les champs `prog_nom`, `machine_nom`, `abaque_nom`, `raison_arret`, `mosfet_canon_etat`, `mosfet_poumon_etat`
+- **M4** `telemetry.c` : stack tâche telemetry 8192 → 10240 octets (marge insuffisante pour pics)
+- **M7** `config_nvs.c` : validation `isfinite()` + plage physique sur les floats lus depuis NVS (`batt_warn_v`, `batt_crit_v`, `t_rempl_min`) — rejette NaN/Inf issus d'une flash corrompue
+- **M8** `calculs_mecanique.c` : `d_tuyau_ext_m` négatif clampé à 0 dans `calcul_rayon_etage()` — rayon ne peut pas être inférieur au rayon du tambour vide
+- **M9** `calculs_mecanique.c` : `spires ≤ 0` → retour 0 dans `calcul_longueur_etage_m()` — évite une longueur d'étage négative ou nulle propagée aux calculs de régulation
+
+### Tests
+- `test/host/mock/mock_freertos.h` : stubs `xSemaphoreCreateRecursiveMutex`, `xSemaphoreTakeRecursive`, `xSemaphoreGiveRecursive` ajoutés
+- 71/71 tests passent
+
+---
+
 ## [fix/PR-19] — 2026-06-10 — Corrections surveillance MOSFET (8 bugs)
 
 ### Fixed
