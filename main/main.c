@@ -11,6 +11,9 @@
 #include "webserver.h"
 #include "telemetry.h"
 #include "ota.h"
+#ifdef CONFIG_IRRI_TPL5010
+  #include "tpl5010.h"
+#endif
 
 static const char *TAG = "main";
 
@@ -22,6 +25,9 @@ static void state_machine_task(void *arg)
     while (1) {
         tick_state_machine();
         esp_task_wdt_reset();
+#ifdef CONFIG_IRRI_TPL5010
+        tpl5010_done_pulse();  // watchdog HW : pulse DONE toutes les 2s
+#endif
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
@@ -67,6 +73,11 @@ void app_main(void)
 
     // GPIO — électrovannes OFF immédiat (fail-safe), init OUT3/OUT4 et relais
     gpio_handler_init();
+
+#ifdef CONFIG_IRRI_TPL5010
+    // Watchdog matériel — DONE GPIO13, timeout ~5.3s via Rext=3.3MΩ
+    ESP_ERROR_CHECK(tpl5010_init());
+#endif
 
 #ifndef CONFIG_IRRI_TEST_MODE
     // INA3221 I2C — CH1=EV_CANON, CH2=EV_POUMON, CH3=Batterie

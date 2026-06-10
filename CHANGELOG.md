@@ -5,6 +5,25 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [PR-20] — 2026-06-10 — Watchdog matériel TPL5010DDCR
+
+### Added
+- `tpl5010.c/h` : driver watchdog TPL5010DDCR
+  - `tpl5010_init()` : configure GPIO13 en sortie LOW
+  - `tpl5010_done_pulse()` : impulsion HIGH/LOW toutes les 2s depuis `state_machine_task()`
+  - Si la tâche state_machine se bloque, le TPL5010 active RESET après ~5,3s → reboot complet ESP32 via EN
+- `Kconfig.projbuild` : option `CONFIG_IRRI_TPL5010` (défaut OFF) — à activer une fois le composant câblé
+- `gpio_config.h` : `PIN_TPL5010_DONE = GPIO13`
+- `main.c` : `tpl5010_init()` au boot + `tpl5010_done_pulse()` dans la boucle tick (tout sous `#ifdef CONFIG_IRRI_TPL5010`)
+
+### Hardware
+- Composant : TPL5010DDCR SOT-23-6
+- Câblage : GPIO13 → DONE, TPL5010 RESET → ESP32 EN, Rext = 3,3 MΩ (entre REXT et GND)
+- Timeout : ~5,3 s (formule : t ≈ 1,35 × Rext × C_int, C_int ≈ 1,1 nF)
+- Pulse logiciel : 100ms HIGH toutes les 2s (bien sous le timeout de 5,3s)
+
+---
+
 ## [fix/code-review] — 2026-06-10 — Corrections revue complète codebase (10 bugs)
 
 ### Fixed

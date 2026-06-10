@@ -95,3 +95,10 @@
 // Seuils détection MOSFET
 #define SEUIL_TENSION_EV_V      6.0f   // > 6V = EV alimentée
 #define SEUIL_COURANT_EV_MA    50.0f   // < 50mA = circuit suspect
+
+// -----------------------------------------------------------------------------
+// Watchdog matériel TPL5010DDCR (optionnel — CONFIG_IRRI_TPL5010)
+// DONE → impulsion toutes les 2s depuis state_machine_task()
+// RESET → EN ESP32 : reboot si timeout (Rext=3.3MΩ → ~5.3s)
+// -----------------------------------------------------------------------------
+#define PIN_TPL5010_DONE        13

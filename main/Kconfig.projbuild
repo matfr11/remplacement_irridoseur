@@ -24,4 +24,14 @@ menu "Irrifrance ESP32"
             de test dans NVS pour permettre à la machine d'états de démarrer.
             À utiliser uniquement avec les firmwares de test Wokwi.
 
+    config IRRI_TPL5010
+        bool "Activer le watchdog matériel TPL5010DDCR"
+        default n
+        help
+            Active le watchdog hardware TPL5010DDCR sur GPIO13 (DONE).
+            Câblage requis : TPL5010 RESET → ESP32 EN, Rext = 3,3 MΩ.
+            Timeout ~5,3 s. Si state_machine_task() se bloque, l'ESP32
+            est redémarré automatiquement par le hardware.
+            Désactiver si le composant n'est pas câblé.
+
 endmenu
