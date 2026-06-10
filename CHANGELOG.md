@@ -5,6 +5,20 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [fix/PR-19] — 2026-06-10 — Corrections surveillance MOSFET (8 bugs)
+
+### Fixed
+- **Bug 1 (CRITIQUE)** `gpio_ev_*_set()` : lecture de `etat_actuel` depuis le pin actif (secours si basculé) au lieu du principal ; `pin_reel` recalculé après `mosfet_verifier_avant` car un basculement peut survenir entre les deux
+- **Bug 2** `mosfet_verifier_apres()` déplacé hors mutex dans `mosfet_verifier_post_tick()` — évite de bloquer le mutex 100ms à chaque commande EV ; délai réduit 100ms → 20ms
+- **Bug 3** Guard `secours_actif` ajouté dans `verifier_coherence()` — l'INA3221 étant câblé sur le fil EV commun après le relais SPDT, il mesurerait le secours après basculement ; la détection est inhibée pour éviter une fausse double-panne sur anomalie transitoire
+- **Bug 4** `basculer_sur_secours()` retourne `bool` — l'ancienne vérification via `etat_secours != MOSFET_OK` ne pouvait jamais détecter l'échec du premier basculement
+- **Bug 5** OUT3/OUT4 retirés du masque de `gpio_handler_init()` — responsabilité exclusive de `mosfet_surveillance_init()`
+- **Bug 6** `gpio_all_ev_off()` remet les relais à 0 ; `mosfet_reset_etat()` ajouté et appelé depuis `state_machine_cmd_reset()`
+- **Bug 7** `batterie_lire_voltage()` retourne la dernière valeur valide sur lecture aberrante ou nulle (évite urgence CRITIQUE sur timeout I2C transitoire)
+- **Bug 8** Test dynamique au boot supprimé (ouvrait l'EV 100ms) ; `MOSFET_HS_OUVERT` détecté à la première utilisation réelle via `mosfet_verifier_post_tick()`
+
+---
+
 ## [PR-19] — 2026-06-09 — Surveillance MOSFETs INA3221 + basculement relais secours
 
 ### Added
