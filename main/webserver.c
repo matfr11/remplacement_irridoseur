@@ -167,7 +167,8 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         "\"mosfet_canon_secours\":%s,"
         "\"mosfet_poumon_secours\":%s,"
         "\"mosfet_canon_etat\":\"%s\","
-        "\"mosfet_poumon_etat\":\"%s\""
+        "\"mosfet_poumon_etat\":\"%s\","
+        "\"firmware_version\":\"%s\""
         "}",
         etat_to_str(s->etat), (int)s->etat,
         prog_nom,
@@ -240,7 +241,8 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         s->mosfet_canon_secours  ? "true" : "false",
         s->mosfet_poumon_secours ? "true" : "false",
         s->mosfet_canon_etat,
-        s->mosfet_poumon_etat
+        s->mosfet_poumon_etat,
+        s->firmware_version
     );
 }
 

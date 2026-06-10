@@ -142,7 +142,7 @@ details>summary::-webkit-details-marker{display:none}
           </div>
         </div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:10px;margin-top:4px">
-          <span id="prog-lbl">--</span> &bull; <span id="machine-lbl">--</span>
+          <span id="prog-lbl">--</span> &bull; <span id="machine-lbl">--</span><span id="fw-version" style="margin-left:6px;font-size:11px;color:var(--muted)"></span>
         </div>
         <div class="grid2">
           <div class="tile">
@@ -531,6 +531,7 @@ function updateUI() {
   txt('badge-txt', blbl);
   txt('prog-lbl', s.prog_nom || '--');
   txt('machine-lbl', s.machine_nom || '--');
+  txt('fw-version', s.firmware_version ? 'v' + s.firmware_version : '');
 
   // Tiles
   txt('deroul-val', s.etat_code === ETAT_DEROULE

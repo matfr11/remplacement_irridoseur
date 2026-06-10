@@ -17,6 +17,7 @@
 #include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_app_desc.h"
 #include <string.h>
 #include <math.h>
 
@@ -179,6 +180,8 @@ void state_machine_init(void)
 {
     s_mutex = xSemaphoreCreateRecursiveMutex();
     memset(&s_status, 0, sizeof(s_status));
+    const esp_app_desc_t *desc = esp_app_get_description();
+    strncpy(s_status.firmware_version, desc->version, sizeof(s_status.firmware_version) - 1);
 
     charger_config_interne();
     config_nvs_lire_stats(&s_stats);
