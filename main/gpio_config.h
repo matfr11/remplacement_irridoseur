@@ -54,11 +54,6 @@
 #define DEBOUNCE_VITESSE_MS     50
 
 // -----------------------------------------------------------------------------
-// Mesure tension batterie — ADC1, diviseur R1=100kΩ/R2=27kΩ
-// -----------------------------------------------------------------------------
-#define PIN_BATT_ADC            36
-
-// -----------------------------------------------------------------------------
 // LED et bouton intégrés à la carte Quad MOS
 // -----------------------------------------------------------------------------
 #define PIN_LED_CARTE            23     // LED verte de la carte
@@ -70,3 +65,33 @@
 // Inactif par défaut (heartbeat_rc_on = false dans config_machine_t)
 // -----------------------------------------------------------------------------
 #define PIN_HEARTBEAT            23
+
+// -----------------------------------------------------------------------------
+// MOSFETs secours — carte Quad MOS OUT3/OUT4
+// -----------------------------------------------------------------------------
+#define PIN_MOSFET_SECOURS_CANON   26   // QMOS OUT3
+#define PIN_MOSFET_SECOURS_POUMON  27   // QMOS OUT4
+
+// -----------------------------------------------------------------------------
+// Relais de basculement MOSFET — HIGH level trigger
+// LOW = repos = COM→NC = MOSFET principal
+// HIGH = actif = COM→NO = MOSFET secours
+// -----------------------------------------------------------------------------
+#define PIN_RELAIS_CANON    2
+#define PIN_RELAIS_POUMON   4
+
+// -----------------------------------------------------------------------------
+// INA3221 — module I2C 3 canaux (tension + courant)
+// CH1 = EV_CANON, CH2 = EV_POUMON, CH3 = Batterie 12V
+// -----------------------------------------------------------------------------
+#define I2C_SDA_PIN             21
+#define I2C_SCL_PIN             22
+#define INA3221_I2C_ADDR        0x40   // A0 → GND
+
+#define INA3221_CH_EV_CANON     1
+#define INA3221_CH_EV_POUMON    2
+#define INA3221_CH_BATTERIE     3
+
+// Seuils détection MOSFET
+#define SEUIL_TENSION_EV_V      6.0f   // > 6V = EV alimentée
+#define SEUIL_COURANT_EV_MA    50.0f   // < 50mA = circuit suspect

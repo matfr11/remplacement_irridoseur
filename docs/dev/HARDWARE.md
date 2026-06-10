@@ -13,32 +13,35 @@ Carte de développement AliExpress avec ESP32-D0WD-V3 (ESP32-32E) et 4 canaux MO
 │  [USB-C]  ←── programmation + alimentation          │
 │  [12V IN] ←── alimentation terrain (batterie 12V)  │
 │                                                     │
-│  OUT1 (GPIO 16) → EV_CANON  12V                    │
-│  OUT2 (GPIO 17) → EV_POUMON 12V                    │
-│  OUT3 (GPIO 26) → non utilisé                      │
-│  OUT4 (GPIO 27) → non utilisé                      │
+│  OUT1 (GPIO 16) → EV_CANON  12V  (MOSFET principal)│
+│  OUT2 (GPIO 17) → EV_POUMON 12V  (MOSFET principal)│
+│  OUT3 (GPIO 26) → EV_CANON  12V  (MOSFET secours)  │
+│  OUT4 (GPIO 27) → EV_POUMON 12V  (MOSFET secours)  │
 │                                                     │
 │  GPIO  0 ←── Bouton physique carte                 │
+│  GPIO  2  ──► Relais SPDT EV_CANON  (NC/NO switch) │
+│  GPIO  4  ──► Relais SPDT EV_POUMON (NC/NO switch) │
+│  GPIO 21  ──► I2C SDA (INA3221)                    │
+│  GPIO 22  ──► I2C SCL (INA3221)                    │
 │  GPIO 23  ──► LED carte (heartbeat RC 1Hz)         │
 │  GPIO 25 ←── Pressostat (NC, pull-up 10kΩ)         │
 │  GPIO 32 ←── Sécurité spires (NC, pull-up 10kΩ)    │
 │  GPIO 33 ←── Contact poumon plein (NC, pull-up 10kΩ)│
 │  GPIO 34 ←── Capteur vitesse (diviseur 10k/3.3k)   │
 │  GPIO 35 ←── Fin de course (NC, pull-up 10kΩ)      │
-│  GPIO 36 ←── Tension batterie (ADC, diviseur R)    │
 └─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Bornier 14 voies — tableau complet
+## Bornier 12 voies — tableau complet
 
 | # | Signal | Direction | Câble | Conditionnement |
 |---|---|---|---|---|
 | 1 | 12V+ batterie | IN | Rouge | Directement sur borne alim carte |
 | 2 | GND | — | Noir | Masse commune |
-| 3 | EV_CANON 12V (+) | OUT | — | Via MOSFET OUT1 (GPIO 16), 12V commuté |
-| 4 | EV_POUMON 12V (+) | OUT | — | Via MOSFET OUT2 (GPIO 17), 12V commuté |
+| 3 | EV_CANON 12V (+) | OUT | — | Via relais SPDT → MOSFET OUT1 ou OUT3 selon état secours |
+| 4 | EV_POUMON 12V (+) | OUT | — | Via relais SPDT → MOSFET OUT2 ou OUT4 selon état secours |
 | 5 | Pressostat A | IN | — | Pull-up 10kΩ vers 3.3V → GPIO 25 |
 | 6 | Pressostat B | IN | — | GND |
 | 7 | Fin de course A | IN | — | Pull-up 10kΩ vers 3.3V → GPIO 35 |
@@ -48,7 +51,8 @@ Carte de développement AliExpress avec ESP32-D0WD-V3 (ESP32-32E) et 4 canaux MO
 | 11 | Contact poumon A | IN | — | Pull-up 10kΩ vers 3.3V → GPIO 33 |
 | 12 | Contact poumon B | IN | — | GND |
 
-> Capteur vitesse (GPIO 34) et batterie (GPIO 36) : connexion directe sur bornes GPIO ESP32.
+> Capteur vitesse (GPIO 34) : connexion directe sur borne GPIO ESP32.
+> Tension batterie mesurée par INA3221 CH3 (I2C) — plus de diviseur résistif sur GPIO 36.
 
 ---
 
@@ -108,36 +112,56 @@ Anti-rebond ISR : 50ms (`DEBOUNCE_VITESSE_MS`). Les fronts plus rapprochés sont
 
 ---
 
-## Diviseur de tension — batterie (GPIO 36)
+## Mesure tension batterie — INA3221 CH3 (I2C)
 
-La batterie 12V nominale peut monter jusqu'à ~14V en charge. GPIO 36 supporte max 3.3V.
+La tension batterie est mesurée par le canal 3 du module INA3221 via I2C — pas de diviseur
+résistif ni d'ADC. GPIO 21 (SDA) et GPIO 22 (SCL) sont partagés entre les trois canaux.
 
 ```
-V_bat ──┤
-         R1 = 100kΩ
-        ├──────────────── GPIO 36 (ADC1 canal 0)
-         R2 = 27kΩ
-        ├──────────────── GND
+Batterie 12V ──── INA3221 CH3 V_BUS (+) ────┐
+                  INA3221 CH3 V_BUS (-) ──── GND
+                  INA3221 SDA ────────────── GPIO 21
+                  INA3221 SCL ────────────── GPIO 22
 ```
 
-**Calcul** :
+**INA3221 — adresse I2C** : 0x40 (broche A0 reliée à GND)
+
+| Canal | Signal | Mesure |
+|---|---|---|
+| CH1 | EV_CANON | Tension (V) + courant (mA) — détection panne MOSFET |
+| CH2 | EV_POUMON | Tension (V) + courant (mA) — détection panne MOSFET |
+| CH3 | Batterie 12V | Tension (V) — niveau batterie |
+
+Résolution bus voltage : 8 mV/LSB. Shunt R = 0,1 Ω → résolution courant : 0,4 mA/LSB.
+
+> Avantage vs ADC GPIO 36 : pas de conflit ADC2/WiFi, mesure tension ET courant simultanée
+> sur les canaux EV, libère GPIO 36 pour d'éventuels besoins futurs.
+
+---
+
+## Relais SPDT — basculement MOSFET principal / secours
+
+Deux modules relais SPDT 12V bobine / signal 3,3V sont ajoutés pour basculer automatiquement
+vers les MOSFETs de secours (OUT3/OUT4) en cas de panne du MOSFET principal (OUT1/OUT2).
+
+**Configuration physique** : cavalier du module positionné sur déclenchement niveau HAUT.
+
 ```
-V_gpio = V_bat × R2 / (R1 + R2)
-       = V_bat × 27000 / (100000 + 27000)
-       = V_bat × 0.2126
+                    ┌────── COM ─── EV (câble terrain)
+GPIO  2 → Relais 1 ─┤ LOW  = repos = NC ─── MOSFET OUT1 (GPIO 16) — principal
+(EV_CANON)          └ HIGH = actif = NO ─── MOSFET OUT3 (GPIO 26) — secours
 
-Plage mesure :
-  11.0V → 2.34V
-  12.6V → 2.68V
-  14.0V → 2.98V  ← max attendu, sous 3.3V ✅
-
-Formule inverse (dans batterie.c) :
-  V_bat = V_gpio × (R1 + R2) / R2
-        = V_gpio × 4.703...
+                    ┌────── COM ─── EV (câble terrain)
+GPIO  4 → Relais 2 ─┤ LOW  = repos = NC ─── MOSFET OUT2 (GPIO 17) — principal
+(EV_POUMON)         └ HIGH = actif = NO ─── MOSFET OUT4 (GPIO 27) — secours
 ```
 
-Mesure : moyenne de 16 lectures ADC (`BATT_ADC_NB_SAMPLES`) pour filtrer le bruit.
-GPIO 36 = ADC1 canal 0, pas de pull-up interne.
+**Séquence de basculement** (automatique, sans interruption de l'arrosage) :
+1. INA3221 détecte anomalie (CC, HS ouvert, EV débranchée)
+2. OUT3 ou OUT4 est pré-synchronisé avec le niveau courant de OUT1/OUT2 (anti-glitch)
+3. Relais bascule : COM passe de NC (principal) à NO (secours)
+4. LED/badge UI indique `SECOURS ACTIF`
+5. Si secours aussi défaillant → `ARRET_URGENCE`
 
 ---
 
@@ -160,8 +184,11 @@ sur la LED verte de la carte). Désactivé par défaut (`heartbeat_rc_on = false
 | Point | Comment mesurer | Valeur normale |
 |---|---|---|
 | Tension batterie | Multimètre sur bornes 1-2 | 11.5..14V |
+| Tension batterie INA3221 | Log UART `batterie_v` ou UI web | Cohérent avec multimètre ±0.1V |
 | Signal GPIO 34 (vitesse) | Oscilloscope sur GPIO 34 | Fronts 0-3V, fréquence variable |
-| EV_CANON ouverte | Multimètre sur sortie MOSFET | ~12V (Vbat - chute MOSFET) |
+| EV_CANON ouverte | Multimètre sur sortie MOSFET actif | ~12V (Vbat - chute MOSFET) |
+| EV_CANON courant | INA3221 CH1 log UART | 500..1200 mA selon EV |
+| Relais SPDT au repos | Multimètre continuité COM–NC | Fermé (LOW sur GPIO 2/4) |
 | Continuité capteur vitesse | Mode continuité bornes 9-10 | Contact fermé (LOW) au repos |
 | t_vidange | Chronomètre : temps entre EV_POUMON=OFF et cliquet retracté | 0.5..3s selon machine |
 | cycles_par_tour | Compter les cycles poumon pendant un tour de bobine | 40 sur ST1 Bis |

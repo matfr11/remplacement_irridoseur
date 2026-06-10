@@ -1,5 +1,6 @@
 #include "state_machine.h"
 #include "batterie.h"
+#include "mosfet_surveillance.h"
 #include "telemetry.h"
 #include "securites.h"
 #include "gpio_handler.h"
@@ -789,6 +790,17 @@ void tick_state_machine(void)
     s_status.coupure_detectee       = s_coupure_detectee;
     s_status.vitesse_max_m_h        = s_vitesse_max_m_h;
     s_status.dose_corrigee_mm       = s_dose_corrigee_mm;
+
+    ev_canal_t mc = mosfet_get_etat(PIN_EV_CANON);
+    ev_canal_t mp = mosfet_get_etat(PIN_EV_POUMON);
+    s_status.mosfet_canon_secours  = mc.secours_actif;
+    s_status.mosfet_poumon_secours = mp.secours_actif;
+    strncpy(s_status.mosfet_canon_etat,
+            mosfet_etat_str(mc.secours_actif ? mc.etat_principal : MOSFET_OK),
+            sizeof(s_status.mosfet_canon_etat) - 1);
+    strncpy(s_status.mosfet_poumon_etat,
+            mosfet_etat_str(mp.secours_actif ? mp.etat_principal : MOSFET_OK),
+            sizeof(s_status.mosfet_poumon_etat) - 1);
 
     // Heartbeat GPIO 2 pour circuit RC fail-safe (conditionnel)
     if (s_cfg_machine.heartbeat_rc_on) {
