@@ -37,7 +37,7 @@ static int   s_max_cycles = 15;
 static float s_dist_pulse_m = 0.0f;
 
 // Mode dégradé A
-static bool  s_mode_degrade_a     = false;
+static bool  s_vitesse_depuis_cycles_poumon = false;
 static float s_vitesse_estimee_mh = 0.0f;
 
 // =============================================================================
@@ -176,10 +176,10 @@ void gpio_handler_set_params(int fenetre_vitesse, int max_cycles_si)
     portEXIT_CRITICAL(&s_mux);
 }
 
-void gpio_handler_set_mode_degrade_a(bool actif)
+void gpio_handler_set_vitesse_depuis_cycles_poumon(bool actif)
 {
     portENTER_CRITICAL(&s_mux);
-    s_mode_degrade_a = actif;
+    s_vitesse_depuis_cycles_poumon = actif;
     portEXIT_CRITICAL(&s_mux);
 }
 
@@ -201,7 +201,7 @@ float gpio_get_vitesse_m_h(float facteur_correction)
 
     portENTER_CRITICAL(&s_mux);
 
-    if (s_mode_degrade_a) {
+    if (s_vitesse_depuis_cycles_poumon) {
         float v = s_vitesse_estimee_mh;
         portEXIT_CRITICAL(&s_mux);
         return v;
@@ -296,7 +296,7 @@ void gpio_handler_test_reset(void)
     s_last_isr_us           = 0;
     s_cycles_sans_impulsion = 0;
     s_dist_pulse_m          = 0.0f;
-    s_mode_degrade_a        = false;
+    s_vitesse_depuis_cycles_poumon = false;
     s_vitesse_estimee_mh    = 0.0f;
     memset((void *)s_ts_pulses, 0, sizeof(s_ts_pulses));
     portEXIT_CRITICAL(&s_mux);

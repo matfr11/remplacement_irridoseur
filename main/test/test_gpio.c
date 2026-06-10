@@ -134,47 +134,47 @@ static void test_timeout_cycles(void)
 }
 
 // =============================================================================
-// Test 6 — Mode dégradé A — retourne vitesse estimée injectée
+// Test 6 — Vitesse depuis cycles poumon — retourne vitesse estimée injectée
 // =============================================================================
-static void test_mode_degrade_a(void)
+static void test_vitesse_depuis_cycles_poumon(void)
 {
     gpio_handler_test_reset();
     gpio_handler_set_params(5, 15);
     // Pas de pulses, pas de dist_pulse — mode A fournit la vitesse
     float vitesse_estimee = 45.7f;
-    gpio_handler_set_mode_degrade_a(true);
+    gpio_handler_set_vitesse_depuis_cycles_poumon(true);
     gpio_handler_set_vitesse_estimee(vitesse_estimee);
 
     float v = gpio_get_vitesse_m_h(1.0f);
     if (fabsf(v - vitesse_estimee) < TOL_MH) {
-        PASS("mode_degrade_a");
+        PASS("vitesse_depuis_cycles_poumon");
     } else {
-        FAIL("mode_degrade_a", "attendu=%.1f obtenu=%.1f", vitesse_estimee, v);
+        FAIL("vitesse_depuis_cycles_poumon", "attendu=%.1f obtenu=%.1f", vitesse_estimee, v);
     }
 }
 
 // =============================================================================
-// Test 7 — Mode dégradé A désactivé — retour au calcul ISR
+// Test 7 — Vitesse cycles poumon désactivée — retour au calcul ISR
 // =============================================================================
-static void test_mode_degrade_a_desactive(void)
+static void test_vitesse_depuis_cycles_poumon_desactive(void)
 {
     gpio_handler_test_reset();
     gpio_handler_set_params(5, 15);
     gpio_handler_set_dist_pulse_m(1.0f);
-    gpio_handler_set_mode_degrade_a(true);
+    gpio_handler_set_vitesse_depuis_cycles_poumon(true);
     gpio_handler_set_vitesse_estimee(999.0f);
 
     // Désactiver le mode A et injecter des pulses réels
-    gpio_handler_set_mode_degrade_a(false);
+    gpio_handler_set_vitesse_depuis_cycles_poumon(false);
     injecter_pulses(5, 1000000LL);
 
     float v = gpio_get_vitesse_m_h(1.0f);
     float expected = 5.0f * 1.0f * 1.0f / 4.0f * 3600.0f;  // 4500.0
 
     if (fabsf(v - expected) < TOL_MH) {
-        PASS("mode_degrade_a_desactive");
+        PASS("vitesse_depuis_cycles_poumon_desactive");
     } else {
-        FAIL("mode_degrade_a_desactive", "attendu=%.1f obtenu=%.1f (mode A actif?)", expected, v);
+        FAIL("vitesse_depuis_cycles_poumon_desactive", "attendu=%.1f obtenu=%.1f", expected, v);
     }
 }
 
@@ -228,8 +228,8 @@ void test_gpio_run(void)
     test_vitesse_sans_dist_pulse();
     test_fenetre_insuffisante();
     test_timeout_cycles();
-    test_mode_degrade_a();
-    test_mode_degrade_a_desactive();
+    test_vitesse_depuis_cycles_poumon();
+    test_vitesse_depuis_cycles_poumon_desactive();
     test_compteur_impulsions();
     test_lire_entrees();
 
