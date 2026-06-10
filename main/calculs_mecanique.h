@@ -49,6 +49,7 @@ float calcul_longueur_etage_m(int n, const machine_profile_t *profil);
  * @param longueur_reelle_m     Longueur saisie par l'opérateur
  * @param nb_impulsions         Nombre d'impulsions de la session
  * @param facteur_out           Résultat si validation OK
+ * @param facteur_out  Pointeur obligatoire (non NULL) — seul résultat utile de la fonction.
  * @return true si facteur accepté, false sinon
  */
 bool calcul_facteur_etalonnage(float longueur_theorique_m,

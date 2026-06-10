@@ -62,6 +62,7 @@ static float interpoler_p_buse(const canon_abaque_t *abaque,
         }
     }
 
+    // Cas dégénéré : 1 seul point ou hit exact sur un point de table (d0+d1 ≈ 0 → poids identiques, pas d'interpolation utile)
     if (idx1 < 0 || d0 + d1 < 1e-6f) {
         if (esp_nominal_out) {
             float p_b = abaque->table[idx0].p_buse;
@@ -124,6 +125,8 @@ float lookup_vitesse_cible(const canon_abaque_t *abaque,
         return 0.0f;
     }
 
+    // Garde-fou générique indépendant du matériel — les bornes réelles dépendent du canon
+    // et de l'enrouleur configurés ; valider_params_programme() fait la validation hardware.
     if (dose_mm < 10.0f || dose_mm > 50.0f) {
         ESP_LOGW(TAG, "dose %.1fmm hors plage habituelle [10-50]", dose_mm);
     }
@@ -165,7 +168,7 @@ hydro_warnings_t valider_params_programme(const canon_abaque_t *abaque,
 
     if (!abaque || abaque->nb_entrees <= 0) return w;
 
-    // Bornes abaque pour pression et buse
+    // Bornes abaque — duplique partiellement calc_ranges() qui n'expose pas p_min/p_max séparément
     float p_min = abaque->table[0].p_enrouleur;
     float p_max = p_min;
     float b_min = abaque->table[0].buse_mm;

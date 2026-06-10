@@ -49,6 +49,8 @@ int calcul_etage_courant(float longueur_enroulee_m, const machine_profile_t *pro
             return n;
         }
     }
+    ESP_LOGW(TAG, "longueur_enroulee %.1fm depasse longueur totale bobine %.1fm",
+             longueur_enroulee_m, cumul);
     return profil->nb_etages;
 }
 
