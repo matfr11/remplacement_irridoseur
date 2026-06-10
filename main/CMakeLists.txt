@@ -41,7 +41,7 @@ if(CONFIG_IRRI_TEST_MODE)
 endif()
 
 # Injecter PROJECT_VER dans le HTML au moment de la configuration CMake
-configure_file(webui/index.html.in ${CMAKE_CURRENT_BINARY_DIR}/webui/index.html @ONLY)
+configure_file(${COMPONENT_DIR}/webui/index.html.in ${CMAKE_CURRENT_BINARY_DIR}/webui/index.html @ONLY)
 
 set(EMBED "${CMAKE_CURRENT_BINARY_DIR}/webui/index.html")
 if(CONFIG_IRRI_TEST_MODE)
