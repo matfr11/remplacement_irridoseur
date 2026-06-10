@@ -21,6 +21,7 @@ float calcul_t_attente_s(float dist_par_cycle_m,
 {
     if (alerte_pression_out) *alerte_pression_out = false;
 
+    // Seuils en unités différentes : dist en m (1e-4 = 0,1mm), vitesse en m/s (1e-6 ≈ 3,6mm/h)
     if (dist_par_cycle_m < 1e-4f || vitesse_cible_m_s < 1e-6f) {
         return 0.0f;
     }
@@ -34,6 +35,10 @@ float calcul_t_attente_s(float dist_par_cycle_m,
         return 0.0f;
     }
     if (t_attente > 300.0f) {
+        // Pas de clamp ici : une longue attente peut être physiquement légitime
+        // (grande bobine + dose élevée → dist_cycle grand, vitesse cible basse).
+        // La validation en amont (valider_params_programme / DOSE_MIN/MAX_MM) garantit
+        // que les paramètres du programme sont cohérents.
         ESP_LOGW(TAG, "T_attente anormal (%.2fs > 300s)", t_attente);
     }
 
@@ -49,10 +54,12 @@ float correction_vitesse(float t_attente_s,
         return t_attente_s;
     }
     float erreur = vitesse_cible_m_h - vitesse_reelle_m_h;
+    // Correction proportionnelle à l'erreur relative (%) × temps d'attente courant.
+    // Ex : 20% trop vite → augmente l'attente de kp×20%×t_attente. Intentionnel.
     float correction = kp * (erreur / vitesse_cible_m_h) * t_attente_s;
     float t_corrige = t_attente_s + correction;
     if (t_corrige < 0.0f)   return 0.0f;
-    if (t_corrige > 300.0f) return 300.0f;
+    if (t_corrige > 300.0f) return 300.0f;  // clamp anti-dérive PID (pas une limite physique)
     return t_corrige;
 }
 
@@ -60,7 +67,7 @@ float regulation_update_dist_par_cycle(float nouvelle_dist_m)
 {
     s_dist_buf[s_buf_idx] = nouvelle_dist_m;
     s_buf_idx = (s_buf_idx + 1) % CALIB_WINDOW;
-    if (s_buf_count < CALIB_WINDOW) s_buf_count++;
+    if (s_buf_count < CALIB_WINDOW) s_buf_count++;  // toujours >= 1 avant la division ci-dessous
     s_nb_cycles++;
 
     float somme = 0.0f;

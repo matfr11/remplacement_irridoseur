@@ -57,7 +57,7 @@ static int      s_nb_tentatives            = 0;
 
 // Pause pression
 static int64_t  s_t_pause_debut_ms   = 0;
-static int32_t  s_duree_pause_ms     = 0;
+static int32_t  s_duree_pause_ms     = 0;  // bilan uniquement — déborde après 24,8 jours de pause cumulée (impossible en pratique)
 
 // Déroulement
 static float    s_mesure_deroule_m   = 0.0f;  // longueur déployée mesurée en ETAT_DEROULE
@@ -260,7 +260,7 @@ static void handle_veille(const entrees_t *e, int64_t t_dans_etat)
     (void)t_dans_etat;
     s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
     if (s_fc_deroule_prev && !e->fin_course) {
-        s_mesure_deroule_m = 0.0f;
+        s_mesure_deroule_m = 0.0f;  // nouveau déroulage — mesure repart de 0
         gpio_reset_impulsions_cycle();
         entrer_etat(ETAT_DEROULE);
         s_fc_deroule_prev = e->fin_course;
@@ -430,12 +430,15 @@ static void handle_en_cours(const entrees_t *e, int64_t t_dans_etat)
             s_t_remplissage_ms = (float)(now_ms() - s_t_rempl_debut_ms);
 
             float t_rempl_s = s_t_remplissage_ms / 1000.0f;
-            if (t_rempl_s > 0.5f && t_rempl_s < s_t_rempl_min_s) {
+            if (t_rempl_s > 1.5f && t_rempl_s < s_t_rempl_min_s) {
                 s_t_rempl_min_s = t_rempl_s;
                 config_nvs_sauver_t_rempl_min(s_t_rempl_min_s);
             }
 
             if (!s_profil) {
+                // Config machine invalide — déjà signalé en LOGE à l'init.
+                // On boucle sur SOUS_VIDANGE plutôt que déclencher une urgence :
+                // le canon continue d'avancer, l'opérateur peut stopper proprement via cmd_stop.
                 ESP_LOGE(TAG, "fin_rempl : profil NULL - accumulation longueur impossible");
                 entrer_sous_etat(SOUS_VIDANGE);
                 break;
@@ -450,8 +453,12 @@ static void handle_en_cours(const entrees_t *e, int64_t t_dans_etat)
                 s_longueur_enroulee  += dist_cycle;
                 s_longueur_session_m += dist_cycle;
                 if (s_longueur_enroulee - s_longueur_derniere_nvs >= 5.0f) {
-                    config_nvs_sauver_longueur(s_longueur_enroulee);
-                    s_longueur_derniere_nvs = s_longueur_enroulee;
+                    if (config_nvs_sauver_longueur(s_longueur_enroulee) == ESP_OK) {
+                        s_longueur_derniere_nvs = s_longueur_enroulee;
+                    } else {
+                        ESP_LOGW(TAG, "NVS write longueur echoue (%.1fm) — retry au prochain cycle",
+                                 s_longueur_enroulee);
+                    }
                 }
 
                 float debit_tmp = 0.0f;
@@ -476,7 +483,10 @@ static void handle_en_cours(const entrees_t *e, int64_t t_dans_etat)
                     t_att = correction_vitesse(t_att, v_reel, v_cible_m_h, s_cfg_machine.kp_regulation);
                 }
 
-                s_t_attente_ms = (int32_t)(t_att * 1000.0f);
+                // t_att < 0 = pression insuffisante pour atteindre la vitesse cible :
+                // pas d'attente, cycle au maximum. vitesse_max_m_h + dose_corrigee_mm
+                // sont calculés ci-dessous et exposés dans le statut (alerte_pression_insuff).
+                s_t_attente_ms = (int32_t)(t_att > 0.0f ? t_att * 1000.0f : 0.0f);
                 s_status.alerte_pression_insuff = alerte;
 
                 if (alerte) {
@@ -504,6 +514,8 @@ static void handle_pause_pression(const entrees_t *e)
 {
     s_duree_pause_ms += 100;
     if (e->pression_ok) {
+        // Pas de check fin_course ici : REMPLISSAGE_POUMON le vérifie dès le tick suivant
+        // et bascule vers ARRET_FINAL si le canon est rentré (max 100ms d'EV_POUMON parasite).
         gpio_ev_canon_set(true);
         gpio_ev_poumon_set(true);
         s_nb_tentatives = 0;
@@ -649,11 +661,10 @@ void tick_state_machine(void)
                         if (strstr(s_status.raison_arret, "Debordement") && e.secu_spires) {
                             ESP_LOGW(TAG, "Rearm physique ignore - debordement toujours actif");
                         } else {
-                            // Reprendre : longueurs preservees, comme cmd_resume
+                            // Reprendre : longueurs et calibration PID préservées, comme cmd_resume
                             memset(s_status.raison_arret, 0, sizeof(s_status.raison_arret));
                             config_nvs_sauver_urgence("");
                             s_demarrage_autorise = true;
-                            regulation_reset_calibration();
                             config_nvs_sauver_machine(&s_cfg_machine);
                             entrer_etat(ETAT_VEILLE);
                         }
@@ -737,7 +748,8 @@ void tick_state_machine(void)
         float t_cyc_s = (s_t_remplissage_ms + s_t_attente_ms) / 1000.0f + s_cfg_machine.t_vidange_s;
         s_status.cycles_par_min_cible = (s_vitesse_cible_m_h > 0.0f && s_cfg_machine.dist_cycle_nvs > 0.0f)
             ? (s_vitesse_cible_m_h / s_cfg_machine.dist_cycle_nvs) / 60.0f : 0.0f;
-        s_status.cycles_par_min_reel  = (t_cyc_s > 0.5f) ? 60.0f / t_cyc_s : 0.0f;
+        s_status.cycles_par_min_reel  = (s_etat == ETAT_EN_COURS && t_cyc_s > 0.5f)
+                                        ? 60.0f / t_cyc_s : 0.0f;
     }
 
     // Campagne
@@ -956,6 +968,8 @@ void state_machine_cmd_etalonner(float longueur_reelle_m)
 
 void state_machine_set_time(int64_t timestamp_unix)
 {
+    // Mutex requis : s_heure_base_unix et s_heure_synchro sont lus dans tick_state_machine()
+    // (mutex tenu). Pas de race — les deux chemins sont sérialisés par le même mutex récursif.
     xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     s_heure_base_unix = timestamp_unix;
     s_heure_synchro   = true;
@@ -980,7 +994,7 @@ void state_machine_cmd_start_deroule(void)
 {
     xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     if (s_etat == ETAT_VEILLE) {
-        s_mesure_deroule_m = 0.0f;
+        s_mesure_deroule_m = 0.0f;  // nouvelle séquence de déroulage — mesure repart de 0
         gpio_reset_impulsions_cycle();
         entrer_etat(ETAT_DEROULE);
         ESP_LOGI(TAG, "cmd_start_deroule : entree DEROULE manuel");
@@ -1063,6 +1077,12 @@ void state_machine_cmd_reset_campagne(void)
 
 bool state_machine_fin_course_est_normale(void)
 {
+    // Si la longueur déployée est inconnue (0), on retourne true intentionnellement :
+    // on ne peut pas distinguer fin normale d'anomalie, et retourner false déclencherait
+    // SEC-1 (urgence) même lors d'une arrivée réelle, bloquant la temporisation arrivée.
+    // Dans les états où la bobine ne peut pas avancer (OUVERTURE_CANON, TEMPO_DEPART,
+    // PAUSE_PRESSION), securites.c ne consulte pas cette fonction — SEC-1 y est toujours active.
+    if (s_longueur_deroule_m <= 0.0f) return true;
     float restant = s_longueur_deroule_m - s_longueur_session_m;
     if (restant < 0.0f) restant = 0.0f;
     return restant <= s_cfg_machine.fin_course_seuil_m;

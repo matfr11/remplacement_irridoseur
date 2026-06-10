@@ -224,7 +224,7 @@ if (!e.fin_course) {
 | `s_fc_deroule_prev` | `bool` | state_machine.c | État fin_course tick précédent (détection flanc) |
 | `s_mesure_deroule_m` | `float` | state_machine.c | Longueur mesurée en ETAT_DEROULE |
 | `s_bilan_envoye` | `bool` | state_machine.c | Bilan session déjà envoyé (guard double envoi) |
-| `s_duree_pause_ms` | `int64_t` | state_machine.c | Durée cumulée PAUSE_PRESSION |
+| `s_duree_pause_ms` | `int32_t` | state_machine.c | Durée cumulée PAUSE_PRESSION (bilan uniquement) |
 | `s_session` | `session_summary_t` | state_machine.c | Bilan dernière session |
 | `s_stats` | `config_stats_t` | state_machine.c | Stats campagne (cache NVS) |
 | `s_bypass_spires` | `bool` | securites.c | Bypass SEC-2 spires |
@@ -241,7 +241,7 @@ avec `gpio_get_level(PIN_EV_POUMON) == LOW` (EV_POUMON OFF).
 | État courant | Condition supplémentaire | Action |
 |---|---|---|
 | `ETAT_ARRET_URGENCE` | raison="Debordement bobine" ET `secu_spires=HIGH` | **Ignoré** (log WARN) |
-| `ETAT_ARRET_URGENCE` | autre cas | REPRENDRE : longueurs préservées → VEILLE, `s_demarrage_autorise=true` |
+| `ETAT_ARRET_URGENCE` | autre cas | REPRENDRE : longueurs + calibration PID préservées → VEILLE, `s_demarrage_autorise=true` |
 | Autre état | — | `s_demarrage_autorise=true` seulement (pas de transition) |
 
 **Variables internes 3-tap** (statiques locales dans `tick_state_machine()`) :
