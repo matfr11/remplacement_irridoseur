@@ -209,6 +209,7 @@ details>summary::-webkit-details-marker{display:none}
       <button id="btn-resume" class="btn btn-orange" style="display:none" onclick="sendCmd({cmd:'resume'})">&#8617; REPRENDRE SESSION</button>
       <button id="btn-deroule" class="btn" style="display:none;background:var(--card2);border:1px solid var(--border)" onclick="sendCmd({cmd:'start_deroule'})">&#9654; Commencer le déroulement</button>
     </div>
+    <div style="text-align:center;font-size:11px;color:var(--muted);padding:10px 0 4px">v@PROJECT_VER@</div>
 
     <!-- TAB 2 : Stats -->
     <div id="tab-stats" class="tab">

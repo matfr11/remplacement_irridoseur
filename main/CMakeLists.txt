@@ -40,7 +40,10 @@ if(CONFIG_IRRI_TEST_MODE)
     )
 endif()
 
-set(EMBED "webui/index.html")
+# Injecter PROJECT_VER dans le HTML au moment de la configuration CMake
+configure_file(webui/index.html.in ${CMAKE_CURRENT_BINARY_DIR}/webui/index.html @ONLY)
+
+set(EMBED "${CMAKE_CURRENT_BINARY_DIR}/webui/index.html")
 if(CONFIG_IRRI_TEST_MODE)
     list(APPEND EMBED "simulator/simulator_ui.html")
 endif()
