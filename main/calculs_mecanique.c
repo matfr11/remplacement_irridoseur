@@ -12,6 +12,7 @@ static const char *TAG = "calculs_mec";
 float calcul_rayon_etage(int n, const machine_profile_t *profil)
 {
     if (!profil) return 0.0f;
+    if (n <= 0) return profil->r_tambour_vide_m;  // n garanti >= 1 par calcul_etage_courant()
     float d = profil->d_tuyau_ext_m;
     if (d < 0.0f) d = 0.0f;
     return profil->r_tambour_vide_m + ((float)n - 0.5f) * d;
@@ -24,7 +25,9 @@ float calcul_dist_pulse_m(float r_etage_m)
 
 float calcul_dist_cycle_m(float r_etage_m, float cycles_par_tour)
 {
-    if (cycles_par_tour <= 0.0f) return 0.0f;
+    if (cycles_par_tour < 0.0f)
+        ESP_LOGW(TAG, "cycles_par_tour negatif (%.1f) — non configure?", cycles_par_tour);
+    if (cycles_par_tour <= 0.0f) return 0.0f;  // 0 = non configuré, normal en début de session
     return (2.0f * (float)M_PI * r_etage_m) / cycles_par_tour;
 }
 
@@ -41,7 +44,7 @@ float calcul_longueur_etage_m(int n, const machine_profile_t *profil)
 
 int calcul_etage_courant(float longueur_enroulee_m, const machine_profile_t *profil)
 {
-    if (!profil) return 1;
+    if (!profil || profil->nb_etages <= 0) return 1;  // contrat : retourne >= 1
     float cumul = 0.0f;
     for (int n = 1; n <= profil->nb_etages; n++) {
         cumul += calcul_longueur_etage_m(n, profil);

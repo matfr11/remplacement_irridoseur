@@ -5,6 +5,10 @@
 
 static const char *TAG = "calculs_hyd";
 
+// Pression de référence pour la régression portée (bar) — point de normalisation
+// commun aux abaques SR100C et SR150C : portée = k × buse^exp_b × (p/P_REF)^exp_p
+#define PORTEE_P_REF_BAR  3.5f
+
 // =============================================================================
 // Distances normalisees (p, buse) — pour selection des 2 entrees les plus proches
 // =============================================================================
@@ -69,7 +73,7 @@ static float interpoler_p_buse(const canon_abaque_t *abaque,
             if (buse_mm > 0.0f && p_b > 0.0f) {
                 float portee = abaque->k_portee
                              * powf(buse_mm, abaque->portee_exp_buse)
-                             * powf(p_b / 3.5f, abaque->portee_exp_p);
+                             * powf(p_b / PORTEE_P_REF_BAR, abaque->portee_exp_p);
                 *esp_nominal_out = portee * abaque->esp_factor;
             } else {
                 *esp_nominal_out = 0.0f;
@@ -88,7 +92,7 @@ static float interpoler_p_buse(const canon_abaque_t *abaque,
         if (buse_mm > 0.0f && p_buse > 0.0f) {
             float portee = abaque->k_portee
                          * powf(buse_mm, abaque->portee_exp_buse)
-                         * powf(p_buse / 3.5f, abaque->portee_exp_p);
+                         * powf(p_buse / PORTEE_P_REF_BAR, abaque->portee_exp_p);
             *esp_nominal_out = portee * abaque->esp_factor;
         } else {
             *esp_nominal_out = 0.0f;
@@ -124,9 +128,22 @@ float lookup_vitesse_cible(const canon_abaque_t *abaque,
         if (p_buse_out) *p_buse_out = 0.0f;
         return 0.0f;
     }
+    if (buse_mm <= 0.0f) {
+        ESP_LOGW(TAG, "buse_mm invalide (%.2f) — calcul impossible", buse_mm);
+        if (debit_out)  *debit_out  = 0.0f;
+        if (p_buse_out) *p_buse_out = 0.0f;
+        return 0.0f;
+    }
 
-    // Garde-fou générique indépendant du matériel — les bornes réelles dépendent du canon
-    // et de l'enrouleur configurés ; valider_params_programme() fait la validation hardware.
+    // Guard mathématique strict — en dessous de 1mm la division V=Q/dose diverge
+    if (dose_mm < 1.0f) {
+        ESP_LOGW(TAG, "dose_mm invalide (%.2f) — calcul impossible", dose_mm);
+        if (debit_out)  *debit_out  = 0.0f;
+        if (p_buse_out) *p_buse_out = 0.0f;
+        return 0.0f;
+    }
+    // Garde-fou agronomique — bornes réelles dépendent du matériel configuré ;
+    // valider_params_programme() fait la validation hardware précise.
     if (dose_mm < 10.0f || dose_mm > 50.0f) {
         ESP_LOGW(TAG, "dose %.1fmm hors plage habituelle [10-50]", dose_mm);
     }
@@ -135,12 +152,6 @@ float lookup_vitesse_cible(const canon_abaque_t *abaque,
 
     if (p_buse <= 0.0f) {
         ESP_LOGW(TAG, "p_buse invalide (%.3f) — calcul impossible", p_buse);
-        if (debit_out)  *debit_out  = 0.0f;
-        if (p_buse_out) *p_buse_out = 0.0f;
-        return 0.0f;
-    }
-    if (dose_mm < 1.0f) {
-        ESP_LOGW(TAG, "dose_mm invalide (%.2f) — calcul impossible", dose_mm);
         if (debit_out)  *debit_out  = 0.0f;
         if (p_buse_out) *p_buse_out = 0.0f;
         return 0.0f;
