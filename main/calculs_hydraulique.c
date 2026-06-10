@@ -64,10 +64,15 @@ static float interpoler_p_buse(const canon_abaque_t *abaque,
 
     if (idx1 < 0 || d0 + d1 < 1e-6f) {
         if (esp_nominal_out) {
-            float portee = abaque->k_portee
-                         * powf(buse_mm, abaque->portee_exp_buse)
-                         * powf(abaque->table[idx0].p_buse / 3.5f, abaque->portee_exp_p);
-            *esp_nominal_out = portee * abaque->esp_factor;
+            float p_b = abaque->table[idx0].p_buse;
+            if (buse_mm > 0.0f && p_b > 0.0f) {
+                float portee = abaque->k_portee
+                             * powf(buse_mm, abaque->portee_exp_buse)
+                             * powf(p_b / 3.5f, abaque->portee_exp_p);
+                *esp_nominal_out = portee * abaque->esp_factor;
+            } else {
+                *esp_nominal_out = 0.0f;
+            }
         }
         return abaque->table[idx0].p_buse;
     }
@@ -79,10 +84,14 @@ static float interpoler_p_buse(const canon_abaque_t *abaque,
     float p_buse = (w0 * abaque->table[idx0].p_buse + w1 * abaque->table[idx1].p_buse) / wt;
 
     if (esp_nominal_out) {
-        float portee = abaque->k_portee
-                     * powf(buse_mm, abaque->portee_exp_buse)
-                     * powf(p_buse / 3.5f, abaque->portee_exp_p);
-        *esp_nominal_out = portee * abaque->esp_factor;
+        if (buse_mm > 0.0f && p_buse > 0.0f) {
+            float portee = abaque->k_portee
+                         * powf(buse_mm, abaque->portee_exp_buse)
+                         * powf(p_buse / 3.5f, abaque->portee_exp_p);
+            *esp_nominal_out = portee * abaque->esp_factor;
+        } else {
+            *esp_nominal_out = 0.0f;
+        }
     }
 
     return p_buse;
@@ -120,6 +129,19 @@ float lookup_vitesse_cible(const canon_abaque_t *abaque,
     }
 
     float p_buse = interpoler_p_buse(abaque, p_enrouleur, buse_mm, NULL);
+
+    if (p_buse <= 0.0f) {
+        ESP_LOGW(TAG, "p_buse invalide (%.3f) — calcul impossible", p_buse);
+        if (debit_out)  *debit_out  = 0.0f;
+        if (p_buse_out) *p_buse_out = 0.0f;
+        return 0.0f;
+    }
+    if (dose_mm < 1.0f) {
+        ESP_LOGW(TAG, "dose_mm invalide (%.2f) — calcul impossible", dose_mm);
+        if (debit_out)  *debit_out  = 0.0f;
+        if (p_buse_out) *p_buse_out = 0.0f;
+        return 0.0f;
+    }
 
     float Q = abaque->k_q * buse_mm * buse_mm * sqrtf(p_buse);
     float V = Q * 1000.0f / (largeur_m * dose_mm);

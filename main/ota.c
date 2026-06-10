@@ -20,6 +20,15 @@ static esp_err_t ota_update_handler(httpd_req_t *req)
         return ESP_OK;
     }
 
+    if (req->content_len <= 0 || req->content_len > 2 * 1024 * 1024) {
+        ESP_LOGE(TAG, "Taille firmware invalide : %d octets", req->content_len);
+        const char *msg = "{\"error\":\"Taille firmware invalide\"}";
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_set_type(req, "application/json");
+        httpd_resp_send(req, msg, strlen(msg));
+        return ESP_OK;
+    }
+
     const esp_partition_t *update_part = esp_ota_get_next_update_partition(NULL);
     if (!update_part) {
         ESP_LOGE(TAG, "Partition OTA introuvable");

@@ -12,7 +12,9 @@ static const char *TAG = "calculs_mec";
 float calcul_rayon_etage(int n, const machine_profile_t *profil)
 {
     if (!profil) return 0.0f;
-    return profil->r_tambour_vide_m + ((float)n - 0.5f) * profil->d_tuyau_ext_m;
+    float d = profil->d_tuyau_ext_m;
+    if (d < 0.0f) d = 0.0f;
+    return profil->r_tambour_vide_m + ((float)n - 0.5f) * d;
 }
 
 float calcul_dist_pulse_m(float r_etage_m)
@@ -33,6 +35,7 @@ float calcul_longueur_etage_m(int n, const machine_profile_t *profil)
     float spires = (n == profil->nb_etages && profil->spires_dernier > 0.0f)
                    ? profil->spires_dernier
                    : profil->spires_par_etage;
+    if (spires <= 0.0f) return 0.0f;
     return spires * 2.0f * (float)M_PI * r;
 }
 

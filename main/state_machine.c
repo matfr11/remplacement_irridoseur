@@ -143,8 +143,11 @@ static void charger_config_interne(void)
     }
     s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
     strncpy(s_status.prog_nom,    s_cfg_prog.nom,             sizeof(s_status.prog_nom) - 1);
+    s_status.prog_nom[sizeof(s_status.prog_nom) - 1] = '\0';
     strncpy(s_status.machine_nom, s_profil ? s_profil->nom : "", sizeof(s_status.machine_nom) - 1);
+    s_status.machine_nom[sizeof(s_status.machine_nom) - 1] = '\0';
     strncpy(s_status.abaque_nom,  s_abaque ? s_abaque->nom : "", sizeof(s_status.abaque_nom) - 1);
+    s_status.abaque_nom[sizeof(s_status.abaque_nom) - 1] = '\0';
     ESP_LOGI(TAG, "Config chargee: prog=%s machine=%s abaque=%s",
              s_status.prog_nom, s_status.machine_nom, s_status.abaque_nom);
     s_status.prog_dose_mm         = s_cfg_prog.dose_mm;
@@ -174,7 +177,7 @@ static void charger_config_interne(void)
 // ---------------------------------------------------------------------------
 void state_machine_init(void)
 {
-    s_mutex = xSemaphoreCreateMutex();
+    s_mutex = xSemaphoreCreateRecursiveMutex();
     memset(&s_status, 0, sizeof(s_status));
 
     charger_config_interne();
@@ -220,6 +223,7 @@ void state_machine_init(void)
     if (raison_nvs[0] != '\0') {
         ESP_LOGW(TAG, "Dernier arret urgence : %s", raison_nvs);
         strncpy(s_status.raison_arret, raison_nvs, sizeof(s_status.raison_arret) - 1);
+        s_status.raison_arret[sizeof(s_status.raison_arret) - 1] = '\0';
         s_demarrage_autorise = false;  // reboot après urgence : démarrage explicite requis
     } else {
         s_demarrage_autorise = true;   // démarrage auto dès mise en pression
@@ -601,7 +605,7 @@ void tick_state_machine(void)
         s_batt = batterie_get_status();
     }
 
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
 
     // SEC priorité absolue — avant tout traitement état
     securites_watchdog();
@@ -798,9 +802,11 @@ void tick_state_machine(void)
     strncpy(s_status.mosfet_canon_etat,
             mosfet_etat_str(mc.secours_actif ? mc.etat_principal : MOSFET_OK),
             sizeof(s_status.mosfet_canon_etat) - 1);
+    s_status.mosfet_canon_etat[sizeof(s_status.mosfet_canon_etat) - 1] = '\0';
     strncpy(s_status.mosfet_poumon_etat,
             mosfet_etat_str(mp.secours_actif ? mp.etat_principal : MOSFET_OK),
             sizeof(s_status.mosfet_poumon_etat) - 1);
+    s_status.mosfet_poumon_etat[sizeof(s_status.mosfet_poumon_etat) - 1] = '\0';
 
     // Heartbeat GPIO 2 pour circuit RC fail-safe (conditionnel)
     if (s_cfg_machine.heartbeat_rc_on) {
@@ -816,7 +822,7 @@ void tick_state_machine(void)
         }
     }
 
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
     mosfet_verifier_post_tick();   // hors mutex — 20ms + 2 lectures I2C
 }
 
@@ -825,9 +831,9 @@ void tick_state_machine(void)
 // ---------------------------------------------------------------------------
 void state_machine_get_status(machine_status_t *status)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     *status = s_status;
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 etat_machine_t state_machine_get_etat(void)
@@ -837,19 +843,19 @@ etat_machine_t state_machine_get_etat(void)
 
 void state_machine_cmd_start(void)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     if (s_etat == ETAT_VEILLE || s_etat == ETAT_DEROULE) {
         ESP_LOGI(TAG, "cmd_start recu - demarrage autorise (etat=%d)", s_etat);
         s_demarrage_autorise = true;
     } else {
         ESP_LOGI(TAG, "cmd_start ignore (etat=%d)", s_etat);
     }
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 void state_machine_cmd_stop(void)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     if (s_etat == ETAT_DEROULE) {
         ESP_LOGI(TAG, "cmd_stop depuis DEROULE - retour VEILLE");
         entrer_etat(ETAT_VEILLE);
@@ -863,12 +869,12 @@ void state_machine_cmd_stop(void)
     } else {
         ESP_LOGI(TAG, "cmd_stop ignore (etat=%d)", s_etat);
     }
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 void state_machine_cmd_reset(void)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     if (s_etat == ETAT_ARRET_URGENCE) {
         ESP_LOGI(TAG, "cmd_reset - sortie urgence");
         s_demarrage_autorise = false;
@@ -904,12 +910,12 @@ void state_machine_cmd_reset(void)
     } else {
         ESP_LOGI(TAG, "cmd_reset ignore (etat=%d)", s_etat);
     }
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 void state_machine_cmd_set_longueur(float longueur_deroule_m)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     float total = (s_profil && s_profil->longueur_tuyau_m > 0.0f)
                   ? s_profil->longueur_tuyau_m : 0.0f;
     if (longueur_deroule_m < 0.0f) longueur_deroule_m = 0.0f;
@@ -928,12 +934,12 @@ void state_machine_cmd_set_longueur(float longueur_deroule_m)
     config_nvs_sauver_deroule(longueur_deroule_m);
     ESP_LOGI(TAG, "Longueur forcee : deroule=%.1fm session=0 (abs=%.1fm etat=%d)",
              longueur_deroule_m, abs_enroulee, s_etat);
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 void state_machine_cmd_etalonner(float longueur_reelle_m)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     float facteur = 0.0f;
     bool ok = calcul_facteur_etalonnage(
         s_longueur_enroulee,
@@ -945,34 +951,34 @@ void state_machine_cmd_etalonner(float longueur_reelle_m)
         config_nvs_sauver_machine(&s_cfg_machine);
         ESP_LOGI(TAG, "Étalonnage sauvegardé : facteur=%.3f", facteur);
     }
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 void state_machine_set_time(int64_t timestamp_unix)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     s_heure_base_unix = timestamp_unix;
     s_heure_synchro   = true;
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 void state_machine_cmd_ev_canon_set(bool actif)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     if (s_etat == ETAT_VEILLE) gpio_ev_canon_set(actif);
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 void state_machine_cmd_ev_poumon_set(bool actif)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     if (s_etat == ETAT_VEILLE) gpio_ev_poumon_set(actif);
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 void state_machine_cmd_start_deroule(void)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     if (s_etat == ETAT_VEILLE) {
         s_mesure_deroule_m = 0.0f;
         gpio_reset_impulsions_cycle();
@@ -981,47 +987,51 @@ void state_machine_cmd_start_deroule(void)
     } else {
         ESP_LOGI(TAG, "cmd_start_deroule ignore (etat=%d)", s_etat);
     }
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 void state_machine_declencher_urgence(const char *raison)
 {
+    // Mutex récursif : safe depuis tick (mutex déjà tenu) et depuis mosfet_verifier_post_tick (sans mutex).
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     gpio_all_ev_off();
     if (s_etat != ETAT_ARRET_URGENCE) {
         ESP_LOGE(TAG, "ARRET URGENCE : %s", raison);
         entrer_etat(ETAT_ARRET_URGENCE);
         strncpy(s_status.raison_arret, raison, sizeof(s_status.raison_arret) - 1);
+        s_status.raison_arret[sizeof(s_status.raison_arret) - 1] = '\0';
         config_nvs_sauver_urgence(raison);
     }
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 void state_machine_recharger_config(void)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     if (s_etat != ETAT_VEILLE) {
-        xSemaphoreGive(s_mutex);
+        xSemaphoreGiveRecursive(s_mutex);
         return;
     }
     charger_config_interne();
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 void state_machine_get_session_summary(session_summary_t *out)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     *out = s_session;
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 void state_machine_cmd_resume(void)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     if (s_etat == ETAT_ARRET_URGENCE && strstr(s_status.raison_arret, "Debordement")) {
         entrees_t eg;
         gpio_handler_lire_entrees(&eg);
         if (eg.secu_spires) {
             ESP_LOGW(TAG, "cmd_resume ignore - debordement toujours actif");
-            xSemaphoreGive(s_mutex);
+            xSemaphoreGiveRecursive(s_mutex);
             return;
         }
     }
@@ -1039,15 +1049,15 @@ void state_machine_cmd_resume(void)
     } else {
         ESP_LOGI(TAG, "cmd_resume ignore (etat=%d)", s_etat);
     }
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 
 void state_machine_cmd_reset_campagne(void)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     config_nvs_reset_stats();
     memset(&s_stats, 0, sizeof(s_stats));
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
     ESP_LOGI(TAG, "Stats campagne remises a zero");
 }
 
@@ -1071,11 +1081,11 @@ float state_machine_calc_vitesse(float pression_bar, float buse_mm, float dose_m
 {
     if (debit_out)  *debit_out  = 0.0f;
     if (p_buse_out) *p_buse_out = 0.0f;
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     float v = (s_abaque && buse_mm > 0.0f && dose_mm > 0.0f)
         ? lookup_vitesse_cible(s_abaque, pression_bar, buse_mm, dose_mm, largeur_m, debit_out, p_buse_out)
         : 0.0f;
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
     return v;
 }
 
@@ -1085,11 +1095,11 @@ programme_preview_t state_machine_programme_preview(float pression_bar, float bu
     programme_preview_t pr;
     memset(&pr, 0, sizeof(pr));
 
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     const canon_abaque_t *ab = s_abaque;
 
     if (!ab || buse_mm <= 0.0f || dose_mm <= 0.0f) {
-        xSemaphoreGive(s_mutex);
+        xSemaphoreGiveRecursive(s_mutex);
         return pr;
     }
 
@@ -1136,7 +1146,7 @@ programme_preview_t state_machine_programme_preview(float pression_bar, float bu
     pr.v_max_m_h     = (dist > 0.0f && t_min > 0.0f) ? (dist / t_min) * 3600.0f : 0.0f;
     pr.w_vitesse_limite = (pr.v_max_m_h > 0.0f && pr.vitesse_m_h > pr.v_max_m_h);
 
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
     return pr;
 }
 
@@ -1186,7 +1196,7 @@ void state_machine_test_set_longueurs(float deroule_m, float session_m)
 #ifdef CONFIG_IRRI_TEST_MODE
 void state_machine_sim_force_deroule(void)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     gpio_ev_canon_set(false);
     gpio_ev_poumon_set(false);
     s_mesure_deroule_m   = 0.0f;
@@ -1194,7 +1204,7 @@ void state_machine_sim_force_deroule(void)
     gpio_reset_impulsions_cycle();
     entrer_etat(ETAT_DEROULE);
     ESP_LOGI(TAG, "sim_force_deroule : entree DEROULE depuis etat=%d", s_etat);
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
 }
 #endif // CONFIG_IRRI_TEST_MODE
 
@@ -1203,10 +1213,10 @@ void state_machine_sim_force_deroule(void)
 // ---------------------------------------------------------------------------
 float state_machine_get_vitesse_max(void)
 {
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     float dist  = s_cfg_machine.dist_cycle_nvs;
     float t_min = s_t_rempl_min_s + s_cfg_machine.t_vidange_s;
     float v_max = (dist > 0.0f && t_min > 0.0f) ? (dist / t_min) * 3600.0f : 0.0f;
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGiveRecursive(s_mutex);
     return v_max;
 }
