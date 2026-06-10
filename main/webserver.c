@@ -298,23 +298,25 @@ static void json_parse_string(const char *data, const char *key, char *out, size
 static void handle_ws_command(const char *data, size_t len)
 {
     (void)len;
+    char cmd[32] = {0};
+    json_parse_string(data, "cmd", cmd, sizeof(cmd));
 
-    if (strstr(data, "\"cmd\":\"start\"")) {
+    if (strcmp(cmd, "start") == 0) {
         state_machine_cmd_start();
 
-    } else if (strstr(data, "\"cmd\":\"stop\"")) {
+    } else if (strcmp(cmd, "stop") == 0) {
         state_machine_cmd_stop();
 
-    } else if (strstr(data, "\"cmd\":\"reset\"")) {
+    } else if (strcmp(cmd, "reset") == 0) {
         state_machine_cmd_reset();
 
-    } else if (strstr(data, "\"cmd\":\"resume\"")) {
+    } else if (strcmp(cmd, "resume") == 0) {
         state_machine_cmd_resume();
 
-    } else if (strstr(data, "\"cmd\":\"reset_campagne\"")) {
+    } else if (strcmp(cmd, "reset_campagne") == 0) {
         state_machine_cmd_reset_campagne();
 
-    } else if (strstr(data, "\"cmd\":\"set_time\"")) {
+    } else if (strcmp(cmd, "set_time") == 0) {
         const char *p = strstr(data, "\"ts\":");
         if (p) {
             long long ts = 0;
@@ -322,36 +324,36 @@ static void handle_ws_command(const char *data, size_t len)
             state_machine_set_time((int64_t)ts);
         }
 
-    } else if (strstr(data, "\"cmd\":\"ev_canon\"")) {
+    } else if (strcmp(cmd, "ev_canon") == 0) {
         bool actif = false;
         json_parse_bool(data, "actif", &actif);
         state_machine_cmd_ev_canon_set(actif);
 
-    } else if (strstr(data, "\"cmd\":\"ev_poumon\"")) {
+    } else if (strcmp(cmd, "ev_poumon") == 0) {
         bool actif = false;
         json_parse_bool(data, "actif", &actif);
         state_machine_cmd_ev_poumon_set(actif);
 
-    } else if (strstr(data, "\"cmd\":\"start_deroule\"")) {
+    } else if (strcmp(cmd, "start_deroule") == 0) {
         state_machine_cmd_start_deroule();
 
-    } else if (strstr(data, "\"cmd\":\"select_programme\"")) {
+    } else if (strcmp(cmd, "select_programme") == 0) {
         int idx = 0;
         json_parse_int(data, "idx", &idx);
         config_nvs_sauver_prog_actif(idx);
         state_machine_recharger_config();
 
-    } else if (strstr(data, "\"cmd\":\"etalonner\"")) {
+    } else if (strcmp(cmd, "etalonner") == 0) {
         float longueur_m = 0.0f;
         json_parse_float(data, "longueur_m", &longueur_m);
         state_machine_cmd_etalonner(longueur_m);
 
-    } else if (strstr(data, "\"cmd\":\"set_longueur\"")) {
+    } else if (strcmp(cmd, "set_longueur") == 0) {
         float longueur_m = 0.0f;
         json_parse_float(data, "longueur_m", &longueur_m);
         state_machine_cmd_set_longueur(longueur_m);
 
-    } else if (strstr(data, "\"cmd\":\"save_programme\"")) {
+    } else if (strcmp(cmd, "save_programme") == 0) {
         config_programme_t prog;
         memset(&prog, 0, sizeof(prog));
         int idx = 0;
@@ -369,7 +371,7 @@ static void handle_ws_command(const char *data, size_t len)
         config_nvs_sauver_programme(idx, &prog);
         state_machine_recharger_config();
 
-    } else if (strstr(data, "\"cmd\":\"save_machine\"")) {
+    } else if (strcmp(cmd, "save_machine") == 0) {
         config_machine_t cfg;
         config_nvs_lire_machine(&cfg);
         float f; int n; bool b;
@@ -411,7 +413,7 @@ static esp_err_t ws_handler(httpd_req_t *req)
         return ESP_OK;
     }
 
-    uint8_t buf[512] = {0};
+    uint8_t buf[1024] = {0};
     httpd_ws_frame_t frame = {
         .type    = HTTPD_WS_TYPE_TEXT,
         .payload = buf,
