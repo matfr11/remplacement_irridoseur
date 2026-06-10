@@ -817,6 +817,7 @@ void tick_state_machine(void)
     }
 
     xSemaphoreGive(s_mutex);
+    mosfet_verifier_post_tick();   // hors mutex — 20ms + 2 lectures I2C
 }
 
 // ---------------------------------------------------------------------------
@@ -883,6 +884,7 @@ void state_machine_cmd_reset(void)
         s_t_rempl_min_s = 5.0f;
         config_nvs_sauver_t_rempl_min(5.0f);
         config_nvs_sauver_machine(&s_cfg_machine);
+        mosfet_reset_etat();
         entrer_etat(ETAT_VEILLE);
     } else if (s_etat == ETAT_ARRET_FINAL) {
         ESP_LOGI(TAG, "cmd_reset - sortie arret final (manuel)");

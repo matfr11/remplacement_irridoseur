@@ -68,22 +68,19 @@ static void IRAM_ATTR isr_capteur_vitesse(void *arg)
 
 void gpio_handler_init(void)
 {
-    // Sorties EV principals et secours (INPUT_OUTPUT → gpio_get_level() reflète la sortie)
+    // Sorties EV principales uniquement — OUT3/OUT4 et relais sont sous
+    // responsabilité exclusive de mosfet_surveillance_init()
     gpio_config_t out_cfg = {
-        .pin_bit_mask = (1ULL << PIN_EV_CANON)             |
-                        (1ULL << PIN_EV_POUMON)             |
-                        (1ULL << PIN_MOSFET_SECOURS_CANON)  |
-                        (1ULL << PIN_MOSFET_SECOURS_POUMON),
+        .pin_bit_mask = (1ULL << PIN_EV_CANON) |
+                        (1ULL << PIN_EV_POUMON),
         .mode         = GPIO_MODE_INPUT_OUTPUT,
         .pull_up_en   = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type    = GPIO_INTR_DISABLE,
     };
     gpio_config(&out_cfg);
-    gpio_set_level(PIN_EV_CANON,              0);
-    gpio_set_level(PIN_EV_POUMON,             0);
-    gpio_set_level(PIN_MOSFET_SECOURS_CANON,  0);
-    gpio_set_level(PIN_MOSFET_SECOURS_POUMON, 0);
+    gpio_set_level(PIN_EV_CANON,  0);
+    gpio_set_level(PIN_EV_POUMON, 0);
 
     // Entrées — résistances pull-up externes, pas de pull interne
     gpio_config_t in_cfg = {
@@ -126,38 +123,44 @@ void gpio_handler_lire_entrees(entrees_t *entrees)
 
 void gpio_ev_canon_set(bool actif)
 {
-    bool etat_actuel = gpio_get_level(PIN_EV_CANON) != 0;
+    // Lire depuis le pin actif AVANT verifier_avant (peut être le secours)
+    int pin_reel = mosfet_secours_actif(PIN_EV_CANON)
+                 ? PIN_MOSFET_SECOURS_CANON : PIN_EV_CANON;
+    bool etat_actuel = gpio_get_level(pin_reel) != 0;
     mosfet_verifier_avant(PIN_EV_CANON, etat_actuel);
 
-    int pin_reel = mosfet_secours_actif(PIN_EV_CANON)
-                 ? PIN_MOSFET_SECOURS_CANON
-                 : PIN_EV_CANON;
+    // Recalculer : verifier_avant peut avoir déclenché un basculement
+    pin_reel = mosfet_secours_actif(PIN_EV_CANON)
+             ? PIN_MOSFET_SECOURS_CANON : PIN_EV_CANON;
     gpio_set_level(pin_reel, actif ? 1 : 0);
-
-    mosfet_verifier_apres(PIN_EV_CANON, actif);
+    // verifier_apres déplacé dans mosfet_verifier_post_tick() — hors mutex
 }
 
 void gpio_ev_poumon_set(bool actif)
 {
-    bool etat_actuel = gpio_get_level(PIN_EV_POUMON) != 0;
+    // Lire depuis le pin actif AVANT verifier_avant (peut être le secours)
+    int pin_reel = mosfet_secours_actif(PIN_EV_POUMON)
+                 ? PIN_MOSFET_SECOURS_POUMON : PIN_EV_POUMON;
+    bool etat_actuel = gpio_get_level(pin_reel) != 0;
     mosfet_verifier_avant(PIN_EV_POUMON, etat_actuel);
 
-    int pin_reel = mosfet_secours_actif(PIN_EV_POUMON)
-                 ? PIN_MOSFET_SECOURS_POUMON
-                 : PIN_EV_POUMON;
+    // Recalculer : verifier_avant peut avoir déclenché un basculement
+    pin_reel = mosfet_secours_actif(PIN_EV_POUMON)
+             ? PIN_MOSFET_SECOURS_POUMON : PIN_EV_POUMON;
     gpio_set_level(pin_reel, actif ? 1 : 0);
-
-    mosfet_verifier_apres(PIN_EV_POUMON, actif);
+    // verifier_apres déplacé dans mosfet_verifier_post_tick() — hors mutex
 }
 
 void gpio_all_ev_off(void)
 {
     // Arrêt d'urgence — DIRECT et INCONDITIONNEL, sans surveillance MOSFET.
-    // Coupe principal ET secours.
+    // Coupe principal ET secours ET remet les relais en position repos (NC).
     gpio_set_level(PIN_EV_CANON,              0);
     gpio_set_level(PIN_EV_POUMON,             0);
     gpio_set_level(PIN_MOSFET_SECOURS_CANON,  0);
     gpio_set_level(PIN_MOSFET_SECOURS_POUMON, 0);
+    gpio_set_level(PIN_RELAIS_CANON,          0);
+    gpio_set_level(PIN_RELAIS_POUMON,         0);
 }
 
 // =============================================================================
