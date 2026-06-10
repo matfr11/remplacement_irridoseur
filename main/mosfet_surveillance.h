@@ -23,15 +23,23 @@ typedef struct {
 // Initialise les GPIO relais et OUT3/OUT4. Appeler après gpio_handler_init().
 void mosfet_surveillance_init(void);
 
-// Test complet au démarrage (~300ms). Bascule automatiquement si principal HS.
+// Test statique au démarrage (~100ms). Bascule automatiquement si principal CC.
 // Retourne false si les deux MOSFETs d'un canal sont défaillants.
 bool mosfet_test_demarrage(void);
 
 // Vérification avant commutation — lit INA3221, bascule si incohérence.
 void mosfet_verifier_avant(int pin_ev, bool etat_actuel);
 
-// Vérification après commutation (délai 100ms) — bascule si incohérence.
+// Vérification après commutation (délai 20ms) — bascule si incohérence.
 void mosfet_verifier_apres(int pin_ev, bool nouvel_etat);
+
+// Vérification post-tick des deux canaux (délai 20ms, hors mutex).
+// Appeler dans tick_state_machine() APRÈS xSemaphoreGive(s_mutex).
+void mosfet_verifier_post_tick(void);
+
+// Remet l'état logique des canaux à {MOSFET_OK, false}.
+// Appeler depuis state_machine_cmd_reset() après urgence acquittée.
+void mosfet_reset_etat(void);
 
 // Retourne l'état courant d'un canal (PIN_EV_CANON ou PIN_EV_POUMON).
 ev_canal_t mosfet_get_etat(int pin_ev);

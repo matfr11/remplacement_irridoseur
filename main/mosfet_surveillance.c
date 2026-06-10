@@ -9,7 +9,7 @@
 
 static const char *TAG = "mosfet";
 
-#define DELAI_APRES_MS   100
+#define DELAI_APRES_MS   20
 
 static ev_canal_t s_canon  = {MOSFET_OK, MOSFET_OK, false};
 static ev_canal_t s_poumon = {MOSFET_OK, MOSFET_OK, false};
@@ -46,6 +46,20 @@ static ev_canal_t *get_canal(int pin_ev)
 
 static mosfet_etat_t verifier_coherence(int pin_ev, bool gpio_commande)
 {
+    // POURQUOI CE GUARD :
+    // L'INA3221 est câblé sur le fil EV commun, APRÈS le COM du relais SPDT
+    // (pas sur les sorties individuelles des MOSFETs).
+    // Avant basculement → INA mesure OUT1/OUT2 (principal).
+    // Après basculement → INA mesure OUT3/OUT4 (secours), car le relais a commuté.
+    //
+    // La détection fonctionnerait donc techniquement sur le secours, MAIS on
+    // l'inhibe délibérément : toute anomalie transitoire sur OUT3/OUT4 serait
+    // interprétée comme double-panne et déclencherait ARRET_URGENCE.
+    // La vraie double-panne reste détectable via basculer_sur_secours()
+    // (chemin : secours_actif && basculement → urgence).
+    if (mosfet_secours_actif(pin_ev))
+        return MOSFET_OK;
+
     ina3221_mesure_t m;
 
 #ifdef CONFIG_IRRI_ENABLE_TESTS
@@ -78,7 +92,7 @@ static mosfet_etat_t verifier_coherence(int pin_ev, bool gpio_commande)
 
 // ── Basculement sur secours ───────────────────────────────────────────────────
 
-static void basculer_sur_secours(int pin_ev, mosfet_etat_t cause)
+static bool basculer_sur_secours(int pin_ev, mosfet_etat_t cause)
 {
     ev_canal_t *c = get_canal(pin_ev);
     const char *nom = (pin_ev == PIN_EV_CANON) ? "EV_CANON" : "EV_POUMON";
@@ -90,7 +104,7 @@ static void basculer_sur_secours(int pin_ev, mosfet_etat_t cause)
             (pin_ev == PIN_EV_CANON)
             ? "Défaillance MOSFET EV_CANON — principal ET secours HS"
             : "Défaillance MOSFET EV_POUMON — principal ET secours HS");
-        return;
+        return false;
     }
 
     // Synchroniser OUT3/OUT4 avec l'état courant du principal avant de basculer
@@ -106,6 +120,7 @@ static void basculer_sur_secours(int pin_ev, mosfet_etat_t cause)
 
     ESP_LOGW(TAG, "%s : MOSFET principal %s — secours actif",
              nom, mosfet_etat_str(cause));
+    return true;
 }
 
 // ── API publique ──────────────────────────────────────────────────────────────
@@ -155,29 +170,37 @@ bool mosfet_test_demarrage(void)
         mosfet_etat_t e = verifier_coherence(pin, false);
         if (e == MOSFET_GRILLE_CC) {
             ESP_LOGE(TAG, "%s principal : grillé CC", nom);
-            basculer_sur_secours(pin, MOSFET_GRILLE_CC);
-            if (get_canal(pin)->etat_secours != MOSFET_OK)
+            if (!basculer_sur_secours(pin, MOSFET_GRILLE_CC))
                 tout_ok = false;
             continue;
         }
 
-        // Test dynamique : GPIO=HIGH → tension doit être ~12V
-        gpio_set_level(pin, 1);
-        vTaskDelay(pdMS_TO_TICKS(100));
-        e = verifier_coherence(pin, true);
-        gpio_set_level(pin, 0);   // Remettre à 0 après test
-        if (e == MOSFET_HS_OUVERT || e == MOSFET_EV_DEBRANCHEE) {
-            ESP_LOGE(TAG, "%s principal : %s", nom, mosfet_etat_str(e));
-            basculer_sur_secours(pin, e);
-            if (get_canal(pin)->etat_secours != MOSFET_OK)
-                tout_ok = false;
-            continue;
-        }
+        // Test dynamique supprimé : ouvrirait brièvement l'EV au boot.
+        // MOSFET_HS_OUVERT et MOSFET_EV_DEBRANCHEE seront détectés par
+        // mosfet_verifier_post_tick() à la première utilisation réelle.
 
         ESP_LOGI(TAG, "%s principal : OK", nom);
     }
 
     return tout_ok;
+}
+
+void mosfet_verifier_post_tick(void)
+{
+    int pin_c = mosfet_secours_actif(PIN_EV_CANON)
+              ? PIN_MOSFET_SECOURS_CANON  : PIN_EV_CANON;
+    int pin_p = mosfet_secours_actif(PIN_EV_POUMON)
+              ? PIN_MOSFET_SECOURS_POUMON : PIN_EV_POUMON;
+    vTaskDelay(pdMS_TO_TICKS(DELAI_APRES_MS));
+    mosfet_verifier_apres(PIN_EV_CANON,  gpio_get_level(pin_c) != 0);
+    mosfet_verifier_apres(PIN_EV_POUMON, gpio_get_level(pin_p) != 0);
+}
+
+void mosfet_reset_etat(void)
+{
+    s_canon  = (ev_canal_t){MOSFET_OK, MOSFET_OK, false};
+    s_poumon = (ev_canal_t){MOSFET_OK, MOSFET_OK, false};
+    ESP_LOGI(TAG, "etat MOSFET remis a zero");
 }
 
 void mosfet_verifier_avant(int pin_ev, bool etat_actuel)

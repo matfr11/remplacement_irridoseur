@@ -5,8 +5,9 @@
 
 static const char *TAG = "batterie";
 
-static float s_warn_v = BATT_V_FAIBLE_MIN;
-static float s_crit_v = BATT_V_CRITIQUE_MIN;
+static float s_warn_v      = BATT_V_FAIBLE_MIN;
+static float s_crit_v      = BATT_V_CRITIQUE_MIN;
+static float s_last_valid_v = 12.5f;
 
 #ifdef CONFIG_IRRI_TEST_MODE
 static float s_sim_voltage = 0.0f;
@@ -29,9 +30,14 @@ float batterie_lire_voltage(void)
     float v = ina3221_lire_tension(INA3221_CH_BATTERIE);
 
     if (v > BATT_V_MAX * 1.1f) {
-        ESP_LOGW(TAG, "Tension aberrante : %.2fV — ignorée", v);
-        return 0.0f;
+        ESP_LOGW(TAG, "Tension aberrante %.2fV — retour %.2fV", v, s_last_valid_v);
+        return s_last_valid_v;
     }
+    if (v < 0.5f) {
+        ESP_LOGW(TAG, "Lecture invalide %.2fV — retour %.2fV", v, s_last_valid_v);
+        return s_last_valid_v;
+    }
+    s_last_valid_v = v;
     return v;
 }
 

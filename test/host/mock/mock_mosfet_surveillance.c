@@ -26,3 +26,6 @@ const char *mosfet_etat_str(mosfet_etat_t etat)
 {
     (void)etat; return "OK";
 }
+
+void mosfet_verifier_post_tick(void) {}
+void mosfet_reset_etat(void) {}
