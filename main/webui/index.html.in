@@ -142,7 +142,7 @@ details>summary::-webkit-details-marker{display:none}
           </div>
         </div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:10px;margin-top:4px">
-          <span id="prog-lbl">--</span> &bull; <span id="machine-lbl">--</span><span id="fw-version" style="margin-left:6px;font-size:11px;color:var(--muted)"></span>
+          <span id="prog-lbl">--</span> &bull; <span id="machine-lbl">--</span>
         </div>
         <div class="grid2">
           <div class="tile">
@@ -209,6 +209,7 @@ details>summary::-webkit-details-marker{display:none}
       <button id="btn-resume" class="btn btn-orange" style="display:none" onclick="sendCmd({cmd:'resume'})">&#8617; REPRENDRE SESSION</button>
       <button id="btn-deroule" class="btn" style="display:none;background:var(--card2);border:1px solid var(--border)" onclick="sendCmd({cmd:'start_deroule'})">&#9654; Commencer le déroulement</button>
     </div>
+    <div style="text-align:center;font-size:11px;color:var(--muted);padding:10px 0 4px">v@PROJECT_VER@</div>
 
     <!-- TAB 2 : Stats -->
     <div id="tab-stats" class="tab">
@@ -531,7 +532,6 @@ function updateUI() {
   txt('badge-txt', blbl);
   txt('prog-lbl', s.prog_nom || '--');
   txt('machine-lbl', s.machine_nom || '--');
-  txt('fw-version', s.firmware_version ? 'v' + s.firmware_version : '');
 
   // Tiles
   txt('deroul-val', s.etat_code === ETAT_DEROULE

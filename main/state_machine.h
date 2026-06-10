@@ -146,9 +146,6 @@ typedef struct {
     bool            mosfet_poumon_secours;
     char            mosfet_canon_etat[20];   // "OK" / "grillé CC" / "HS ouvert" / "EV débranchée"
     char            mosfet_poumon_etat[20];
-
-    // Version firmware (depuis esp_app_desc_t)
-    char            firmware_version[32];
 } machine_status_t;
 
 // Session summary pour télémétrie fin de session
