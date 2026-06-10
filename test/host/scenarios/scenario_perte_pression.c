@@ -49,9 +49,13 @@ static void test_scenario_pause_reprise(void)
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_PAUSE_PRESSION, state_machine_get_etat());
 
-    // Rétablir la pression → reprise via REMPLISSAGE_POUMON
+    // Rétablir la pression → reprise via OUVERTURE_CANON (re-stabilisation, sans tempo)
     set_pression(true);
     avancer(1);
+    TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
+
+    // 30 ticks de pression stable → REMPLISSAGE_POUMON
+    avancer(30);
     TEST_ASSERT_EQUAL_INT(ETAT_REMPLISSAGE_POUMON, state_machine_get_etat());
 
     // Poumon plein → EN_COURS
@@ -73,9 +77,11 @@ static void test_scenario_perte_pendant_remplissage(void)
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_PAUSE_PRESSION, state_machine_get_etat());
 
-    // Reprise via REMPLISSAGE_POUMON
+    // Reprise via OUVERTURE_CANON (re-stabilisation, sans tempo)
     set_pression(true);
     avancer(1);
+    TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
+    avancer(30);
     TEST_ASSERT_EQUAL_INT(ETAT_REMPLISSAGE_POUMON, state_machine_get_etat());
 
     // Poumon plein → EN_COURS

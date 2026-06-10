@@ -145,7 +145,9 @@ void mosfet_surveillance_init(void)
     gpio_set_level(PIN_MOSFET_SECOURS_CANON,  0);
     gpio_set_level(PIN_MOSFET_SECOURS_POUMON, 0);
 
-    ESP_LOGI(TAG, "init OK — relais GPIO2/GPIO4, secours GPIO26/GPIO27");
+    ESP_LOGI(TAG, "init OK — relais GPIO%d/GPIO%d, secours GPIO%d/GPIO%d",
+             PIN_RELAIS_CANON, PIN_RELAIS_POUMON,
+             PIN_MOSFET_SECOURS_CANON, PIN_MOSFET_SECOURS_POUMON);
 }
 
 bool mosfet_test_demarrage(void)
@@ -187,10 +189,18 @@ bool mosfet_test_demarrage(void)
 
 void mosfet_verifier_post_tick(void)
 {
+    // Sans INA3221, aucune vérification possible — sortir sans payer le délai
+#ifdef CONFIG_IRRI_ENABLE_TESTS
+    if (!s_sim_active && !ina3221_est_ok()) return;
+#else
+    if (!ina3221_est_ok()) return;
+#endif
     int pin_c = mosfet_secours_actif(PIN_EV_CANON)
               ? PIN_MOSFET_SECOURS_CANON  : PIN_EV_CANON;
     int pin_p = mosfet_secours_actif(PIN_EV_POUMON)
               ? PIN_MOSFET_SECOURS_POUMON : PIN_EV_POUMON;
+    // Délai de stabilisation unique pour les deux canaux : les commutations ont eu
+    // lieu pendant le tick qui vient de se terminer, 20ms après elles sont établies.
     vTaskDelay(pdMS_TO_TICKS(DELAI_APRES_MS));
     mosfet_verifier_apres(PIN_EV_CANON,  gpio_get_level(pin_c) != 0);
     mosfet_verifier_apres(PIN_EV_POUMON, gpio_get_level(pin_p) != 0);
@@ -212,7 +222,8 @@ void mosfet_verifier_avant(int pin_ev, bool etat_actuel)
 
 void mosfet_verifier_apres(int pin_ev, bool nouvel_etat)
 {
-    vTaskDelay(pdMS_TO_TICKS(DELAI_APRES_MS));
+    // Pas de délai ici — le délai de stabilisation est dans mosfet_verifier_post_tick(),
+    // unique appelant en production (un seul délai pour les deux canaux).
     mosfet_etat_t e = verifier_coherence(pin_ev, nouvel_etat);
     if (e != MOSFET_OK)
         basculer_sur_secours(pin_ev, e);

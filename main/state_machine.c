@@ -80,7 +80,7 @@ static bool              s_demarrage_autorise = true;  // false uniquement aprè
 // Coupure de courant détectée au boot (session_active=1 sans urgence au redémarrage)
 static bool              s_coupure_detectee   = false;
 
-// Heartbeat circuit RC GPIO 2 — conditionnel sur cfg.heartbeat_rc_on
+// Heartbeat circuit RC (PIN_HEARTBEAT, GPIO 23) — conditionnel sur cfg.heartbeat_rc_on
 static bool              s_heartbeat_level    = false;
 static int64_t           s_heartbeat_ms       = 0;
 
@@ -103,6 +103,13 @@ static bool s_sim_fin_course  = false;
 static bool s_sim_secu_spires = false;
 #endif
 
+// Stabilisation pression OUVERTURE_CANON (compteurs remis à 0 dans entrer_etat)
+static int   s_tick_pression_stable  = 0;
+static int   s_tick_pression_absente = 0;
+static bool  s_reprise_pression      = false;  // entrée OUVERTURE_CANON depuis PAUSE_PRESSION
+static bool    s_tempo_depart_effectuee  = false; // tempo départ terminée (ou non configurée)
+static int64_t s_tempo_depart_ecoulee_ms = 0;     // temps de tempo déjà écoulé avant interruption — la reprise ne fait que le restant
+
 // Heure estimée arrivée
 static int64_t  s_heure_base_unix    = 0;
 static bool     s_heure_synchro      = false;
@@ -118,6 +125,15 @@ static void entrer_etat(etat_machine_t nouvel_etat)
     ESP_LOGI(TAG, "%d -> %d", s_etat, nouvel_etat);
     s_etat     = nouvel_etat;
     s_t_etat_ms = now_ms();
+    if (nouvel_etat == ETAT_OUVERTURE_CANON) {
+        s_tick_pression_stable  = 0;   // stabilisation toujours rejouée intégralement
+        s_tick_pression_absente = 0;
+    }
+    if (nouvel_etat == ETAT_REMPLISSAGE_POUMON) {
+        // Chrono de remplissage : démarre maintenant (1re tentative, EV déjà ouverte
+        // par l'appelant). En retry, il est re-armé à la réouverture de l'EV après vidange.
+        s_t_rempl_debut_ms = now_ms();
+    }
 }
 
 static void entrer_sous_etat(sous_etat_poumon_t ss)
@@ -270,6 +286,7 @@ static void handle_veille(const entrees_t *e, int64_t t_dans_etat)
     if (s_demarrage_autorise && e->pression_ok && !e->fin_course && s_status.cfg_valide) {
         s_demarrage_autorise = false;
         s_coupure_detectee = false;
+        s_reprise_pression = false;  // démarrage initial — séquence complète
         config_nvs_sauver_session_active(true);
         gpio_ev_canon_set(true);
         entrer_etat(ETAT_OUVERTURE_CANON);
@@ -279,21 +296,54 @@ static void handle_veille(const entrees_t *e, int64_t t_dans_etat)
 static void handle_ouverture_canon(const entrees_t *e, int64_t t_dans_etat)
 {
     (void)t_dans_etat;
-    static int s_tick_pression_stable = 0;
     if (e->pression_ok) {
         s_tick_pression_stable++;
+        s_tick_pression_absente = 0;
     } else {
         s_tick_pression_stable = 0;
+        // Pression absente 1s d'affilée : ne pas rester bloqué EV_CANON ouverte.
+        // Le pressostat peut "clignoter" pendant la montée en pression — d'où le seuil.
+        if (++s_tick_pression_absente >= 10) {
+            gpio_ev_canon_set(false);
+            if (s_reprise_pression) {
+                // Session en cours — retour pause, la reprise retentera la stabilisation
+                entrer_etat(ETAT_PAUSE_PRESSION);
+            } else {
+                // Le démarrage n'a jamais abouti — retour VEILLE, redémarrage auto
+                // (séquence complète : stabilisation + tempo) à la prochaine pression
+                s_demarrage_autorise = true;
+                entrer_etat(ETAT_VEILLE);
+            }
+            return;
+        }
     }
     if (s_tick_pression_stable >= 30) {
-        s_tick_pression_stable = 0;
+        if (s_reprise_pression) {
+            // Reprise après PAUSE_PRESSION : stabilisation rejouée. Session préservée.
+            s_reprise_pression = false;
+            if (!s_tempo_depart_effectuee
+                && s_cfg_prog.tempo_depart_on && s_cfg_prog.tempo_depart_s > 0) {
+                // Tempo départ interrompue — reprise pour le temps restant uniquement
+                // (s_tempo_depart_ecoulee_ms cumule le temps déjà effectué)
+                entrer_etat(ETAT_TEMPO_DEPART);
+                return;
+            }
+            // Tempo déjà effectuée (ou non configurée) — pas de re-tempo
+            gpio_ev_poumon_set(true);
+            s_nb_tentatives = 0;
+            entrer_etat(ETAT_REMPLISSAGE_POUMON);
+            return;
+        }
         s_t_session_debut_ms = now_ms();
         s_duree_pause_ms = 0;
         s_bilan_envoye   = false;
         regulation_reset_calibration();
+        s_tempo_depart_ecoulee_ms = 0;  // nouvelle session — tempo complète
         if (s_cfg_prog.tempo_depart_on && s_cfg_prog.tempo_depart_s > 0) {
+            s_tempo_depart_effectuee = false;
             entrer_etat(ETAT_TEMPO_DEPART);
         } else {
+            s_tempo_depart_effectuee = true;  // aucune tempo configurée
             gpio_ev_poumon_set(true);
             s_nb_tentatives = 0;
             entrer_etat(ETAT_REMPLISSAGE_POUMON);
@@ -304,9 +354,14 @@ static void handle_ouverture_canon(const entrees_t *e, int64_t t_dans_etat)
 static void handle_tempo_depart(const entrees_t *e, int64_t t_dans_etat)
 {
     if (!e->pression_ok) {
+        // Interruption : mémoriser le temps déjà écoulé — la reprise fera le restant
+        s_tempo_depart_ecoulee_ms += t_dans_etat;
         gpio_ev_canon_set(false);
         entrer_etat(ETAT_PAUSE_PRESSION);
-    } else if (t_dans_etat >= (int64_t)s_cfg_prog.tempo_depart_s * 1000) {
+    } else if (s_tempo_depart_ecoulee_ms + t_dans_etat
+               >= (int64_t)s_cfg_prog.tempo_depart_s * 1000) {
+        s_tempo_depart_effectuee  = true;  // tempo terminée — pas rejouée après pause pression
+        s_tempo_depart_ecoulee_ms = 0;
         gpio_ev_poumon_set(true);
         s_nb_tentatives = 0;
         entrer_etat(ETAT_REMPLISSAGE_POUMON);
@@ -315,21 +370,25 @@ static void handle_tempo_depart(const entrees_t *e, int64_t t_dans_etat)
 
 static void handle_remplissage_poumon(const entrees_t *e, int64_t t_dans_etat)
 {
-    if (s_nb_tentatives > 0 && !gpio_get_level(PIN_EV_POUMON)) {
+    (void)t_dans_etat;  // chrono basé sur s_t_rempl_debut_ms (exclut l'attente vidange en retry)
+    if (s_nb_tentatives > 0 && !gpio_ev_poumon_get()) {
         if (now_ms() < s_t_retry_vidange_fin_ms) return;
         gpio_ev_poumon_set(true);
         s_t_rempl_debut_ms = now_ms();
     }
+    // Timeout configurable, même logique que SOUS_REMPLISSAGE (cycles)
     int64_t t_rempl_ms = (s_cfg_machine.t_rempl_fixe_s > 0.0f)
                          ? (int64_t)(s_cfg_machine.t_rempl_fixe_s * 1000.0f)
                          : 20000;
+    int64_t t_rempl = now_ms() - s_t_rempl_debut_ms;
     bool poumon_ok = e->poumon_plein ||
-                     (s_cfg_machine.mode_deg_poumon && t_dans_etat >= t_rempl_ms);
+                     (s_cfg_machine.mode_deg_poumon && t_rempl >= t_rempl_ms);
     if (!e->pression_ok) {
         gpio_all_ev_off();
         entrer_etat(ETAT_PAUSE_PRESSION);
     } else if (poumon_ok) {
         gpio_ev_poumon_set(false);
+        s_nb_tentatives = 0;  // remplissage initial réussi — pas de report dans les cycles
         if (e->fin_course) {
             if (s_cfg_prog.tempo_arrivee_on && s_cfg_prog.tempo_arrivee_s > 0) {
                 gpio_ev_canon_set(true);
@@ -343,7 +402,7 @@ static void handle_remplissage_poumon(const entrees_t *e, int64_t t_dans_etat)
             entrer_etat(ETAT_EN_COURS);
             entrer_sous_etat(SOUS_VIDANGE);
         }
-    } else if (t_dans_etat >= 20000) {
+    } else if (t_rempl >= t_rempl_ms) {
         gpio_ev_poumon_set(false);
         s_nb_tentatives++;
         if (s_nb_tentatives >= 2) {
@@ -395,7 +454,8 @@ static void handle_en_cours(const entrees_t *e, int64_t t_dans_etat)
             gpio_ev_poumon_set(true);
             gpio_reset_impulsions_cycle();
             s_t_rempl_debut_ms = now_ms();
-            s_nb_tentatives = 0;
+            // NE PAS remettre s_nb_tentatives à 0 ici : il compte les timeouts
+            // consécutifs et n'est remis à 0 que sur remplissage réussi.
             entrer_sous_etat(SOUS_REMPLISSAGE);
         }
         break;
@@ -427,6 +487,7 @@ static void handle_en_cours(const entrees_t *e, int64_t t_dans_etat)
 
         if (fin_rempl) {
             gpio_ev_poumon_set(false);
+            s_nb_tentatives = 0;  // remplissage réussi — compteur de timeouts consécutifs
             s_t_remplissage_ms = (float)(now_ms() - s_t_rempl_debut_ms);
 
             float t_rempl_s = s_t_remplissage_ms / 1000.0f;
@@ -514,12 +575,13 @@ static void handle_pause_pression(const entrees_t *e)
 {
     s_duree_pause_ms += 100;
     if (e->pression_ok) {
-        // Pas de check fin_course ici : REMPLISSAGE_POUMON le vérifie dès le tick suivant
-        // et bascule vers ARRET_FINAL si le canon est rentré (max 100ms d'EV_POUMON parasite).
+        // Reprise via OUVERTURE_CANON : la stabilisation 30 ticks est rejouée
+        // (pression possiblement instable au redémarrage de la pompe), mais pas
+        // la tempo départ. EV_POUMON sera rouverte après stabilisation ;
+        // REMPLISSAGE_POUMON vérifie fin_course dès son premier tick.
         gpio_ev_canon_set(true);
-        gpio_ev_poumon_set(true);
-        s_nb_tentatives = 0;
-        entrer_etat(ETAT_REMPLISSAGE_POUMON);
+        s_reprise_pression = true;
+        entrer_etat(ETAT_OUVERTURE_CANON);
     }
 }
 
@@ -537,21 +599,30 @@ static void handle_tempo_arrivee(const entrees_t *e, int64_t t_dans_etat)
 static void handle_arret_final(const entrees_t *e)
 {
     if (!s_bilan_envoye) {
+        // Volume et dose moyenne calculés depuis le débit abaque × durée effective
+        // (hors pauses pression) — PAS depuis dose_inst_mm, qui vaut 0 à l'arrêt
+        // (plus d'impulsions → vitesse instantanée nulle).
+        float duree_irrig_h = ((float)s_status.duree_s - (float)(s_duree_pause_ms / 1000))
+                            / 3600.0f;
+        if (duree_irrig_h < 0.0f) duree_irrig_h = 0.0f;
+        float vol_m3  = s_status.debit_m3h * duree_irrig_h;
+        float dose_mm = (s_status.surface_m2 > 0.0f)
+                      ? vol_m3 / s_status.surface_m2 * 1000.0f : 0.0f;
+
         s_session.longueur_m              = s_longueur_enroulee;
         s_session.surface_m2              = s_status.surface_m2;
-        s_session.dose_moy_mm             = s_status.dose_inst_mm;
-        s_session.volume_m3               = s_status.surface_m2 * s_status.dose_inst_mm / 1000.0f;
+        s_session.dose_moy_mm             = dose_mm;
+        s_session.volume_m3               = vol_m3;
         s_session.duree_s                 = s_status.duree_s;
         s_session.nb_cycles               = (uint32_t)regulation_get_nb_cycles();
         s_session.duree_pause_pression_s  = s_duree_pause_ms / 1000;
         {
             float surf_ha = s_status.surface_m2 / 10000.0f;
-            float vol_m3  = s_status.surface_m2 * (s_status.dose_inst_mm / 1000.0f);
             float dur_h   = (float)s_status.duree_s / 3600.0f;
             float tot_surf = s_stats.total_surface_ha + surf_ha;
             if (tot_surf > 0.0f)
                 s_stats.dose_moy_mm = (s_stats.dose_moy_mm * s_stats.total_surface_ha
-                                     + s_status.dose_inst_mm * surf_ha) / tot_surf;
+                                     + dose_mm * surf_ha) / tot_surf;
             float tot_dur = s_stats.total_duree_h + dur_h;
             if (tot_dur > 0.0f)
                 s_stats.vitesse_moy_m_h = (s_stats.vitesse_moy_m_h * s_stats.total_duree_h
@@ -564,12 +635,15 @@ static void handle_arret_final(const entrees_t *e)
         }
         telemetry_envoyer_bilan(&s_session);
         s_bilan_envoye = true;
+        s_t_session_debut_ms = 0;  // fige s_status.duree_s sur la durée finale de session
     }
     if (!e->fin_course) {
         s_longueur_enroulee     = 0.0f;
         s_longueur_derniere_nvs = 0.0f;
         s_longueur_session_m    = 0.0f;
+        s_longueur_deroule_m    = 0.0f;
         config_nvs_sauver_longueur(0.0f);
+        config_nvs_sauver_deroule(0.0f);   // sinon le boot suivant croit à un reboot mid-session
         config_nvs_sauver_session_active(false);
         regulation_reset_calibration();
         config_nvs_sauver_machine(&s_cfg_machine);
@@ -596,6 +670,7 @@ static void handle_deroule(const entrees_t *e)
     s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
     if (s_demarrage_autorise && e->pression_ok && !e->fin_course && s_status.cfg_valide) {
         s_demarrage_autorise = false;
+        s_reprise_pression = false;  // démarrage initial — séquence complète
         float total = s_profil ? s_profil->longueur_tuyau_m : 0.0f;
         s_longueur_deroule_m = s_mesure_deroule_m;
         s_longueur_enroulee  = (total > 0.0f) ? total - s_mesure_deroule_m : 0.0f;
@@ -642,7 +717,7 @@ void tick_state_machine(void)
         static bool    s_rearm_prev    = false;
         static int64_t s_rearm_last_ms = 0;
 
-        bool ev_poumon_on = (gpio_get_level(PIN_EV_POUMON) != 0);
+        bool ev_poumon_on = gpio_ev_poumon_get();
         if (!ev_poumon_on) {
             bool p = e.poumon_plein;
             if (p && !s_rearm_prev) {  // front montant
@@ -704,8 +779,8 @@ void tick_state_machine(void)
     // Mise à jour statut diffusé
     s_status.etat         = s_etat;
     s_status.sous_etat    = s_sous_etat;
-    s_status.ev_canon     = gpio_get_level(PIN_EV_CANON)  != 0;
-    s_status.ev_poumon    = gpio_get_level(PIN_EV_POUMON) != 0;
+    s_status.ev_canon     = gpio_ev_canon_get();
+    s_status.ev_poumon    = gpio_ev_poumon_get();
     s_status.pression_ok  = e.pression_ok;
     s_status.fin_course   = e.fin_course;
     s_status.secu_spires  = e.secu_spires;
@@ -820,7 +895,7 @@ void tick_state_machine(void)
             sizeof(s_status.mosfet_poumon_etat) - 1);
     s_status.mosfet_poumon_etat[sizeof(s_status.mosfet_poumon_etat) - 1] = '\0';
 
-    // Heartbeat GPIO 2 pour circuit RC fail-safe (conditionnel)
+    // Heartbeat PIN_HEARTBEAT (GPIO 23) pour circuit RC fail-safe (conditionnel)
     if (s_cfg_machine.heartbeat_rc_on) {
         if (now_ms() - s_heartbeat_ms >= 500) {
             s_heartbeat_level = !s_heartbeat_level;
@@ -835,7 +910,7 @@ void tick_state_machine(void)
     }
 
     xSemaphoreGiveRecursive(s_mutex);
-    mosfet_verifier_post_tick();   // hors mutex — 20ms + 2 lectures I2C
+    mosfet_verifier_post_tick();   // hors mutex — no-op sans INA, sinon 20ms + 2 lectures I2C
 }
 
 // ---------------------------------------------------------------------------
@@ -897,12 +972,15 @@ void state_machine_cmd_reset(void)
         s_longueur_enroulee     = 0.0f;
         s_longueur_derniere_nvs = 0.0f;
         s_longueur_session_m    = 0.0f;
+        s_longueur_deroule_m    = 0.0f;
         config_nvs_sauver_longueur(0.0f);
+        config_nvs_sauver_deroule(0.0f);
         regulation_reset_calibration();
         s_t_rempl_min_s = 5.0f;
         config_nvs_sauver_t_rempl_min(5.0f);
         config_nvs_sauver_machine(&s_cfg_machine);
         mosfet_reset_etat();
+        s_t_session_debut_ms = 0;  // fige s_status.duree_s (session interrompue par urgence)
         entrer_etat(ETAT_VEILLE);
     } else if (s_etat == ETAT_ARRET_FINAL) {
         ESP_LOGI(TAG, "cmd_reset - sortie arret final (manuel)");
@@ -911,7 +989,9 @@ void state_machine_cmd_reset(void)
         s_longueur_enroulee     = 0.0f;
         s_longueur_derniere_nvs = 0.0f;
         s_longueur_session_m    = 0.0f;
+        s_longueur_deroule_m    = 0.0f;
         config_nvs_sauver_longueur(0.0f);
+        config_nvs_sauver_deroule(0.0f);
         config_nvs_sauver_session_active(false);
         regulation_reset_calibration();
         s_t_rempl_min_s = 5.0f;

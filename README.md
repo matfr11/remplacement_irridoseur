@@ -79,6 +79,8 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 
 **Sous-états EN_COURS** : `SOUS_VIDANGE → SOUS_ATTENTE → SOUS_REMPLISSAGE` (la bobine avance pendant SOUS_REMPLISSAGE via cliquet).
 
+**Reprise après PAUSE_PRESSION** : retour par OUVERTURE_CANON (re-stabilisation pression 3 s), puis tempo départ **reprise pour le temps restant** si elle avait été interrompue (sautée si déjà effectuée en entier), puis REMPLISSAGE_POUMON. La session (longueur, durée, bilan) est préservée.
+
 ---
 
 ## Matériel nécessaire

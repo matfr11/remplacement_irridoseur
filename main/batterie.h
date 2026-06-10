@@ -9,24 +9,25 @@
 // Seuils de tension (V)
 #define BATT_V_CHARGE_MIN    13.5f   // Panneau solaire actif
 #define BATT_V_PLEINE_MIN    12.4f   // Batterie pleine
-#define BATT_V_CORRECTE_MIN  11.8f   // Batterie correcte
-#define BATT_V_FAIBLE_MIN    11.5f   // Faible — alerte
-#define BATT_V_CRITIQUE_MIN  11.0f   // Critique — alarme
+#define BATT_V_FAIBLE_MIN    11.5f   // Défaut seuil warn (configurable) — frontière CORRECTE/FAIBLE
+#define BATT_V_CRITIQUE_MIN  11.0f   // Défaut seuil crit (configurable) — frontière FAIBLE/CRITIQUE
 
 #define BATT_V_MAX            14.0f  // Tension max raisonnable
+#define BATT_V_PCT_100        12.6f  // 100 % affiché — plomb chargé au repos
+                                     // (0 % = seuil critique configurable s_crit_v)
 
 typedef enum {
     BATT_ETAT_CHARGE,    // > 13.5V
     BATT_ETAT_PLEINE,    // 12.4..13.5V
-    BATT_ETAT_CORRECTE,  // 11.8..12.4V
-    BATT_ETAT_FAIBLE,    // seuil_warn..11.8V
+    BATT_ETAT_CORRECTE,  // seuil_warn..12.4V
+    BATT_ETAT_FAIBLE,    // seuil_crit..seuil_warn
     BATT_ETAT_CRITIQUE,  // < seuil_crit
 } batt_etat_t;
 
 typedef struct {
     float       voltage_v;
     batt_etat_t etat;
-    int         pourcentage;   // Indicatif 0..100 (11.0V=0%, 12.6V=100%)
+    int         pourcentage;   // Indicatif 0..100 (seuil critique=0%, BATT_V_PCT_100=100%)
 } batt_status_t;
 
 // Initialise le module (no-op : INA3221 déjà init par ina3221_init()).

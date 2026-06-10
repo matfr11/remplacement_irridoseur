@@ -151,6 +151,20 @@ void gpio_ev_poumon_set(bool actif)
     // verifier_apres déplacé dans mosfet_verifier_post_tick() — hors mutex
 }
 
+bool gpio_ev_canon_get(void)
+{
+    int pin = mosfet_secours_actif(PIN_EV_CANON)
+            ? PIN_MOSFET_SECOURS_CANON : PIN_EV_CANON;
+    return gpio_get_level(pin) != 0;
+}
+
+bool gpio_ev_poumon_get(void)
+{
+    int pin = mosfet_secours_actif(PIN_EV_POUMON)
+            ? PIN_MOSFET_SECOURS_POUMON : PIN_EV_POUMON;
+    return gpio_get_level(pin) != 0;
+}
+
 void gpio_all_ev_off(void)
 {
     // Arrêt d'urgence — DIRECT et INCONDITIONNEL, sans surveillance MOSFET.

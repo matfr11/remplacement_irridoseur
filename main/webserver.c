@@ -286,10 +286,13 @@ static bool json_parse_bool(const char *data, const char *key, bool *out)
 static void json_parse_string(const char *data, const char *key, char *out, size_t out_len)
 {
     char search[48];
-    snprintf(search, sizeof(search), "\"%s\":\"", key);
+    snprintf(search, sizeof(search), "\"%s\":", key);
     const char *p = strstr(data, search);
     if (!p) return;
     p += strlen(search);
+    while (*p == ' ') p++;   // tolère "key": "val" — cohérent avec les parseurs float/int/bool
+    if (*p != '"') return;   // valeur non-string
+    p++;
     size_t i = 0;
     while (*p && *p != '"' && i < out_len - 1) out[i++] = *p++;
     out[i] = '\0';

@@ -30,7 +30,8 @@ bool mosfet_test_demarrage(void);
 // Vérification avant commutation — lit INA3221, bascule si incohérence.
 void mosfet_verifier_avant(int pin_ev, bool etat_actuel);
 
-// Vérification après commutation (délai 20ms) — bascule si incohérence.
+// Vérification après commutation — bascule si incohérence.
+// Sans délai interne : la stabilisation 20ms est assurée par mosfet_verifier_post_tick().
 void mosfet_verifier_apres(int pin_ev, bool nouvel_etat);
 
 // Vérification post-tick des deux canaux (délai 20ms, hors mutex).

@@ -98,7 +98,12 @@ static void test_reprise_depuis_pause(void)
     state_machine_test_set_pression(true);
     tick_state_machine();
     mock_time_advance_ms(100);
-    // Reprise via REMPLISSAGE_POUMON avant EN_COURS
+    // Reprise via OUVERTURE_CANON (re-stabilisation 30 ticks), puis REMPLISSAGE_POUMON
+    TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
+    for (int i = 0; i < 30; i++) {
+        tick_state_machine();
+        mock_time_advance_ms(100);
+    }
     TEST_ASSERT_EQUAL_INT(ETAT_REMPLISSAGE_POUMON, state_machine_get_etat());
     state_machine_test_reset();
 }

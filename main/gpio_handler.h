@@ -31,6 +31,12 @@ void gpio_ev_canon_set(bool actif);
 void gpio_ev_poumon_set(bool actif);
 void gpio_all_ev_off(void);     // FAIL-SAFE — coupe tout immédiatement
 
+// État réel des EV — lit le pin actif (principal ou secours après basculement MOSFET).
+// Toujours préférer ces getters à gpio_get_level(PIN_EV_*) : après basculement,
+// le pin principal reste à 0 alors que l'EV est pilotée par OUT3/OUT4.
+bool gpio_ev_canon_get(void);
+bool gpio_ev_poumon_get(void);
+
 // Vitesse capteur
 // Retourne la vitesse calculée sur la fenêtre glissante (m/h), avec facteur.
 // Retourne 0.0 si cycles_sans_impulsion > max_cycles_si.

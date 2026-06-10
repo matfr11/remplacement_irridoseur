@@ -107,8 +107,10 @@ static void test_scenario_timeout_poumon_2tentatives(void)
     // Tentative 1 : 200 ticks → timeout, s_nb_tentatives = 1 → réentrée
     avancer(201);
     TEST_ASSERT_EQUAL_INT(1, state_machine_test_get_nb_tentatives());
-    // Tentative 2 : 200 ticks supplémentaires → s_nb_tentatives = 2 → urgence
-    avancer(201);
+    // Tentative 2 : vidange 5s (50 ticks) PUIS 200 ticks de remplissage effectif
+    // (le chrono s_t_rempl_debut_ms démarre à la réouverture de l'EV, pas à la
+    // réentrée dans l'état) → s_nb_tentatives = 2 → urgence
+    avancer(251);
     TEST_ASSERT_EQUAL_INT(ETAT_ARRET_URGENCE, state_machine_get_etat());
     state_machine_cmd_reset();
 }

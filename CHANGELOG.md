@@ -5,6 +5,28 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [fix/code-review-2] — 2026-06-11 — Corrections revue générale (11 findings)
+
+### Fixed
+- **#1** `state_machine.c` : `s_nb_tentatives` n'est plus remis à 0 dans SOUS_ATTENTE — le compteur de timeouts poumon consécutifs n'est remis à 0 que sur remplissage réussi (sinon la limite « 2 tentatives → urgence » était inopérante en cycle)
+- **#2** `mosfet_surveillance.c` : `mosfet_verifier_post_tick()` sort immédiatement sans INA3221 — supprime 20 ms de délai inutile à chaque tick sur les machines sans module de mesure
+- **#3** `gpio_handler.c/h` : nouveaux getters `gpio_ev_canon_get()` / `gpio_ev_poumon_get()` lisant le pin réellement actif (principal ou secours OUT3/OUT4 après basculement MOSFET) — remplace 3 lectures directes `gpio_get_level(PIN_EV_*)` dans state_machine qui voyaient l'EV « fermée » après basculement
+- **#4** `state_machine.c` : reprise après PAUSE_PRESSION repasse par OUVERTURE_CANON (re-stabilisation pression 30 ticks) ; la tempo départ interrompue **reprend pour le temps restant** (`s_tempo_depart_ecoulee_ms`, cumul multi-coupures), sautée uniquement si déjà effectuée en entier dans la session
+- **#5** `state_machine.c` : bilan de session — `volume_m3` et `dose_moy_mm` calculés depuis `débit abaque × durée effective (hors pauses)` au lieu de `dose_inst_mm` (qui vaut 0 à l'arrêt, plus d'impulsions) — les stats de campagne NVS ne sont plus contaminées par des valeurs nulles
+- **#6** `state_machine.c` : timeout du remplissage initial = `t_rempl_fixe_s` configurable (était 20 s codé en dur) ; chrono armé à l'ouverture réelle de l'EV — la 2ᵉ tentative dispose de son temps plein (l'attente vidange ne compte plus) ; le mode dégradé poumon fonctionne avec des temps > 20 s
+- **#7** `state_machine.c` : `s_t_session_debut_ms = 0` à ARRET_FINAL et cmd_reset — `duree_s` se fige sur la durée finale au lieu de continuer à compter en VEILLE
+- **#8** `state_machine.c` : clé NVS `deroule_m` remise à 0 en fin de session (ARRET_FINAL + les 2 branches de cmd_reset) — plus de faux log « Reboot mid-session » ni de déroulé fantôme après reboot
+- **#9** commentaires heartbeat « GPIO 2 » → PIN_HEARTBEAT (GPIO 23, le GPIO 2 est désormais PIN_RELAIS_CANON) ; log init mosfet avec les macros PIN_* au lieu de numéros en dur
+- **#10** `batterie.c/h` : le seuil d'alerte configurable `batt_warn_v` a maintenant un effet — frontière CORRECTE/FAIBLE (il était mort : branches dupliquées donnant le même état) ; pourcentage calculé entre `s_crit_v` (0 %) et `BATT_V_PCT_100` 12,6 V (était 11,0–12,6 codé en dur) ; `BATT_V_CORRECTE_MIN` supprimé
+- **#11** `webserver.c` : `json_parse_string()` tolère les espaces après `:` (cohérent avec les parseurs float/int/bool) — les clients tiers type Python `json.dumps()` ne voyaient pas leurs champs string
+
+### Tests
+- `test_reprise_depuis_pause`, `scenario_perte_pression` ×2 : flux de reprise mis à jour (OUVERTURE_CANON + 30 ticks avant REMPLISSAGE_POUMON)
+- `test_scenario_timeout_poumon_2tentatives` : 2ᵉ tentative = 50 ticks vidange + 200 ticks remplissage
+- 71 tests host, 0 échec — build ESP-IDF complet sans warning
+
+---
+
 ## [PR-20] — 2026-06-10 — Watchdog matériel TPL5010DDCR
 
 ### Added
