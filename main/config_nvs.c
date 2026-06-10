@@ -3,6 +3,7 @@
 #include "nvs.h"
 #include "esp_log.h"
 #include <string.h>
+#include <math.h>
 
 // Implémentation complète — PR-07
 static const char *TAG = "config_nvs";
@@ -277,9 +278,13 @@ esp_err_t config_nvs_lire_batt_seuils(float *warn_v, float *crit_v)
     nvs_handle_t h;
     if (nvs_open(NS_MACHINE, NVS_READONLY, &h) != ESP_OK) return ESP_OK;
     size_t sz = sizeof(float);
-    if (nvs_get_blob(h, "batt_warn", warn_v, &sz) != ESP_OK) *warn_v = 11.5f;
+    float v;
     sz = sizeof(float);
-    if (nvs_get_blob(h, "batt_crit", crit_v, &sz) != ESP_OK) *crit_v = 11.0f;
+    if (nvs_get_blob(h, "batt_warn", &v, &sz) == ESP_OK && isfinite(v) && v > 10.0f && v < 15.0f)
+        *warn_v = v;
+    sz = sizeof(float);
+    if (nvs_get_blob(h, "batt_crit", &v, &sz) == ESP_OK && isfinite(v) && v > 10.0f && v < 15.0f)
+        *crit_v = v;
     nvs_close(h);
     return ESP_OK;
 }
@@ -302,7 +307,9 @@ esp_err_t config_nvs_lire_t_rempl_min(float *t_s)
     nvs_handle_t h;
     if (nvs_open(NS_MACHINE, NVS_READONLY, &h) != ESP_OK) return ESP_OK;
     size_t sz = sizeof(float);
-    if (nvs_get_blob(h, "t_rempl_min", t_s, &sz) != ESP_OK) *t_s = 5.0f;
+    float v;
+    if (nvs_get_blob(h, "t_rempl_min", &v, &sz) == ESP_OK && isfinite(v) && v > 0.5f && v < 120.0f)
+        *t_s = v;
     nvs_close(h);
     return ESP_OK;
 }

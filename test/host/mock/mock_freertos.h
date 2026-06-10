@@ -5,9 +5,12 @@
 // Tests PC = mono-thread : pas de vrai RTOS, mutex = no-op
 typedef int *SemaphoreHandle_t;
 
-#define xSemaphoreCreateMutex()    ((SemaphoreHandle_t)0)
-#define xSemaphoreTake(m, t)       ((void)0)
-#define xSemaphoreGive(m)          ((void)0)
+#define xSemaphoreCreateMutex()              ((SemaphoreHandle_t)0)
+#define xSemaphoreCreateRecursiveMutex()     ((SemaphoreHandle_t)0)
+#define xSemaphoreTake(m, t)                 ((void)0)
+#define xSemaphoreGive(m)                    ((void)0)
+#define xSemaphoreTakeRecursive(m, t)        ((void)0)
+#define xSemaphoreGiveRecursive(m)           ((void)0)
 
 #define portMAX_DELAY         0xFFFFFFFFUL
 #define vTaskDelay(x)         ((void)0)
