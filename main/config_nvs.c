@@ -78,7 +78,7 @@ esp_err_t config_nvs_lire_programme(int idx, config_programme_t *prog)
     size_t sz = sizeof(config_programme_t);
     ret = nvs_get_blob(h, "prog", prog, &sz);
     nvs_close(h);
-    if (ret == ESP_ERR_NVS_NOT_FOUND) return ESP_OK;
+    if (ret == ESP_ERR_NVS_NOT_FOUND || ret == ESP_ERR_NVS_INVALID_LENGTH) return ESP_OK;
     return ret;
 }
 
@@ -277,8 +277,8 @@ esp_err_t config_nvs_lire_batt_seuils(float *warn_v, float *crit_v)
     *crit_v = 11.0f;
     nvs_handle_t h;
     if (nvs_open(NS_MACHINE, NVS_READONLY, &h) != ESP_OK) return ESP_OK;
-    size_t sz = sizeof(float);
     float v;
+    size_t sz;
     sz = sizeof(float);
     if (nvs_get_blob(h, "batt_warn", &v, &sz) == ESP_OK && isfinite(v) && v > 10.0f && v < 15.0f)
         *warn_v = v;

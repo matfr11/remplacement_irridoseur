@@ -56,6 +56,7 @@ batt_status_t batterie_get_status(void)
     else if (s.voltage_v >= BATT_V_PLEINE_MIN)    s.etat = BATT_ETAT_PLEINE;
     else if (s.voltage_v >= BATT_V_CORRECTE_MIN)  s.etat = BATT_ETAT_CORRECTE;
     else if (s.voltage_v >= s_warn_v)             s.etat = BATT_ETAT_FAIBLE;
+    else if (s.voltage_v >= s_crit_v)             s.etat = BATT_ETAT_FAIBLE;
     else                                          s.etat = BATT_ETAT_CRITIQUE;
 
     float range = 12.6f - 11.0f;

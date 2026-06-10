@@ -159,7 +159,7 @@ static void charger_config_interne(void)
     s_status.prog_tempo_arrivee_on= s_cfg_prog.tempo_arrivee_on;
     s_status.prog_tempo_arrivee_s = s_cfg_prog.tempo_arrivee_s;
     gpio_handler_set_params(s_cfg_machine.fenetre_vitesse, s_cfg_machine.max_cycles_si);
-    gpio_handler_set_mode_degrade_a(s_cfg_machine.cycles_par_tour > 0.0f);
+    gpio_handler_set_vitesse_depuis_cycles_poumon(s_cfg_machine.cycles_par_tour > 0.0f);
     s_status.mode_degrade_poumon  = s_cfg_machine.mode_deg_poumon;
     s_status.mode_degrade_spires  = s_cfg_machine.mode_deg_spires;
     securites_set_bypass_spires(s_cfg_machine.mode_deg_spires);

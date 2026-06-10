@@ -49,11 +49,12 @@ void gpio_handler_tick_cycle(void);
 // Paramètres NVS (appelé à l'init depuis config_nvs)
 void gpio_handler_set_params(int fenetre_vitesse, int max_cycles_si);
 
-// Mode dégradé A — active/désactive l'estimation de vitesse depuis cycles poumon
-void gpio_handler_set_mode_degrade_a(bool actif);
+// Active la mesure de vitesse depuis les cycles poumon (fonctionnement normal enroulement).
+// Appeler à l'init avec cycles_par_tour > 0.
+void gpio_handler_set_vitesse_depuis_cycles_poumon(bool actif);
 
-// Vitesse estimée pour le mode dégradé A (fournie par state_machine chaque tick)
-// = dist_par_cycle_nvs × cycles_par_min × 60
+// Vitesse enroulement calculée depuis les cycles poumon (fournie par state_machine chaque tick).
+// = dist_par_cycle × 3600 / t_cycle_s
 void gpio_handler_set_vitesse_estimee(float vitesse_m_h);
 
 // -----------------------------------------------------------------------------

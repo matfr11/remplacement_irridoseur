@@ -101,6 +101,7 @@ esp_err_t ina3221_init(void)
 float ina3221_lire_tension(int canal)
 {
     if (!s_ok) return 0.0f;
+    if (canal < 1 || canal > 3) { ESP_LOGE(TAG, "canal invalide (%d)", canal); return 0.0f; }
 
     // Registre bus voltage : CH1=0x02, CH2=0x04, CH3=0x06
     uint8_t reg = (uint8_t)(REG_BUS_CH1 + (canal - 1) * 2);
@@ -115,6 +116,7 @@ ina3221_mesure_t ina3221_lire_canal(int canal)
 {
     ina3221_mesure_t m = {0.0f, 0.0f};
     if (!s_ok) return m;
+    if (canal < 1 || canal > 3) { ESP_LOGE(TAG, "canal invalide (%d)", canal); return m; }
 
     uint8_t reg_shunt = (uint8_t)(REG_SHUNT_CH1 + (canal - 1) * 2);
     uint8_t reg_bus   = (uint8_t)(REG_BUS_CH1   + (canal - 1) * 2);
