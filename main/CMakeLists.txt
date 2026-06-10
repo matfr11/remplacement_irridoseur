@@ -1,5 +1,6 @@
 set(SRCS
     "main.c"
+    "tpl5010.c"
     "gpio_handler.c"
     "state_machine.c"
     "securites.c"

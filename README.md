@@ -351,6 +351,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | **PR-19** | ✅ Fait | Surveillance MOSFETs INA3221 I2C — mesure tension+courant EV/batterie — détection CC/HS/EV débranchée — basculement automatique sur relais secours OUT3/OUT4 — 9 tests unitaires embarqués |
 | **fix/PR-19** | ✅ Fait | 8 corrections post-revue : bug critique lecture pin secours, verifier_apres hors mutex, guard INA3221 sur fil EV commun, retour bool basculement, reset relais urgence, filtre tension batterie |
 | **fix/code-review** | ✅ Fait | 10 corrections revue complète : mutex récursif urgence (critique), guards NaN/sqrtf/powf hydraulique, validation NVS floats, guards mécanique, taille OTA, stack telemetry, null-termination strings |
+| **PR-20** | ✅ Fait | Watchdog matériel TPL5010DDCR — GPIO13 DONE, reboot ESP32 via EN si state_machine bloquée > 5,3s (Rext=3,3MΩ), option Kconfig `CONFIG_IRRI_TPL5010` |
 
 ---
 
