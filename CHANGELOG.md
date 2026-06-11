@@ -33,6 +33,13 @@ la batterie affichait 12,5 V « Correcte » et la pression était « OK ».
 - README : pull-ups externes **obligatoires** sur les 4 entrées contacts,
   note INA absent → « Inconnue », correction ligne « fil coupé » du contact
   poumon (= « plein » permanent → remplissage écourté, pas un timeout)
+- **Nouveau `docs/dev/SCHEMA_CABLAGE.md`** : synoptique ASCII complet, bornier,
+  conditionnement des entrées, chaîne de puissance EV, I2C, ordre de montage,
+  checklist de mise sous tension (incl. test fonctionnel « fil coupé »)
+- **Bornier 12 voies redéfini** (rien n'était encore câblé — les layouts README
+  et HARDWARE.md se contredisaient) : puissance à gauche (1-6 : 12V/GND/EV±),
+  signaux à droite (7-12 : vitesse alim+signal, 4 contacts), retour commun des
+  contacts sur la borne 2. README + HARDWARE.md alignés
 
 ---
 

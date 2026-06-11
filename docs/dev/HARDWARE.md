@@ -1,5 +1,9 @@
 # Matériel et câblage — Irrifrance ESP32
 
+> Vue d'ensemble du montage (synoptique, bornier, ordre de montage, checklist de
+> mise sous tension) : [SCHEMA_CABLAGE.md](SCHEMA_CABLAGE.md). Ce document est la
+> référence composant par composant.
+
 ---
 
 ## Carte : ESP32 Quad MOS Switch Module
@@ -37,22 +41,27 @@ Carte de développement AliExpress avec ESP32-D0WD-V3 (ESP32-32E) et 4 canaux MO
 
 ## Bornier 12 voies — tableau complet
 
+Layout retenu (2026-06-11) : **puissance à gauche (1-6), signaux à droite (7-12)**
+— les transitoires de commutation EV ne longent pas les entrées 3,3 V. Schéma
+détaillé : [SCHEMA_CABLAGE.md](SCHEMA_CABLAGE.md#bornier-12-voies--affectation).
+
 | # | Signal | Direction | Câble | Conditionnement |
 |---|---|---|---|---|
-| 1 | 12V+ batterie | IN | Rouge | Directement sur borne alim carte |
-| 2 | GND | — | Noir | Masse commune |
-| 3 | EV_CANON 12V (+) | OUT | — | Via relais SPDT → MOSFET OUT1 ou OUT3 selon état secours |
-| 4 | EV_POUMON 12V (+) | OUT | — | Via relais SPDT → MOSFET OUT2 ou OUT4 selon état secours |
-| 5 | Pressostat A | IN | — | Pull-up 10kΩ vers 3.3V → GPIO 25 |
-| 6 | Pressostat B | IN | — | GND |
-| 7 | Fin de course A | IN | — | Pull-up 10kΩ vers 3.3V → GPIO 35 |
-| 8 | Fin de course B | IN | — | GND |
-| 9 | Sécurité spires A | IN | — | Pull-up 10kΩ vers 3.3V → GPIO 32 |
-| 10 | Sécurité spires B | IN | — | GND |
-| 11 | Contact poumon A | IN | — | Pull-up 10kΩ vers 3.3V → GPIO 33 |
-| 12 | Contact poumon B | IN | — | GND |
+| 1 | 12V+ batterie | IN | Rouge | → VIN carte, repiquage alim capteur vitesse → borne 7 |
+| 2 | GND batterie | — | Noir | Masse commune + retour commun des 4 contacts |
+| 3 | EV_CANON + | OUT | — | ← COM relais 1 (NC→OUT1 / NO→OUT3) via INA3221 CH1 |
+| 4 | EV_CANON − | OUT | — | GND |
+| 5 | EV_POUMON + | OUT | — | ← COM relais 2 (NC→OUT2 / NO→OUT4) via INA3221 CH2 |
+| 6 | EV_POUMON − | OUT | — | GND |
+| 7 | Capteur vitesse alim | OUT | — | 12V repiqué de la borne 1 |
+| 8 | Capteur vitesse signal | IN | — | Diviseur 10 kΩ/3,3 kΩ → GPIO 34 |
+| 9 | Fin de course | IN | — | Pull-up 10 kΩ vers 3,3V → GPIO 35 |
+| 10 | Sécurité spires | IN | — | Pull-up 10 kΩ vers 3,3V → GPIO 32 |
+| 11 | Contact poumon plein | IN | — | Pull-up 10 kΩ vers 3,3V → GPIO 33 |
+| 12 | Pressostat | IN | — | Pull-up 10 kΩ vers 3,3V → GPIO 25 |
 
-> Capteur vitesse (GPIO 34) : connexion directe sur borne GPIO ESP32.
+> Le 2ᵉ fil de chaque contact NC est chaîné en un **retour commun** côté machine,
+> raccordé sur la borne 2 (courants ≈ 0,3 mA/contact — aucune chute sensible).
 > Tension batterie mesurée par INA3221 CH3 (I2C) — plus de diviseur résistif sur GPIO 36.
 
 ---
@@ -73,6 +82,11 @@ Logique :
 
 Cette convention garantit le fail-safe câblage : si un fil se coupe, le système détecte une
 anomalie (HIGH) plutôt que d'ignorer le problème.
+
+> ⚠️ **Règle unifiée (décision 2026-06-11)** : le firmware n'active **aucune pull-up
+> interne** — le fail-safe repose entièrement sur les 10 kΩ externes, qui sont donc
+> **obligatoires sur les 4 entrées contacts, y compris sur banc de test**. Sans
+> résistance, la broche flotte et un fil coupé peut être lu « tout va bien ».
 
 ### Tableau de référence
 
@@ -245,7 +259,7 @@ sur la LED verte de la carte). Désactivé par défaut (`heartbeat_rc_on = false
 | Relais SPDT au repos | Multimètre continuité COM–NC | Fermé (LOW sur GPIO 2/4) |
 | TPL5010 DONE (GPIO 13) | LED 330Ω sur GPIO 13 ou log serie filtre tpl5010:D | 100ms HIGH toutes les ~2s |
 | TPL5010 reboot | Commenter `tpl5010_done_pulse()` + flash + observer monitor | Reboot après ~5.3s |
-| Continuité capteur vitesse | Mode continuité bornes 9-10 | Contact fermé (LOW) au repos |
+| Continuité contacts NC | Mode continuité bornes 9-12 ↔ borne 2, capteurs branchés | Fermé (LOW) au repos |
 | t_vidange | Chronomètre : temps entre EV_POUMON=OFF et cliquet retracté | 0.5..3s selon machine |
 | cycles_par_tour | Compter les cycles poumon pendant un tour de bobine | 40 sur ST1 Bis |
 

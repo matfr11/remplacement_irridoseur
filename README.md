@@ -142,18 +142,21 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 
 ### Bornier 12 voies
 
+Puissance à gauche (1-6), signaux à droite (7-12) — schéma complet et ordre de
+montage : [docs/dev/SCHEMA_CABLAGE.md](docs/dev/SCHEMA_CABLAGE.md).
+
 | Borne | Signal |
 |---|---|
-| 1 | 12V batterie |
-| 2 | GND |
-| 3 | Capteur vitesse → GPIO 34 via diviseur |
-| 4 | Fin de course → GPIO 35 via pull-up |
-| 5 | Sécurité spires → GPIO 32 via pull-up |
-| 6 | Contact poumon plein → GPIO 33 via pull-up |
-| 7 | Pressostat → GPIO 25 via pull-up |
-| 8 | GND capteurs |
-| 9-10 | EV_CANON + / − → COM relais 1 → (NC→OUT1 / NO→OUT3) → INA3221 CH1 |
-| 11-12 | EV_POUMON + / − → COM relais 2 → (NC→OUT2 / NO→OUT4) → INA3221 CH2 |
+| 1 | 12V+ batterie (+ repiquage alim capteur vitesse → borne 7) |
+| 2 | GND batterie + retour commun des contacts |
+| 3-4 | EV_CANON + / − ← COM relais 1 (NC→OUT1 / NO→OUT3) via INA3221 CH1 |
+| 5-6 | EV_POUMON + / − ← COM relais 2 (NC→OUT2 / NO→OUT4) via INA3221 CH2 |
+| 7 | Capteur vitesse — alim 12V |
+| 8 | Capteur vitesse — signal → diviseur 10k/3,3k → GPIO 34 |
+| 9 | Fin de course → pull-up 10k → GPIO 35 |
+| 10 | Sécurité spires → pull-up 10k → GPIO 32 |
+| 11 | Contact poumon plein → pull-up 10k → GPIO 33 |
+| 12 | Pressostat → pull-up 10k → GPIO 25 |
 
 > La mesure tension batterie (anciennement bornes 13-14 + diviseur 100 kΩ/27 kΩ) est désormais assurée par l'INA3221 CH3 câblé directement sur les bornes 1 (12V) et 2 (GND).
 > Si l'INA3221 est absent ou débranché, l'UI affiche l'état batterie **« Inconnue »** (gris, 0 V) — aucune tension n'est inventée.
@@ -379,7 +382,8 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 |---|---|---|
 | [docs/dev/GETTING_STARTED.md](docs/dev/GETTING_STARTED.md) | Développeur | Prérequis, build, flash, tests, simulateur |
 | [docs/dev/ARCHITECTURE.md](docs/dev/ARCHITECTURE.md) | Développeur | Vue d'ensemble, flux données, ajouter machine/abaque |
-| [docs/dev/HARDWARE.md](docs/dev/HARDWARE.md) | Développeur / installateur | Câblage détaillé, diviseurs de tension, mesures terrain |
+| [docs/dev/HARDWARE.md](docs/dev/HARDWARE.md) | Développeur / installateur | Référence composant par composant, mesures terrain |
+| [docs/dev/SCHEMA_CABLAGE.md](docs/dev/SCHEMA_CABLAGE.md) | Installateur | Synoptique ASCII, bornier, montage, checklist mise sous tension |
 | [docs/dev/API_WEBSOCKET.md](docs/dev/API_WEBSOCKET.md) | Développeur | Format JSON complet, toutes les commandes, exemple session |
 | [docs/dev/CONTRIBUER.md](docs/dev/CONTRIBUER.md) | Contributeur | Conventions commits, workflow Git, règles nommage |
 | [docs/dev/TROUBLESHOOTING.md](docs/dev/TROUBLESHOOTING.md) | Développeur / utilisateur | Problèmes connus, logs Serial, reset NVS, OTA |
