@@ -132,8 +132,6 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         "\"cfg_t_vidange_s\":%.1f,"
         "\"cfg_kp_regulation\":%.3f,"
         "\"cfg_n_cycles_calib\":%d,"
-        "\"cfg_fenetre_vitesse\":%d,"
-        "\"cfg_max_cycles_si\":%d,"
         "\"cfg_t_rempl_fixe_s\":%.1f,"
         "\"cfg_denivele_m\":%.1f,"
         "\"cfg_machine_active\":%d,"
@@ -205,8 +203,6 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         s->cfg_t_vidange_s,
         s->cfg_kp_regulation,
         s->cfg_n_cycles_calib,
-        s->cfg_fenetre_vitesse,
-        s->cfg_max_cycles_si,
         s->cfg_t_rempl_fixe_s,
         s->cfg_denivele_m,
         s->cfg_machine_active,
@@ -381,8 +377,6 @@ static void handle_ws_command(const char *data, size_t len)
         if (json_parse_float(data, "facteur_correction", &f)) cfg.facteur_correction = f;
         if (json_parse_float(data, "kp_regulation",      &f)) cfg.kp_regulation      = f;
         if (json_parse_int  (data, "n_cycles_calib",     &n)) cfg.n_cycles_calib     = n;
-        if (json_parse_int  (data, "fenetre_vitesse",    &n)) cfg.fenetre_vitesse     = n;
-        if (json_parse_int  (data, "max_cycles_si",      &n)) cfg.max_cycles_si       = n;
         if (json_parse_float(data, "t_vidange_s",        &f)) cfg.t_vidange_s         = f;
         if (json_parse_float(data, "t_rempl_fixe_s",     &f)) cfg.t_rempl_fixe_s      = f;
         if (json_parse_float(data, "denivele_m",         &f)) cfg.denivele_m          = f;

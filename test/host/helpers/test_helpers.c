@@ -12,8 +12,6 @@ void config_set_programme_valide(void)
     m.t_vidange_s     = 5.0f;
     m.kp_regulation   = 0.1f;
     m.n_cycles_calib  = 3;
-    m.fenetre_vitesse = 5;
-    m.max_cycles_si   = 15;
     config_nvs_sauver_machine(&m);
 
     config_programme_t p = {

@@ -132,8 +132,6 @@ typedef struct {
     float           cfg_t_vidange_s;
     float           cfg_kp_regulation;
     int             cfg_n_cycles_calib;
-    int             cfg_fenetre_vitesse;
-    int             cfg_max_cycles_si;
     float           cfg_t_rempl_fixe_s;
     float           cfg_denivele_m;
     int             cfg_machine_active;

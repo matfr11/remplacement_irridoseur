@@ -90,7 +90,6 @@ static void test_machine_roundtrip(void)
     config_machine_t cfg_out = CFG_MACHINE_DEFAUT;
     cfg_out.facteur_correction = 1.23f;
     cfg_out.kp_regulation      = 0.42f;
-    cfg_out.fenetre_vitesse    = 7;
     cfg_out.cycles_par_tour    = 40.0f;
 
     esp_err_t ret = config_nvs_sauver_machine(&cfg_out);
@@ -102,7 +101,6 @@ static void test_machine_roundtrip(void)
 
     assert_near(1.23f,  cfg_in.facteur_correction, EPSILON, "machine_roundtrip_facteur");
     assert_near(0.42f,  cfg_in.kp_regulation,      EPSILON, "machine_roundtrip_kp");
-    assert_int_eq(7,    cfg_in.fenetre_vitesse,             "machine_roundtrip_fenetre");
     assert_near(40.0f,  cfg_in.cycles_par_tour,    EPSILON, "machine_roundtrip_cycles_par_tour");
 }
 

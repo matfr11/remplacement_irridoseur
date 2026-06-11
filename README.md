@@ -198,7 +198,7 @@ test/host/                  — tests unitaires PC (Unity/CMake, sans matériel)
 |---|---|---|---|
 | `state_machine_task` | 10 (haute) | 100 ms | Régulation, sécurités, machine d'états |
 | `telemetry_task` | 5 | 500 ms | Diffusion statut JSON WebSocket |
-| ISR `isr_capteur_vitesse` | IRAM | événement | Comptage impulsions, horodatage |
+| ISR `isr_capteur_vitesse` | IRAM | événement | Comptage impulsions (mesure de longueur) |
 
 ### NVS — 4 namespaces
 

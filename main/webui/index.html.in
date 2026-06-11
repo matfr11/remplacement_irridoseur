@@ -304,9 +304,7 @@ details>summary::-webkit-details-marker{display:none}
           <div class="field"><label>Gain Kp</label><input id="m-kp" type="number" min="0" max="2" step="0.01"></div>
           <div class="field-row">
             <div class="field"><label>Cycles avant correction vitesse</label><input id="m-ncalib" type="number" min="1" max="20" step="1" title="Nombre de cycles poumon mesurés avant d'activer la correction de vitesse par Kp"></div>
-            <div class="field"><label>Impulsions fenêtre vitesse</label><input id="m-fenetre" type="number" min="2" max="20" step="1" title="Nombre d'impulsions capteur utilisées pour calculer la vitesse moyenne glissante"></div>
           </div>
-          <div class="field"><label>Cycles poumon sans impulsion → vitesse=0</label><input id="m-maxcyc" type="number" min="5" max="60" step="1" title="Si la bobine ne tourne pas pendant N cycles poumon consécutifs, la vitesse affichée passe à 0"></div>
           <div class="field" id="m-cyclestour-wrap">
             <label>Cycles poumon / tour bobine</label>
             <input id="m-cyclestour" type="number" min="0" max="200" step="1" title="Marquer le tambour, compter les cycles poumon pour 1 tour complet">
@@ -674,8 +672,6 @@ function loadConfigFromStatus() {
   if (s.cfg_t_vidange_s != null)     setField('m-tvidange', s.cfg_t_vidange_s);
   if (s.cfg_kp_regulation != null)   setField('m-kp', s.cfg_kp_regulation);
   if (s.cfg_n_cycles_calib != null)  setField('m-ncalib', s.cfg_n_cycles_calib);
-  if (s.cfg_fenetre_vitesse != null) setField('m-fenetre', s.cfg_fenetre_vitesse);
-  if (s.cfg_max_cycles_si != null)   setField('m-maxcyc', s.cfg_max_cycles_si);
   if (s.cfg_t_rempl_fixe_s != null)  setField('m-trempl', s.cfg_t_rempl_fixe_s);
   if (s.cfg_denivele_m != null)      setField('m-denivele', s.cfg_denivele_m);
   if (s.cfg_machine_active != null)  setField('m-machine', s.cfg_machine_active);
@@ -786,8 +782,6 @@ function saveMachine() {
     facteur_correction: parseFloat(st.facteur_correction) || 1.0,
     kp_regulation: parseFloat(document.getElementById('m-kp').value) || 0.1,
     n_cycles_calib: parseInt(document.getElementById('m-ncalib').value) || 3,
-    fenetre_vitesse: parseInt(document.getElementById('m-fenetre').value) || 5,
-    max_cycles_si: parseInt(document.getElementById('m-maxcyc').value) || 15,
     mode_deg_poumon: document.getElementById('m-mdp').checked,
     mode_deg_spires: document.getElementById('m-mds').checked,
     t_rempl_fixe_s: parseFloat(document.getElementById('m-trempl').value) || 0,
@@ -808,8 +802,6 @@ function resetEtalonnage() {
     t_vidange_s: parseFloat(document.getElementById('m-tvidange').value) || 0,
     kp_regulation: parseFloat(document.getElementById('m-kp').value) || 0.1,
     n_cycles_calib: parseInt(document.getElementById('m-ncalib').value) || 3,
-    fenetre_vitesse: parseInt(document.getElementById('m-fenetre').value) || 5,
-    max_cycles_si: parseInt(document.getElementById('m-maxcyc').value) || 15,
     mode_deg_poumon: document.getElementById('m-mdp').checked,
     mode_deg_spires: document.getElementById('m-mds').checked,
     t_rempl_fixe_s: parseFloat(document.getElementById('m-trempl').value) || 0,
@@ -839,8 +831,6 @@ function openDerouleCorrection() {
         t_vidange_s: st.cfg_t_vidange_s || 0,
         kp_regulation: st.cfg_kp_regulation || 0.1,
         n_cycles_calib: st.cfg_n_cycles_calib || 3,
-        fenetre_vitesse: st.cfg_fenetre_vitesse || 5,
-        max_cycles_si: st.cfg_max_cycles_si || 15,
         mode_deg_poumon: st.mode_degrade_poumon || false,
         mode_deg_spires: st.mode_degrade_spires || false,
         t_rempl_fixe_s: st.cfg_t_rempl_fixe_s || 0,

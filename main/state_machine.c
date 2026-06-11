@@ -174,7 +174,6 @@ static void charger_config_interne(void)
     s_status.prog_tempo_depart_s  = s_cfg_prog.tempo_depart_s;
     s_status.prog_tempo_arrivee_on= s_cfg_prog.tempo_arrivee_on;
     s_status.prog_tempo_arrivee_s = s_cfg_prog.tempo_arrivee_s;
-    gpio_handler_set_params(s_cfg_machine.fenetre_vitesse, s_cfg_machine.max_cycles_si);
     gpio_handler_set_vitesse_depuis_cycles_poumon(s_cfg_machine.cycles_par_tour > 0.0f);
     s_status.mode_degrade_poumon  = s_cfg_machine.mode_deg_poumon;
     s_status.mode_degrade_spires  = s_cfg_machine.mode_deg_spires;
@@ -435,8 +434,6 @@ static void handle_en_cours(const entrees_t *e, int64_t t_dans_etat)
         return;
     }
 
-    gpio_handler_tick_cycle();
-
     switch (s_sous_etat) {
 
     case SOUS_VIDANGE: {
@@ -540,7 +537,7 @@ static void handle_en_cours(const entrees_t *e, int64_t t_dans_etat)
                     &alerte);
 
                 if (regulation_get_nb_cycles() >= s_cfg_machine.n_cycles_calib) {
-                    float v_reel = gpio_get_vitesse_m_h(s_cfg_machine.facteur_correction);
+                    float v_reel = gpio_get_vitesse_m_h();
                     t_att = correction_vitesse(t_att, v_reel, v_cible_m_h, s_cfg_machine.kp_regulation);
                 }
 
@@ -799,7 +796,7 @@ void tick_state_machine(void)
     s_status.mode_degrade_spires  = s_cfg_machine.mode_deg_spires;
     s_status.mesure_deroule_m     = s_mesure_deroule_m;
     s_status.vitesse_cible_m_h    = s_vitesse_cible_m_h;
-    s_status.vitesse_m_h          = gpio_get_vitesse_m_h(s_cfg_machine.facteur_correction);
+    s_status.vitesse_m_h          = gpio_get_vitesse_m_h();
 
     // Hydraulique, agronomie, mécanique
     {
@@ -869,8 +866,6 @@ void tick_state_machine(void)
     s_status.cfg_t_vidange_s      = s_cfg_machine.t_vidange_s;
     s_status.cfg_kp_regulation    = s_cfg_machine.kp_regulation;
     s_status.cfg_n_cycles_calib   = s_cfg_machine.n_cycles_calib;
-    s_status.cfg_fenetre_vitesse  = s_cfg_machine.fenetre_vitesse;
-    s_status.cfg_max_cycles_si    = s_cfg_machine.max_cycles_si;
     s_status.cfg_t_rempl_fixe_s   = s_cfg_machine.t_rempl_fixe_s;
     s_status.cfg_denivele_m       = s_cfg_machine.denivele_m;
     s_status.cfg_machine_active   = s_cfg_machine.machine_active;

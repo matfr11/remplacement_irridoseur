@@ -5,6 +5,9 @@
 
 // Tests unitaires GPIO handler — PR-02
 // Exécutés au démarrage quand CONFIG_IRRI_ENABLE_TESTS=y (hors production)
+// NOTE : le calcul de vitesse par fenêtre d'impulsions a été retiré (legacy) —
+// les impulsions ne servent plus qu'à la mesure de longueur. La vitesse vient
+// exclusivement du timing des cycles poumon (set_vitesse_estimee).
 static const char *TAG = "test_gpio";
 
 #define PASS(name)  ESP_LOGI(TAG, "PASS  %s", name)
@@ -24,128 +27,16 @@ static void injecter_pulses(int n, int64_t interval_us)
 }
 
 // =============================================================================
-// Test 1 — Calcul vitesse nominal
-// 5 pulses espacés de 1s, dist_pulse = 1.0m, facteur = 1.0
-// dt = 4s (entre pulse[0]=0 et pulse[4]=4s)
-// vitesse_m_h = 5 × 1.0 × 1.0 / 4.0 × 3600 = 4500.0
-// =============================================================================
-static void test_vitesse_nominale(void)
-{
-    gpio_handler_test_reset();
-    gpio_handler_set_params(5, 15);
-    gpio_handler_set_dist_pulse_m(1.0f);
-    injecter_pulses(5, 1000000LL);  // 5 pulses à 1s
-
-    float v = gpio_get_vitesse_m_h(1.0f);
-    float expected = 5.0f * 1.0f * 1.0f / 4.0f * 3600.0f;  // 4500.0
-
-    if (fabsf(v - expected) < TOL_MH) {
-        PASS("vitesse_nominale");
-    } else {
-        FAIL("vitesse_nominale", "attendu=%.1f obtenu=%.1f", expected, v);
-    }
-}
-
-// =============================================================================
-// Test 2 — Facteur de correction
-// Même injection, facteur = 0.5 → vitesse divisée par 2
-// =============================================================================
-static void test_facteur_correction(void)
-{
-    gpio_handler_test_reset();
-    gpio_handler_set_params(5, 15);
-    gpio_handler_set_dist_pulse_m(1.0f);
-    injecter_pulses(5, 1000000LL);
-
-    float v = gpio_get_vitesse_m_h(0.5f);
-    float expected = 5.0f * 1.0f * 0.5f / 4.0f * 3600.0f;  // 2250.0
-
-    if (fabsf(v - expected) < TOL_MH) {
-        PASS("facteur_correction");
-    } else {
-        FAIL("facteur_correction", "attendu=%.1f obtenu=%.1f", expected, v);
-    }
-}
-
-// =============================================================================
-// Test 3 — Vitesse nulle si dist_pulse non initialisée
-// =============================================================================
-static void test_vitesse_sans_dist_pulse(void)
-{
-    gpio_handler_test_reset();
-    gpio_handler_set_params(5, 15);
-    // dist_pulse_m pas initialisée (= 0.0)
-    injecter_pulses(5, 1000000LL);
-
-    float v = gpio_get_vitesse_m_h(1.0f);
-    if (fabsf(v) < TOL_MH) {
-        PASS("vitesse_sans_dist_pulse");
-    } else {
-        FAIL("vitesse_sans_dist_pulse", "attendu=0.0 obtenu=%.1f", v);
-    }
-}
-
-// =============================================================================
-// Test 4 — Vitesse nulle si fenêtre < 2 pulses
-// =============================================================================
-static void test_fenetre_insuffisante(void)
-{
-    gpio_handler_test_reset();
-    gpio_handler_set_params(5, 15);
-    gpio_handler_set_dist_pulse_m(1.0f);
-    injecter_pulses(1, 1000000LL);  // un seul pulse
-
-    float v = gpio_get_vitesse_m_h(1.0f);
-    if (fabsf(v) < TOL_MH) {
-        PASS("fenetre_insuffisante");
-    } else {
-        FAIL("fenetre_insuffisante", "attendu=0.0 obtenu=%.1f", v);
-    }
-}
-
-// =============================================================================
-// Test 5 — Vitesse nulle après timeout (cycles_sans_impulsion > max)
-// =============================================================================
-static void test_timeout_cycles(void)
-{
-    gpio_handler_test_reset();
-    gpio_handler_set_params(5, 3);  // max = 3 cycles
-    gpio_handler_set_dist_pulse_m(1.0f);
-    injecter_pulses(5, 1000000LL);
-
-    // Vérifier que la vitesse est valide avant le timeout
-    float v_avant = gpio_get_vitesse_m_h(1.0f);
-    if (fabsf(v_avant) < TOL_MH) {
-        FAIL("timeout_cycles", "vitesse avant timeout attendue non-nulle, obtenu=%.1f", v_avant);
-        return;
-    }
-
-    // Simuler 4 ticks sans impulsion (> max=3)
-    for (int i = 0; i < 4; i++) {
-        gpio_handler_tick_cycle();
-    }
-
-    float v_apres = gpio_get_vitesse_m_h(1.0f);
-    if (fabsf(v_apres) < TOL_MH) {
-        PASS("timeout_cycles");
-    } else {
-        FAIL("timeout_cycles", "attendu=0.0 apres timeout, obtenu=%.1f", v_apres);
-    }
-}
-
-// =============================================================================
-// Test 6 — Vitesse depuis cycles poumon — retourne vitesse estimée injectée
+// Test 1 — Vitesse depuis cycles poumon — retourne vitesse estimée injectée
 // =============================================================================
 static void test_vitesse_depuis_cycles_poumon(void)
 {
     gpio_handler_test_reset();
-    gpio_handler_set_params(5, 15);
-    // Pas de pulses, pas de dist_pulse — mode A fournit la vitesse
     float vitesse_estimee = 45.7f;
     gpio_handler_set_vitesse_depuis_cycles_poumon(true);
     gpio_handler_set_vitesse_estimee(vitesse_estimee);
 
-    float v = gpio_get_vitesse_m_h(1.0f);
+    float v = gpio_get_vitesse_m_h();
     if (fabsf(v - vitesse_estimee) < TOL_MH) {
         PASS("vitesse_depuis_cycles_poumon");
     } else {
@@ -154,32 +45,41 @@ static void test_vitesse_depuis_cycles_poumon(void)
 }
 
 // =============================================================================
-// Test 7 — Vitesse cycles poumon désactivée — retour au calcul ISR
+// Test 2 — Mode cycles poumon désactivé — vitesse nulle (aucune autre source)
 // =============================================================================
-static void test_vitesse_depuis_cycles_poumon_desactive(void)
+static void test_vitesse_mode_desactive(void)
 {
     gpio_handler_test_reset();
-    gpio_handler_set_params(5, 15);
-    gpio_handler_set_dist_pulse_m(1.0f);
     gpio_handler_set_vitesse_depuis_cycles_poumon(true);
     gpio_handler_set_vitesse_estimee(999.0f);
 
-    // Désactiver le mode A et injecter des pulses réels
     gpio_handler_set_vitesse_depuis_cycles_poumon(false);
-    injecter_pulses(5, 1000000LL);
 
-    float v = gpio_get_vitesse_m_h(1.0f);
-    float expected = 5.0f * 1.0f * 1.0f / 4.0f * 3600.0f;  // 4500.0
-
-    if (fabsf(v - expected) < TOL_MH) {
-        PASS("vitesse_depuis_cycles_poumon_desactive");
+    float v = gpio_get_vitesse_m_h();
+    if (fabsf(v) < TOL_MH) {
+        PASS("vitesse_mode_desactive");
     } else {
-        FAIL("vitesse_depuis_cycles_poumon_desactive", "attendu=%.1f obtenu=%.1f", expected, v);
+        FAIL("vitesse_mode_desactive", "attendu=0.0 obtenu=%.1f", v);
     }
 }
 
 // =============================================================================
-// Test 8 — Compteur impulsions et reset
+// Test 3 — Vitesse nulle après reset (état initial)
+// =============================================================================
+static void test_vitesse_apres_reset(void)
+{
+    gpio_handler_test_reset();
+
+    float v = gpio_get_vitesse_m_h();
+    if (fabsf(v) < TOL_MH) {
+        PASS("vitesse_apres_reset");
+    } else {
+        FAIL("vitesse_apres_reset", "attendu=0.0 obtenu=%.1f", v);
+    }
+}
+
+// =============================================================================
+// Test 4 — Compteur impulsions et reset (mesure de longueur)
 // =============================================================================
 static void test_compteur_impulsions(void)
 {
@@ -203,7 +103,7 @@ static void test_compteur_impulsions(void)
 }
 
 // =============================================================================
-// Test 9 — Lecture entrées (smoke test — valeurs dépendent du câblage réel)
+// Test 5 — Lecture entrées (smoke test — valeurs dépendent du câblage réel)
 // =============================================================================
 static void test_lire_entrees(void)
 {
@@ -223,13 +123,9 @@ void test_gpio_run(void)
 {
     ESP_LOGI(TAG, "=== Tests GPIO — PR-02 ===");
 
-    test_vitesse_nominale();
-    test_facteur_correction();
-    test_vitesse_sans_dist_pulse();
-    test_fenetre_insuffisante();
-    test_timeout_cycles();
     test_vitesse_depuis_cycles_poumon();
-    test_vitesse_depuis_cycles_poumon_desactive();
+    test_vitesse_mode_desactive();
+    test_vitesse_apres_reset();
     test_compteur_impulsions();
     test_lire_entrees();
 

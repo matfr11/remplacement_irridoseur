@@ -63,8 +63,12 @@ CAPTEURS PHYSIQUES
 ──────────────────
 GPIO 34 (impulsions magnétiques)
   → ISR gpio_handler.c (anti-rebond 50ms)
-  → Buffer fenêtre glissante (5 impulsions par défaut)
-  → gpio_get_vitesse_m_h(facteur_correction) → float vitesse_m_h
+  → Compteur d'impulsions (mesure de longueur : déroulé + progression par cycle)
+  → gpio_get_impulsions() / gpio_reset_impulsions_cycle()
+
+Vitesse d'enroulement (m/h)
+  → Calculée par state_machine.c depuis le timing des cycles poumon
+  → gpio_handler_set_vitesse_estimee() → gpio_get_vitesse_m_h()
 
 GPIO 35, 32, 33, 25 (contacts NC)
   → gpio_handler_lire_entrees() → entrees_t { fin_course, secu_spires, poumon_plein, pression_ok }

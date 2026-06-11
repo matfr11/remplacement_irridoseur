@@ -12,7 +12,7 @@
 1. `cfg_valide = false` — programme non configuré (dose, largeur, buse ou pression = 0)
    → Aller dans Config → Programme → remplir tous les champs
 2. `pression_ok = false` — pressostat absent au démarrage
-   → Vérifier l'alimentation eau et le branchement pressostat (GPIO 27)
+   → Vérifier l'alimentation eau et le branchement pressostat (GPIO 25)
 3. `fin_course = true` — canon en position rentrée
    → Dérouler le tuyau manuellement pour libérer le fin de course
 4. `s_demarrage_autorise = false` — l'ESP32 attendait déjà un start qui n'est pas venu
@@ -25,12 +25,13 @@
 **Symptôme** : session active, bobine qui tourne, mais `vitesse_m_h = 0`.
 
 **Causes** :
-1. Capteur vitesse non câblé ou diviseur de tension manquant
-   → Vérifier GPIO 34, diviseur 10kΩ/3.3kΩ
-2. `max_cycles_si` dépassé — trop de cycles poumon sans impulsion
-   → Vérifier le capteur vitesse avec un multimètre (continuité quand pastille en face)
-3. Câble capteur coupé → GPIO 34 flottant → impulsions parasites ou absence d'impulsions
-   → Mode dégradé A automatique si `cycles_par_tour > 0`
+1. `cycles_par_tour` non renseigné (= 0) — la vitesse est calculée depuis le timing
+   des cycles poumon, qui nécessite ce paramètre
+   → Config → Machine → renseigner le nombre de cycles poumon par tour de bobine
+2. Aucun cycle poumon encore terminé (la vitesse s'affiche après le premier cycle complet)
+3. Capteur d'impulsions non câblé (GPIO 34) — n'affecte que la mesure de LONGUEUR,
+   pas la vitesse (le calcul par impulsions a été retiré)
+   → Vérifier GPIO 34, diviseur 10kΩ/3.3kΩ si la longueur ne progresse pas
 
 ---
 

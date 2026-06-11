@@ -48,7 +48,7 @@ updated: 2026-05-31
 │                                                                             │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
 │  │  gpio_handler.c                                                      │   │
-│  │  ISR vitesse (PIN 34) — fenêtre glissante — gpio_get_vitesse_m_h()  │   │
+│  │  ISR impulsions (PIN 34) — comptage longueur — gpio_get_vitesse_m_h()│   │
 │  │  gpio_ev_canon_set() / gpio_ev_poumon_set() / gpio_all_ev_off()     │   │
 │  │  gpio_handler_lire_entrees() — snapshot atomique                    │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
@@ -87,7 +87,7 @@ EN PREMIER dans `tick_state_machine()`, avant la lecture des entrées et le trai
 | `main/state_machine.h` | Types `etat_machine_t`, `machine_status_t`, `session_summary_t`, API |
 | `main/securites.c` | Watchdog SEC-1/SEC-2, bypass spires |
 | `main/securites.h` | `securites_watchdog()`, `securites_set_bypass_spires()` |
-| `main/gpio_handler.c` | ISR vitesse, fenêtre glissante, snapshot entrées, sorties EV |
+| `main/gpio_handler.c` | ISR impulsions (comptage longueur), vitesse cycles poumon, snapshot entrées, sorties EV |
 | `main/gpio_handler.h` | `entrees_t`, API gpio |
 | `main/gpio_config.h` | Tous les `#define PIN_*`, `NB_PASTILLES`, `DEBOUNCE_VITESSE_MS` |
 | `main/regulation.c` | Feedforward T_attente, correction Kp, buffer dist/cycle |
@@ -282,8 +282,6 @@ Broadcast toutes les 500ms depuis `telemetry_task`. Taille max ~3072 bytes (JSON
   "cfg_t_vidange_s": 0.0,
   "cfg_kp_regulation": 0.1,
   "cfg_n_cycles_calib": 3,
-  "cfg_fenetre_vitesse": 5,
-  "cfg_max_cycles_si": 15,
   "cfg_t_rempl_fixe_s": 0.0,
   "cfg_denivele_m": 0.0,
   "cfg_machine_active": 0,

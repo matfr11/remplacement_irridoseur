@@ -174,8 +174,6 @@ float v_bat = v_adc * (BATT_R1_KOHM + BATT_R2_KOHM) / BATT_R2_KOHM;
 | `t_vidange` | `s_cfg_machine.t_vidange_s` | Soustrait dans calcul T_attente → T_attente réduit |
 | `kp` | `s_cfg_machine.kp_regulation` | Amplitude correction proportionnelle vitesse |
 | `n_calib` | `s_cfg_machine.n_cycles_calib` | Nb cycles avant activation correction Kp |
-| `fenetre_v` | `s_cfg_machine.fenetre_vitesse` | Nb impulsions fenêtre glissante vitesse (gpio_handler) |
-| `max_cycles` | `s_cfg_machine.max_cycles_si` | Seuil cycles sans impulsion → vitesse = 0 |
 | `dist_cycle` | `s_cfg_machine.dist_cycle_nvs` | Valeur initiale dist/cycle (avant calibration) |
 | `facteur_cor` | `s_cfg_machine.facteur_correction` | Multiplié sur dist_pulse_m pour étalonnage |
 | `cycles_tour` | `s_cfg_machine.cycles_par_tour` | Si > 0 : dist_cycle calculé depuis géométrie |

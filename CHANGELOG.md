@@ -5,6 +5,42 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [cleanup/vitesse-impulsions] — 2026-06-11 — Retrait du calcul de vitesse par impulsions (legacy)
+
+Le calcul de vitesse par fenêtre glissante d'impulsions était hérité d'une ancienne version
+et **mort en production** : `dist_pulse_m` n'était jamais alimenté hors tests, le chemin
+retournait toujours 0. La vitesse vient exclusivement du timing des cycles poumon depuis
+l'introduction de `cycles_par_tour`. Les impulsions ne servent plus qu'à la **mesure de
+longueur** (déroulé + progression par cycle).
+
+### Removed
+- `gpio_handler.c/h` : fenêtre glissante (`s_ts_pulses`, head/count, timeout cycles),
+  `gpio_handler_set_params()`, `gpio_handler_tick_cycle()`, `gpio_handler_set_dist_pulse_m()` ;
+  ISR réduite à anti-rebond + comptage ; `gpio_get_vitesse_m_h()` sans paramètre
+- `config_nvs.h` : champs `fenetre_vitesse` et `max_cycles_si` retirés de `config_machine_t`
+- `state_machine.c/h` : appels associés et champs `cfg_fenetre_vitesse`/`cfg_max_cycles_si` du statut
+- `webserver.c` + UI : champs retirés du JSON statut, de `save_machine` et de l'onglet Config
+  (« Impulsions fenêtre vitesse », « Max cycles sans impulsion »)
+
+### ⚠️ Migration
+- La taille du blob NVS `config_machine_t` change → au premier boot la config machine
+  revient aux **valeurs par défaut** (détection gracieuse `ESP_ERR_NVS_INVALID_LENGTH`).
+  **Re-saisir les paramètres machine** (machine active, t_vidange, kp, cycles_par_tour…)
+  après flash. Les programmes, stats campagne et seuils batterie ne sont pas affectés
+  (clés séparées).
+
+### Tests
+- `test_gpio.c` (embarqué) : 6 tests fenêtre/dist_pulse retirés, remplacés par 3 tests
+  vitesse cycles poumon (injectée / mode désactivé / reset) + compteur impulsions conservé
+- 71 tests host, 0 échec — build ESP-IDF complet sans warning
+
+### Docs
+- `API_WEBSOCKET.md`, `docs/claude/ARCHITECTURE.md`, `docs/claude/REGULATION.md`,
+  `docs/dev/ARCHITECTURE.md`, `docs/dev/TROUBLESHOOTING.md`, `README.md` mis à jour
+  (au passage : pressostat GPIO 27 → 25 dans TROUBLESHOOTING)
+
+---
+
 ## [fix/code-review-2] — 2026-06-11 — Corrections revue générale (11 findings)
 
 ### Fixed
