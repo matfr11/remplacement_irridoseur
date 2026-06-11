@@ -5,6 +5,37 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [fix/materiel-absent] — 2026-06-11 — INA absent ≠ batterie 12,5 V, pressostat débranché ≠ pression OK
+
+Constats terrain v1.2.10 (banc sans INA3221 ni pressostat, sans pull-ups externes) :
+la batterie affichait 12,5 V « Correcte » et la pression était « OK ».
+
+### Fixed
+- **Batterie — état « Inconnue » si aucune lecture INA valide** : le fallback
+  dernière-valeur-valide (fix PR-19 bug 7) était initialisé en dur à 12,5 V ;
+  sans INA il inventait donc une tension à vie. Tant qu'aucune lecture valide
+  n'a eu lieu depuis le boot → `BATT_ETAT_INCONNUE` (gris, 0 V, 0 %). Le
+  fallback reste actif pour les lectures transitoires aberrantes *après* une
+  première lecture valide (`main/batterie.c`, enum dans `batterie.h`)
+
+### Décision câblage — pull-ups externes uniquement
+- Pressostat « OK » à 0 V : broche flottante sans pull-up externe (banc).
+  **Règle unifiée actée : aucune pull interne au firmware**, toutes les entrées
+  (35/32/33/25) exigent leur 10 kΩ externe — y compris sur banc de test, sinon
+  fil coupé/capteur absent peut lire « tout va bien ». Commentaire dans
+  `gpio_handler_init()`, avertissement dans le README (tableau GPIO + fail-safe)
+
+### Tests
+- `test_batterie.c` : +2 tests (160 au total) — INA absent → Inconnue/0 V/0 % ;
+  INA débranché après une lecture valide → retour dernière valeur valide
+
+### Docs
+- README : pull-ups externes **obligatoires** sur les 4 entrées contacts,
+  note INA absent → « Inconnue », correction ligne « fil coupé » du contact
+  poumon (= « plein » permanent → remplissage écourté, pas un timeout)
+
+---
+
 ## [tests/renforcement-couverture] — 2026-06-11 — Renforcement massif des tests host (71 → 158)
 
 Suite à la revue 2026-06 : 11 bugs corrigés en 2 jours alors que les 71 tests étaient

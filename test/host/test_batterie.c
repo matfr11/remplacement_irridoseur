@@ -24,6 +24,31 @@ static void reset_batterie(void)
     batterie_lire_voltage();
 }
 
+// ── INA absent : état Inconnue, pas de tension fabriquée ─────────────────────
+// DOIT s'exécuter en premier : s_has_valid est un static du module batterie,
+// il ne repasse jamais à false après la première lecture valide.
+
+static void test_batt_sans_ina_etat_inconnue(void)
+{
+    mock_ina3221_reset();  // ok=false → lire_tension retourne 0.0
+    batt_status_t s = batterie_get_status();
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, s.voltage_v);  // pas de 12.5V inventé
+    TEST_ASSERT_EQUAL_INT(BATT_ETAT_INCONNUE, s.etat);
+    TEST_ASSERT_EQUAL_INT(0, s.pourcentage);
+}
+
+// Après une première lecture valide, une lecture invalide retombe sur la
+// dernière valeur valide (PR-19 bug 7) — plus jamais sur Inconnue
+static void test_batt_inconnue_puis_valide_puis_invalide(void)
+{
+    set_voltage(12.3f);
+    TEST_ASSERT_EQUAL_INT(BATT_ETAT_CORRECTE, batterie_get_status().etat);
+    mock_ina3221_reset();  // INA "débranché" en cours de route
+    batt_status_t s = batterie_get_status();
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 12.3f, s.voltage_v);
+    TEST_ASSERT_EQUAL_INT(BATT_ETAT_CORRECTE, s.etat);
+}
+
 // ── États aux frontières (seuils par défaut warn=11.5, crit=11.0) ────────────
 
 static void test_batt_etat_charge(void)
@@ -163,6 +188,7 @@ static void test_batt_etat_str(void)
     TEST_ASSERT_EQUAL_STRING("Correcte",  batterie_etat_str(BATT_ETAT_CORRECTE));
     TEST_ASSERT_EQUAL_STRING("Faible",    batterie_etat_str(BATT_ETAT_FAIBLE));
     TEST_ASSERT_EQUAL_STRING("Critique",  batterie_etat_str(BATT_ETAT_CRITIQUE));
+    TEST_ASSERT_EQUAL_STRING("Inconnue",  batterie_etat_str(BATT_ETAT_INCONNUE));
     TEST_ASSERT_EQUAL_STRING("Inconnue",  batterie_etat_str((batt_etat_t)99));
 }
 
@@ -174,6 +200,7 @@ static void test_batt_etat_couleur(void)
     TEST_ASSERT_EQUAL_STRING("#eab308", batterie_etat_couleur(BATT_ETAT_CORRECTE));
     TEST_ASSERT_EQUAL_STRING("#f97316", batterie_etat_couleur(BATT_ETAT_FAIBLE));
     TEST_ASSERT_EQUAL_STRING("#ef4444", batterie_etat_couleur(BATT_ETAT_CRITIQUE));
+    TEST_ASSERT_EQUAL_STRING("#6b7280", batterie_etat_couleur(BATT_ETAT_INCONNUE));
     TEST_ASSERT_EQUAL_STRING("#6b7280", batterie_etat_couleur((batt_etat_t)99));
 }
 
@@ -182,6 +209,8 @@ static void test_batt_etat_couleur(void)
 void suite_batterie(void)
 {
     unity_suite_setup(NULL, NULL);
+    RUN_TEST(test_batt_sans_ina_etat_inconnue);        // doit rester en premier
+    RUN_TEST(test_batt_inconnue_puis_valide_puis_invalide);
     RUN_TEST(test_batt_etat_charge);
     RUN_TEST(test_batt_etat_pleine);
     RUN_TEST(test_batt_etat_correcte);

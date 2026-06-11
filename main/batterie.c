@@ -8,6 +8,7 @@ static const char *TAG = "batterie";
 static float s_warn_v      = BATT_V_FAIBLE_MIN;
 static float s_crit_v      = BATT_V_CRITIQUE_MIN;
 static float s_last_valid_v = 12.5f;
+static bool  s_has_valid    = false;  // au moins une lecture INA valide depuis le boot
 
 #ifdef CONFIG_IRRI_TEST_MODE
 static float s_sim_voltage = 0.0f;
@@ -30,13 +31,18 @@ float batterie_lire_voltage(void)
     float v = ina3221_lire_tension(INA3221_CH_BATTERIE);
 
     if (v > BATT_V_MAX * 1.1f) {
+        if (!s_has_valid) return 0.0f;  // jamais de lecture valide → etat Inconnue
         ESP_LOGW(TAG, "Tension aberrante %.2fV — retour %.2fV", v, s_last_valid_v);
         return s_last_valid_v;
     }
     if (v < 0.5f) {
+        // INA absent/debranche : ne pas inventer 12.5V — get_status() affichera
+        // "Inconnue" tant qu'aucune vraie lecture n'a ete faite depuis le boot
+        if (!s_has_valid) return 0.0f;
         ESP_LOGW(TAG, "Lecture invalide %.2fV — retour %.2fV", v, s_last_valid_v);
         return s_last_valid_v;
     }
+    s_has_valid    = true;
     s_last_valid_v = v;
     return v;
 }
@@ -51,6 +57,14 @@ batt_status_t batterie_get_status(void)
 {
     batt_status_t s;
     s.voltage_v = batterie_lire_voltage();
+
+    // < 0.5V = aucune lecture valide depuis le boot (INA absent) — ne pas
+    // classer 0V en CRITIQUE ni afficher une tension fabriquee
+    if (s.voltage_v < 0.5f) {
+        s.etat        = BATT_ETAT_INCONNUE;
+        s.pourcentage = 0;
+        return s;
+    }
 
     if      (s.voltage_v >= BATT_V_CHARGE_MIN)   s.etat = BATT_ETAT_CHARGE;
     else if (s.voltage_v >= BATT_V_PLEINE_MIN)    s.etat = BATT_ETAT_PLEINE;
@@ -77,6 +91,7 @@ const char* batterie_etat_str(batt_etat_t etat)
         case BATT_ETAT_CORRECTE: return "Correcte";
         case BATT_ETAT_FAIBLE:   return "Faible";
         case BATT_ETAT_CRITIQUE: return "Critique";
+        case BATT_ETAT_INCONNUE:
         default:                 return "Inconnue";
     }
 }
@@ -89,6 +104,7 @@ const char* batterie_etat_couleur(batt_etat_t etat)
         case BATT_ETAT_CORRECTE: return "#eab308";
         case BATT_ETAT_FAIBLE:   return "#f97316";
         case BATT_ETAT_CRITIQUE: return "#ef4444";
+        case BATT_ETAT_INCONNUE:
         default:                 return "#6b7280";
     }
 }

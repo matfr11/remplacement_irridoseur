@@ -109,10 +109,10 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 | GPIO | Direction | Signal | Conditionnement |
 |---|---|---|---|
 | **34** | INPUT | Capteur vitesse bobine | Diviseur 10 kΩ/3,3 kΩ — 12V→3V — pas de pull-up interne |
-| **35** | INPUT | Fin de course canon | Pull-up 10 kΩ — contact NC |
-| **32** | INPUT | Sécurité spires | Pull-up 10 kΩ — contact NC |
-| **33** | INPUT | Contact poumon plein | Pull-up 10 kΩ — contact NC |
-| **25** | INPUT | Pressostat | Pull-up 10 kΩ — contact NC |
+| **35** | INPUT | Fin de course canon | Pull-up 10 kΩ externe **obligatoire** — contact NC |
+| **32** | INPUT | Sécurité spires | Pull-up 10 kΩ externe **obligatoire** — contact NC |
+| **33** | INPUT | Contact poumon plein | Pull-up 10 kΩ externe **obligatoire** — contact NC |
+| **25** | INPUT | Pressostat | Pull-up 10 kΩ externe **obligatoire** — contact NC |
 | **0** | INPUT | Bouton physique carte | Bouton intégré carte Quad MOS |
 | **16** | OUTPUT | EV_CANON 12V — MOSFET principal | QMOS OUT1 carte Quad MOS |
 | **17** | OUTPUT | EV_POUMON 12V — MOSFET principal | QMOS OUT2 carte Quad MOS |
@@ -127,12 +127,17 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 ### Logique des signaux — contacts NC (Normalement Fermés)
 
 > **Règle fail-safe** : fil coupé ou capteur HS → GPIO HIGH → sécurité déclenchée.
+>
+> ⚠️ Cette règle repose **entièrement sur les pull-ups externes 10 kΩ** (décision
+> 2026-06-11 : règle unifiée, le firmware n'active aucune pull interne). Sans la
+> résistance, la broche flotte et peut lire 0 = état « tout va bien » avec un fil
+> coupé — y compris sur un banc de test.
 
-| Signal | Repos LOW | Activé HIGH | Fil coupé |
+| Signal | Repos LOW | Activé HIGH | Fil coupé (avec pull-up) |
 |---|---|---|---|
 | Fin de course | Canon déroulé ✅ | Canon rentré → SEC-1 | → SEC-1 ✅ |
 | Sécurité spires | Normal ✅ | Débordement → SEC-2 | → SEC-2 ✅ |
-| Contact poumon | En cours ✅ | Poumon plein | → Timeout → mode dégradé |
+| Contact poumon | En cours ✅ | Poumon plein | → « plein » permanent → remplissage écourté |
 | Pressostat | Pression OK ✅ | Pas de pression | → Pause/attente |
 
 ### Bornier 12 voies
@@ -151,6 +156,7 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 | 11-12 | EV_POUMON + / − → COM relais 2 → (NC→OUT2 / NO→OUT4) → INA3221 CH2 |
 
 > La mesure tension batterie (anciennement bornes 13-14 + diviseur 100 kΩ/27 kΩ) est désormais assurée par l'INA3221 CH3 câblé directement sur les bornes 1 (12V) et 2 (GND).
+> Si l'INA3221 est absent ou débranché, l'UI affiche l'état batterie **« Inconnue »** (gris, 0 V) — aucune tension n'est inventée.
 
 ---
 

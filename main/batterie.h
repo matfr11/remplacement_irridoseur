@@ -22,6 +22,7 @@ typedef enum {
     BATT_ETAT_CORRECTE,  // seuil_warn..12.4V
     BATT_ETAT_FAIBLE,    // seuil_crit..seuil_warn
     BATT_ETAT_CRITIQUE,  // < seuil_crit
+    BATT_ETAT_INCONNUE,  // aucune lecture INA valide depuis le boot (module absent/debranche)
 } batt_etat_t;
 
 typedef struct {

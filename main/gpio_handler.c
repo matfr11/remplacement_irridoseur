@@ -82,6 +82,11 @@ void gpio_handler_init(void)
     };
     gpio_config(&in_cfg);
 
+    // REGLE UNIFIEE (decision 2026-06-11) : aucune pull interne — toutes les
+    // entrees exigent leur pull-up externe 10k. Sans elle, la broche flotte :
+    // un fil coupe peut lire 0 (= "pression OK", "pas de debordement"...)
+    // au lieu de declencher la securite.
+
     gpio_set_intr_type(PIN_CAPTEUR_VITESSE, GPIO_INTR_POSEDGE);
     gpio_install_isr_service(0);
     gpio_isr_handler_add(PIN_CAPTEUR_VITESSE, isr_capteur_vitesse, NULL);
