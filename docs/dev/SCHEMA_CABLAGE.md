@@ -83,21 +83,19 @@ de commutation des EV (≈ 1 A) ne longent pas les entrées 3,3 V haute impédan
 Chaque entrée contact NC a le même montage : résistance **10 kΩ soudée sur fil**
 entre le 3,3V de la carte et l'entrée GPIO, protégée par gaine thermorétractable.
 
-**Montage retenu** : un seul fil commun part du 3,3 V et alimente les 4 résistances
-**en étoile** (une par entrée — jamais une résistance partagée : les contacts NC
-fermés tireraient le nœud commun à 0 et rendraient les 4 entrées aveugles).
-Chaque résistance est soudée **en T** sur le fil GPIO→borne, au plus près de la
-carte : un seul fil sur la broche GPIO, et le tronçon haute impédance
-(résistance→GPIO) reste court.
+**Montage retenu** : le 3,3 V de la carte alimente un **bornier de répartition
+1→4** ; chaque sortie va à sa résistance 10 kΩ (une par entrée — jamais une
+résistance partagée : les contacts NC fermés tireraient le nœud commun à 0 et
+rendraient les 4 entrées aveugles). Sur la **patte de sortie** de chaque
+résistance, **deux fils soudés** : un vers le GPIO, un vers la borne du bornier
+12 voies. Gaine thermo sur l'ensemble résistance + jonction.
 
 ```
-                              soudure en T (près de la carte)
-                                    │
- GPIO 25/32/33/35 ──── fil ─────────┴───────── borne 9..12
-                                    │
-                                 [10 kΩ]           × 4, une par entrée
-                                    │
- 3,3V (carte) ──── fil commun ──────┴─(─┴──┴──┴─ vers les 3 autres)
+ 3,3V (carte) ──► répartiteur 1→4 ─┬─ fil ─[10 kΩ]═╦═ fil ──► GPIO 35   borne 9
+                                   │    (soudure Y) ╚═ fil ──► borne 9
+                                   ├─ idem ──► GPIO 32 / borne 10
+                                   ├─ idem ──► GPIO 33 / borne 11
+                                   └─ idem ──► GPIO 25 / borne 12
 
  borne 9..12
    │
@@ -107,6 +105,9 @@ carte : un seul fil sur la broche GPIO, et le tronçon haute impédance
    │
  fil retour commun (chaîné sur les 4 contacts) ──► borne 2 (GND)
 ```
+
+Cheminement : faire courir les fils résistance→GPIO du côté signaux du boîtier,
+à l'écart des fils EV 12 V (c'est le tronçon haute impédance le plus sensible).
 
 **Logique résultante (fail-safe)** :
 
@@ -223,8 +224,9 @@ RC fail-safe (désactivé par défaut, Config → Machine).
    de l'INA à GND.
 3. **Puissance** : bornes 1-2 → carte QMOS ; chaînes EV (OUT → relais → INA → bornes
    3-6) ; vérifier le serrage, ce sont les seuls fils qui portent ≈ 1 A.
-4. **Conditionnement signaux** : souder les 4 pull-ups 10 kΩ et le diviseur
-   10k/3,3k sur fils, gaine thermo, raccorder bornes 7-12 → GPIO.
+4. **Conditionnement signaux** : répartiteur 1→4 sur le 3,3 V, souder les 4
+   pull-ups 10 kΩ (deux fils en Y sur la patte de sortie : GPIO + borne) et le
+   diviseur 10k/3,3k, gaine thermo, raccorder bornes 7-12.
 5. **I2C + watchdog** : INA3221 (21/22), TPL5010 (13/EN).
 6. **Contrôles hors tension** (checklist ci-dessous) puis mise sous tension USB
    seule d'abord (12 V débranché), puis 12 V.

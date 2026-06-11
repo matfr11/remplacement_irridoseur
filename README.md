@@ -91,7 +91,8 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 | Boîtier étanche IP65 | ~200×150×80mm | 1 |
 | Bornier DIN rail 12 voies | Connexions terrain | 1 |
 | Rail DIN 15cm | Fixé dans boîtier | 1 |
-| Résistances 10 kΩ × 4 | Pull-up contacts NC — soudées sur fils + gaine thermo | 4 |
+| Résistances 10 kΩ × 4 | Pull-up contacts NC — soudées en Y sur fils + gaine thermo | 4 |
+| Bornier de répartition 1→4 | Distribution du 3,3V vers les 4 pull-ups | 1 |
 | Diviseur 10 kΩ + 3,3 kΩ | Capteur vitesse 12V → 3V — soudé sur fil + gaine thermo | 1 set |
 | **Module INA3221 3 canaux I2C** | MCU-3221, shunts 0,1 Ω intégrés, CH1=EV_CANON CH2=EV_POUMON CH3=Batterie | 1 |
 | **Module relais 1 canal 12V × 2** | Optocouplé, NC/NO/COM, cavalier HIGH level trigger, bobine 12V | 2 |
