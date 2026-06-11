@@ -47,9 +47,13 @@ static void local_tearDown(void) { state_machine_test_reset(); }
 static void test_scenario_sec2_en_cours(void)
 {
     state_machine_test_injecter_etat(ETAT_EN_COURS);
+    // EVs ouvertes comme en arrosage réel : l'urgence doit TOUT couper
+    gpio_ev_canon_set(true);
+    gpio_ev_poumon_set(true);
     set_secu_spires(true);
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_ARRET_URGENCE, state_machine_get_etat());
+    ASSERT_EVS(false, false);
     state_machine_cmd_reset();
 }
 
@@ -57,9 +61,11 @@ static void test_scenario_sec2_en_cours(void)
 static void test_scenario_sec1_ouverture_canon(void)
 {
     state_machine_test_injecter_etat(ETAT_OUVERTURE_CANON);
+    gpio_ev_canon_set(true);   // canon ouvert pendant la stabilisation
     set_fin_course(true);
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_ARRET_URGENCE, state_machine_get_etat());
+    ASSERT_EVS(false, false);
     state_machine_cmd_reset();
 }
 
@@ -112,6 +118,7 @@ static void test_scenario_timeout_poumon_2tentatives(void)
     // réentrée dans l'état) → s_nb_tentatives = 2 → urgence
     avancer(251);
     TEST_ASSERT_EQUAL_INT(ETAT_ARRET_URGENCE, state_machine_get_etat());
+    ASSERT_EVS(false, false);
     state_machine_cmd_reset();
 }
 

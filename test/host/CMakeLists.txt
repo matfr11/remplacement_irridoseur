@@ -21,6 +21,9 @@ set(PROD_SRCS
   ../../main/state_machine.c
   ../../main/gpio_handler.c
   ../../main/securites.c
+  ../../main/batterie.c
+  ../../main/mosfet_surveillance.c
+  ../../main/json_utils.c
 )
 
 add_executable(irrifrance_tests
@@ -31,13 +34,16 @@ add_executable(irrifrance_tests
   mock/mock_nvs.c
   mock/mock_log.c
   mock/mock_telemetry.c
-  mock/mock_batterie.c
-  mock/mock_mosfet_surveillance.c
+  mock/mock_ina3221.c
   helpers/test_helpers.c
   test_calculs_hydraulique.c
   test_calculs_mecanique.c
   test_regulation.c
   test_state_machine.c
+  test_json_utils.c
+  test_config_nvs.c
+  test_batterie.c
+  test_mosfet_surveillance.c
   scenarios/scenario_cycle_normal.c
   scenarios/scenario_perte_pression.c
   scenarios/scenario_urgences.c
@@ -47,6 +53,9 @@ add_executable(irrifrance_tests
   scenarios/scenario_arrivee_canon.c
   scenarios/scenario_cycle_poumon.c
   scenarios/scenario_reboot.c
+  scenarios/scenario_bilan_session.c
+  scenarios/scenario_parametres.c
+  scenarios/scenario_commandes_api.c
   ${PROD_SRCS}
 )
 
@@ -67,4 +76,12 @@ if(WIN32)
   target_link_libraries(irrifrance_tests unity)
 else()
   target_link_libraries(irrifrance_tests unity m pthread)
+endif()
+
+# Couverture : cmake -B build_cov -DCOVERAGE=ON && cmake --build build_cov
+# puis ./build_cov/irrifrance_tests && lcov/genhtml (voir docs/dev/TESTS.md)
+option(COVERAGE "Instrumente le build avec gcov" OFF)
+if(COVERAGE AND NOT WIN32)
+  target_compile_options(irrifrance_tests PRIVATE --coverage -O0 -g)
+  target_link_options(irrifrance_tests PRIVATE --coverage)
 endif()

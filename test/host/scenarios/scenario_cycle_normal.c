@@ -41,13 +41,20 @@ static int avancer_vers_remplissage(void)
 // Scénario 1 — cycle complet sans tempo
 static void test_scenario_cycle_sans_tempo(void)
 {
+    // VEILLE : tout fermé
+    ASSERT_EVS(false, false);
+
     TEST_ASSERT_EQUAL_INT(0, avancer_vers_remplissage());
+    // REMPLISSAGE_POUMON : canon ouvert (arrosage) + poumon ouvert (remplissage)
+    ASSERT_EVS(true, true);
 
     // Poumon plein → EN_COURS
     gpio_set_level(PIN_POUMON_PLEIN, 1);
     tick_state_machine();
     mock_time_advance_ms(100);
     TEST_ASSERT_EQUAL_INT(ETAT_EN_COURS, state_machine_get_etat());
+    // EN_COURS / SOUS_VIDANGE : canon ouvert, poumon refermé
+    ASSERT_EVS(true, false);
 
     // Reset poumon (pas en permanence plein)
     gpio_set_level(PIN_POUMON_PLEIN, 0);
@@ -57,7 +64,10 @@ static void test_scenario_cycle_sans_tempo(void)
         tick_state_machine();
         mock_time_advance_ms(100);
     }
-    // Maintenant en SOUS_REMPLISSAGE — simuler poumon plein pour terminer le cycle
+    // SOUS_REMPLISSAGE : poumon ré-ouvert, canon toujours ouvert
+    ASSERT_EVS(true, true);
+
+    // Simuler poumon plein pour terminer le cycle
     gpio_set_level(PIN_POUMON_PLEIN, 1);
     tick_state_machine();
     mock_time_advance_ms(100);
@@ -67,10 +77,15 @@ static void test_scenario_cycle_sans_tempo(void)
     machine_status_t st;
     state_machine_get_status(&st);
     TEST_ASSERT_EQUAL_INT(ETAT_EN_COURS, state_machine_get_etat());
+    ASSERT_EVS(true, false);
 
-    // cmd_stop → ARRET_FINAL
+    // cmd_stop → ARRET_FINAL : tout coupé immédiatement
     state_machine_cmd_stop();
     TEST_ASSERT_EQUAL_INT(ETAT_ARRET_FINAL, state_machine_get_etat());
+    ASSERT_EVS(false, false);
+    // Relais secours jamais commutés en fonctionnement normal
+    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_RELAIS_CANON));
+    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_RELAIS_POUMON));
 }
 
 // Scénario 2 — cycle avec tempo départ
@@ -95,6 +110,8 @@ static void test_scenario_cycle_avec_tempo(void)
     tick_state_machine();
     mock_time_advance_ms(100);
     TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
+    // OUVERTURE_CANON : canon ouvert pour stabiliser, poumon fermé
+    ASSERT_EVS(true, false);
 
     // Pression stable 30 ticks → TEMPO_DEPART
     for (int i = 0; i < 31; i++) {
@@ -102,6 +119,8 @@ static void test_scenario_cycle_avec_tempo(void)
         mock_time_advance_ms(100);
     }
     TEST_ASSERT_EQUAL_INT(ETAT_TEMPO_DEPART, state_machine_get_etat());
+    // TEMPO_DEPART : on arrose (canon ouvert), poumon pas encore rempli
+    ASSERT_EVS(true, false);
 
     // 20 ticks (2s tempo) → REMPLISSAGE_POUMON
     for (int i = 0; i < 21; i++) {

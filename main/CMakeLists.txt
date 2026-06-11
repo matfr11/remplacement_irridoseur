@@ -11,6 +11,7 @@ set(SRCS
     "ina3221.c"
     "mosfet_surveillance.c"
     "config_nvs.c"
+    "json_utils.c"
     "webserver.c"
     "telemetry.c"
     "ota.c"

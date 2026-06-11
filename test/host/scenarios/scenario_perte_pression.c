@@ -44,15 +44,17 @@ static void test_scenario_pause_reprise(void)
     state_machine_test_injecter_etat(ETAT_EN_COURS);
     set_pression(true);
 
-    // Couper la pression
+    // Couper la pression → PAUSE_PRESSION : les deux EV doivent être coupées
     set_pression(false);
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_PAUSE_PRESSION, state_machine_get_etat());
+    ASSERT_EVS(false, false);
 
     // Rétablir la pression → reprise via OUVERTURE_CANON (re-stabilisation, sans tempo)
     set_pression(true);
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
+    ASSERT_EVS(true, false);   // canon ré-ouvert pour stabiliser
 
     // 30 ticks de pression stable → REMPLISSAGE_POUMON
     avancer(30);
@@ -76,6 +78,7 @@ static void test_scenario_perte_pendant_remplissage(void)
     set_pression(false);
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_PAUSE_PRESSION, state_machine_get_etat());
+    ASSERT_EVS(false, false);   // perte pression mid-remplissage : tout coupé
 
     // Reprise via OUVERTURE_CANON (re-stabilisation, sans tempo)
     set_pression(true);

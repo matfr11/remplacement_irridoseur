@@ -3,6 +3,9 @@ build/
 sdkconfig
 .cache/
 
+# Tests host — répertoires de build CMake (CI locale + couverture)
+test/host/build*/
+
 # Composants gérés par idf component manager
 managed_components/
 dependencies.lock

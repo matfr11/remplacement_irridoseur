@@ -5,6 +5,52 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [tests/renforcement-couverture] — 2026-06-11 — Renforcement massif des tests host (71 → 158)
+
+Suite à la revue 2026-06 : 11 bugs corrigés en 2 jours alors que les 71 tests étaient
+verts. Autopsie → 4 failles structurelles, toutes comblées. **Chacun des 11 bugs a
+désormais un test qui l'aurait détecté.**
+
+### Couverture (gcovr, périmètre `main/` compilé sur host)
+| | Avant | Après |
+|---|---|---|
+| Lignes | 78,4 % (1012/1290) | **90,8 % (1360/1497)** |
+| Fonctions | 84,1 % | **96,3 % (131/136)** |
+| Branches | 52,2 % | **69,9 %** |
+
+Le périmètre a grossi de 207 lignes : `batterie.c`, `mosfet_surveillance.c` et
+`json_utils.c` sont désormais compilés en réel sur host (plus des mocks vides).
+
+### Added
+- **Modules orphelins** : `test_batterie.c` (17), `test_mosfet_surveillance.c` (10),
+  `test_json_utils.c` (17) — modules réels via nouveau `mock_ina3221`
+  (`mock_batterie.c` et `mock_mosfet_surveillance.c` supprimés)
+- **Assertions résultats** : `scenario_bilan_session.c` (5) — volume/dose du bilan,
+  durée figée après ARRET_FINAL, NVS remis à zéro, stats campagne, pause exclue
+- **Paramètre → effet** : `scenario_parametres.c` (7) — t_vidange, t_rempl_fixe,
+  fin_course_seuil, facteur_correction, abaque_idx, cycles_par_tour (fallback profil),
+  heartbeat_rc_on. Règle : tout paramètre machine doit prouver un effet observable
+- **Commandes API WebSocket** : `scenario_commandes_api.c` (14) — cmd_start,
+  cmd_ev_*, cmd_start_deroule, cmd_etalonner (garde-fous), cmd_reset_campagne,
+  set_time, calc_vitesse, get_vitesse_max, programme_preview (3 cas dont warning
+  vitesse limite)
+- **Branches d'erreur** : `test_config_nvs.c` host (7) — NVS vierge, blob d'une
+  ancienne version firmware (migration), seuils batterie hors plage ignorés,
+  reset stats, `machine_get` hors bornes, `machine_resoudre_double_entree`
+- **Hydraulique** : +10 tests — `valider_params_programme` (6 warnings),
+  `calcul_esp_nominal_m`, interpolation IDW hors points exacts, garde-fous
+- **GPIO physiques dans les scénarios** : macro `ASSERT_EVS` (test_helpers.h) —
+  niveaux EV canon/poumon vérifiés à chaque état clé (cycle normal, pause
+  pression, urgences : tout coupé), relais secours jamais commutés en nominal
+- `json_utils.c/h` : parsing/escape JSON extraits de `webserver.c` (testables host)
+- Option CMake `COVERAGE` (`cmake -B build_cov -DCOVERAGE=ON` + gcovr)
+
+### Docs
+- `README.md` (compteur tests, commande couverture), `docs/dev/CONTRIBUER.md`
+  (convention `suite_*` réelle — l'ancienne section décrivait une API disparue)
+
+---
+
 ## [cleanup/vitesse-impulsions] — 2026-06-11 — Retrait du calcul de vitesse par impulsions (legacy)
 
 Le calcul de vitesse par fenêtre glissante d'impulsions était hérité d'une ancienne version

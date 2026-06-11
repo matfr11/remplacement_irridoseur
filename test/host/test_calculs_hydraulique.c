@@ -129,6 +129,147 @@ static void test_sr100c_interp_buse152(void)
     TEST_ASSERT_FLOAT_WITHIN(0.5f, 12.74f, v);
 }
 
+// =============================================================================
+// Enrichissement 2026-06 : valider_params_programme, calcul_esp_nominal_m et
+// interpolation IDW hors points exacts n'étaient PAS testés (couverture 53 %).
+// =============================================================================
+
+// 14 — buse=0 -> calcul impossible (return 0)
+static void test_buse_zero_erreur(void)
+{
+    float debit = 99.0f;
+    float v = lookup_vitesse_cible(&ABAQUE_SR150C, 4.9f, 0.0f, 25.0f, 60.0f, &debit, NULL);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.0f, v);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.0f, debit);
+}
+
+// 15 — dose<1mm -> guard mathématique strict (return 0, la division divergerait)
+static void test_dose_sous_1mm_erreur(void)
+{
+    float v = lookup_vitesse_cible(&ABAQUE_SR150C, 4.9f, 17.3f, 0.5f, 60.0f, NULL, NULL);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.0f, v);
+}
+
+// 16 — interpolation IDW SR150C non-équidistante : p=5.2, buse=17.3
+//      Voisins : (4.9, p_buse=3.5) d=0.065 et (5.6, p_buse=4.0) d=0.087
+//      p_buse = (3.5/0.065 + 4.0/0.087) / (1/0.065 + 1/0.087) ≈ 3.71
+static void test_interp_idw_non_equidistante(void)
+{
+    float p_buse = 0.0f;
+    float v = lookup_vitesse_cible(&ABAQUE_SR150C, 5.2f, 17.3f, 25.0f, 60.0f, NULL, &p_buse);
+    TEST_ASSERT_TRUE_MESSAGE(p_buse > 3.5f && p_buse < 4.0f,
+                             "p_buse interpole doit etre entre les 2 voisins");
+    TEST_ASSERT_FLOAT_WITHIN(0.1f, 3.71f, p_buse);   // plus proche du voisin le plus pres
+    TEST_ASSERT_TRUE(v > 0.0f);
+}
+
+// 17 — p_buse_out sur hit exact : retourne la valeur table sans interpolation
+static void test_p_buse_out_hit_exact(void)
+{
+    float p_buse = 0.0f;
+    lookup_vitesse_cible(&ABAQUE_SR150C, 4.9f, 17.3f, 25.0f, 60.0f, NULL, &p_buse);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 3.5f, p_buse);
+}
+
+// 18 — calcul_esp_nominal_m : valeur plausible, croît avec la buse, garde-fous
+static void test_esp_nominal(void)
+{
+    // portee = 7.06 * 17.3^0.557 * (3.5/3.5)^0.30 ≈ 34.5 m ; esp = ×1.55 ≈ 53.5 m
+    float esp = calcul_esp_nominal_m(&ABAQUE_SR150C, 4.9f, 17.3f);
+    TEST_ASSERT_FLOAT_WITHIN(2.0f, 53.5f, esp);
+
+    // Buse plus grosse → portée plus grande → espacement plus grand
+    float esp_grosse = calcul_esp_nominal_m(&ABAQUE_SR150C, 6.8f, 22.9f);
+    TEST_ASSERT_TRUE(esp_grosse > esp);
+
+    // Interpolation (hors point exact) : esp reste plausible
+    float esp_interp = calcul_esp_nominal_m(&ABAQUE_SR150C, 5.2f, 17.3f);
+    TEST_ASSERT_TRUE(esp_interp > 30.0f && esp_interp < 100.0f);
+
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.0f, calcul_esp_nominal_m(NULL, 4.9f, 17.3f));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.0f, calcul_esp_nominal_m(&ABAQUE_SR150C, 4.9f, 0.0f));
+}
+
+// 19 — valider_params_programme : programme nominal → aucun warning
+static void test_valider_programme_nominal(void)
+{
+    float esp = calcul_esp_nominal_m(&ABAQUE_SR150C, 4.9f, 17.3f);
+    hydro_warnings_t w = valider_params_programme(&ABAQUE_SR150C, 4.9f, 17.3f, 25.0f, esp);
+    TEST_ASSERT_FALSE(w.pression_basse);
+    TEST_ASSERT_FALSE(w.pression_haute);
+    TEST_ASSERT_FALSE(w.buse_hors_plage);
+    TEST_ASSERT_FALSE(w.dose_hors_plage);
+    TEST_ASSERT_FALSE(w.esp_pos_chevauchement);
+    TEST_ASSERT_FALSE(w.esp_pos_insuf);
+}
+
+// 20 — warnings pression : bornes SR150C [4.9, 9.5] × marges 0.75 / 1.25
+static void test_valider_warnings_pression(void)
+{
+    // 3.0 < 4.9×0.75=3.675 → basse
+    hydro_warnings_t w = valider_params_programme(&ABAQUE_SR150C, 3.0f, 17.3f, 25.0f, 50.0f);
+    TEST_ASSERT_TRUE(w.pression_basse);
+    TEST_ASSERT_FALSE(w.pression_haute);
+
+    // 12.5 > 9.5×1.25=11.875 → haute
+    w = valider_params_programme(&ABAQUE_SR150C, 12.5f, 17.3f, 25.0f, 50.0f);
+    TEST_ASSERT_TRUE(w.pression_haute);
+    TEST_ASSERT_FALSE(w.pression_basse);
+
+    // 4.0 : sous p_min mais dans la marge ×0.75 → pas de warning
+    w = valider_params_programme(&ABAQUE_SR150C, 4.0f, 17.3f, 25.0f, 50.0f);
+    TEST_ASSERT_FALSE(w.pression_basse);
+}
+
+// 21 — warnings buse et dose : bornes buse [17.3, 25.4], dose [15, 40] × marges
+static void test_valider_warnings_buse_dose(void)
+{
+    // buse 12 < 17.3×0.75=12.975 → hors plage ; buse 33 > 25.4×1.25=31.75 → hors plage
+    hydro_warnings_t w = valider_params_programme(&ABAQUE_SR150C, 6.0f, 12.0f, 25.0f, 50.0f);
+    TEST_ASSERT_TRUE(w.buse_hors_plage);
+    w = valider_params_programme(&ABAQUE_SR150C, 6.0f, 33.0f, 25.0f, 50.0f);
+    TEST_ASSERT_TRUE(w.buse_hors_plage);
+
+    // dose 10 < 15×0.75=11.25 → hors plage ; dose 55 > 40×1.25=50 → hors plage
+    w = valider_params_programme(&ABAQUE_SR150C, 6.0f, 17.3f, 10.0f, 50.0f);
+    TEST_ASSERT_TRUE(w.dose_hors_plage);
+    w = valider_params_programme(&ABAQUE_SR150C, 6.0f, 17.3f, 55.0f, 50.0f);
+    TEST_ASSERT_TRUE(w.dose_hors_plage);
+
+    // dose 12 : hors [15,40] mais dans les marges → pas de warning
+    w = valider_params_programme(&ABAQUE_SR150C, 6.0f, 17.3f, 12.0f, 50.0f);
+    TEST_ASSERT_FALSE(w.dose_hors_plage);
+}
+
+// 22 — warnings espacement vs portée calculée (seuils ×0.75 / ×1.10)
+static void test_valider_warnings_espacement(void)
+{
+    float esp = calcul_esp_nominal_m(&ABAQUE_SR150C, 4.9f, 17.3f);
+
+    // largeur = esp/2 → fort recroisement
+    hydro_warnings_t w = valider_params_programme(&ABAQUE_SR150C, 4.9f, 17.3f, 25.0f, esp * 0.5f);
+    TEST_ASSERT_TRUE(w.esp_pos_chevauchement);
+    TEST_ASSERT_FALSE(w.esp_pos_insuf);
+
+    // largeur = esp×1.5 → risque sous-arrosage
+    w = valider_params_programme(&ABAQUE_SR150C, 4.9f, 17.3f, 25.0f, esp * 1.5f);
+    TEST_ASSERT_TRUE(w.esp_pos_insuf);
+    TEST_ASSERT_FALSE(w.esp_pos_chevauchement);
+
+    // largeur non renseignée (0) → warnings espacement neutralisés
+    w = valider_params_programme(&ABAQUE_SR150C, 4.9f, 17.3f, 25.0f, 0.0f);
+    TEST_ASSERT_FALSE(w.esp_pos_chevauchement);
+    TEST_ASSERT_FALSE(w.esp_pos_insuf);
+}
+
+// 23 — valider_params_programme : abaque NULL → tout false, pas de crash
+static void test_valider_abaque_null(void)
+{
+    hydro_warnings_t w = valider_params_programme(NULL, 6.0f, 17.3f, 25.0f, 50.0f);
+    TEST_ASSERT_FALSE(w.pression_basse || w.pression_haute || w.buse_hors_plage
+                      || w.dose_hors_plage || w.esp_pos_chevauchement || w.esp_pos_insuf);
+}
+
 void suite_calculs_hydraulique(void)
 {
     unity_suite_setup(NULL, NULL);
@@ -145,4 +286,14 @@ void suite_calculs_hydraulique(void)
     RUN_TEST(test_sr100c_exact_buse127_d25);
     RUN_TEST(test_sr100c_exact_buse190_d30);
     RUN_TEST(test_sr100c_interp_buse152);
+    RUN_TEST(test_buse_zero_erreur);
+    RUN_TEST(test_dose_sous_1mm_erreur);
+    RUN_TEST(test_interp_idw_non_equidistante);
+    RUN_TEST(test_p_buse_out_hit_exact);
+    RUN_TEST(test_esp_nominal);
+    RUN_TEST(test_valider_programme_nominal);
+    RUN_TEST(test_valider_warnings_pression);
+    RUN_TEST(test_valider_warnings_buse_dose);
+    RUN_TEST(test_valider_warnings_espacement);
+    RUN_TEST(test_valider_abaque_null);
 }

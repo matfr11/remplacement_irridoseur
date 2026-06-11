@@ -122,7 +122,7 @@ Les tests unitaires sont dans `test/host/`. Chaque module a son fichier de test.
 ```c
 // Dans test/host/test_regulation.c par exemple
 
-void test_mon_nouveau_cas(void) {
+static void test_mon_nouveau_cas(void) {
     // Arrange
     float dist = 0.35f;
     float v_cible = 8.9f / 3600.0f;  // m/s
@@ -138,16 +138,28 @@ void test_mon_nouveau_cas(void) {
     TEST_ASSERT_FALSE(alerte);
 }
 
-// Ajouter dans la fonction run() :
+// Ajouter dans la fonction suite_*() du fichier :
 RUN_TEST(test_mon_nouveau_cas);
 ```
 
 ### Ajouter un fichier de test
 
-1. Créer `test/host/test_mon_module.c`
-2. Inclure Unity et les headers nécessaires
-3. Déclarer `void test_mon_module_run(void)`
-4. Appeler depuis `main.c` des tests host
+1. Créer `test/host/test_mon_module.c` (ou `scenarios/scenario_mon_cas.c`)
+2. Définir le point d'entrée `void suite_mon_module(void)` qui appelle
+   `unity_suite_setup(local_setUp, local_tearDown)` (ou `NULL, NULL`) puis les `RUN_TEST(...)`
+3. Ajouter le fichier dans `test/host/CMakeLists.txt` (liste `add_executable`)
+4. Déclarer et appeler `suite_mon_module()` dans `test/host/main_test.c`
+
+### Règles issues de la revue 2026-06 (11 bugs passés sous les radars)
+
+- **Pas de module orphelin** : tout `.c` de `main/` compilable sur host doit être
+  dans `PROD_SRCS` et avoir sa suite — un mock vide cache les bugs du vrai code
+- **Asserter les résultats, pas seulement les transitions** : un scénario qui
+  vérifie `ETAT_ARRET_FINAL` sans vérifier volume/dose/NVS laisse passer un bilan à 0
+- **Tout paramètre configurable doit prouver un effet** : deux valeurs différentes,
+  deux comportements observables différents (cf. `scenario_parametres.c`)
+- **Vérifier les sorties physiques** : `ASSERT_EVS(canon, poumon)` aux états clés
+- **Mesurer la couverture** avant de déclarer un module testé (voir README, gcovr)
 
 ---
 

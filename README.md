@@ -186,10 +186,10 @@ main/
 
 test/host/                  — tests unitaires PC (Unity/CMake, sans matériel)
 ├── CMakeLists.txt          — build natif Linux/macOS/Windows
-├── mock/                   — stubs ESP-IDF (GPIO, NVS, FreeRTOS, log, timer)
-├── helpers/                — helpers de test (config NVS valide/invalide)
-├── scenarios/              — scénarios d'intégration (cycle complet, urgences, modes dégradés)
-└── test_*.c                — 71 tests unitaires (71/71 verts en CI)
+├── mock/                   — stubs ESP-IDF (GPIO, NVS, FreeRTOS, log, timer, INA3221)
+├── helpers/                — helpers de test (config NVS valide/invalide, ASSERT_EVS)
+├── scenarios/              — scénarios d'intégration (cycle complet, urgences, modes dégradés, bilan, API)
+└── test_*.c                — 158 tests unitaires (158/158 verts en CI, couverture lignes ≈ 91 %)
 ```
 
 ### Tâches FreeRTOS
@@ -290,6 +290,16 @@ cd test/host
 cmake -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j4
 ./build/irrifrance_tests
+```
+
+#### Couverture de code (gcov + gcovr)
+
+```bash
+cd test/host
+cmake -B build_cov -DCOVERAGE=ON
+cmake --build build_cov -j4
+./build_cov/irrifrance_tests
+gcovr --root ../.. --filter '.*/main/.*' --object-directory build_cov
 ```
 
 ### Activer les tests unitaires embarqués
