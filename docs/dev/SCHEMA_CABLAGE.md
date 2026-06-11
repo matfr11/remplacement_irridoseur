@@ -81,23 +81,31 @@ de commutation des EV (≈ 1 A) ne longent pas les entrées 3,3 V haute impédan
 ## Conditionnement des entrées contacts (bornes 9-12)
 
 Chaque entrée contact NC a le même montage : résistance **10 kΩ soudée sur fil**
-entre la broche 3,3V de la carte et l'entrée GPIO, protégée par gaine
-thermorétractable.
+entre le 3,3V de la carte et l'entrée GPIO, protégée par gaine thermorétractable.
+
+**Montage retenu** : un seul fil commun part du 3,3 V et alimente les 4 résistances
+**en étoile** (une par entrée — jamais une résistance partagée : les contacts NC
+fermés tireraient le nœud commun à 0 et rendraient les 4 entrées aveugles).
+Chaque résistance est soudée **en T** sur le fil GPIO→borne, au plus près de la
+carte : un seul fil sur la broche GPIO, et le tronçon haute impédance
+(résistance→GPIO) reste court.
 
 ```
- 3,3V (carte ESP32)
-   │
-  [10 kΩ]                ← soudée en l'air sur les fils + gaine thermo
-   │
-   ├───────────► GPIO (25 / 32 / 33 / 35)
-   │
+                              soudure en T (près de la carte)
+                                    │
+ GPIO 25/32/33/35 ──── fil ─────────┴───────── borne 9..12
+                                    │
+                                 [10 kΩ]           × 4, une par entrée
+                                    │
+ 3,3V (carte) ──── fil commun ──────┴─(─┴──┴──┴─ vers les 3 autres)
+
  borne 9..12
    │
    ~ ~ ~ câble terrain ~ ~ ~
    │
  contact NC (fermé au repos)
    │
- fil retour commun ──► borne 2 (GND)
+ fil retour commun (chaîné sur les 4 contacts) ──► borne 2 (GND)
 ```
 
 **Logique résultante (fail-safe)** :
