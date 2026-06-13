@@ -12,7 +12,6 @@ void suite_regulation(void);
 void suite_json_utils(void);
 void suite_config_nvs(void);
 void suite_batterie(void);
-void suite_mosfet_surveillance(void);
 void suite_state_machine(void);
 void suite_scenario_cycle_normal(void);
 void suite_scenario_perte_pression(void);
@@ -37,7 +36,6 @@ int main(void)
     suite_json_utils();
     suite_config_nvs();
     suite_batterie();
-    suite_mosfet_surveillance();
     suite_state_machine();
     suite_scenario_cycle_normal();
     suite_scenario_perte_pression();

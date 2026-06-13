@@ -10,20 +10,29 @@
 // =============================================================================
 
 // -----------------------------------------------------------------------------
-// SORTIES — Électrovannes (canaux MOSFET carte Quad MOS)
+// SORTIES — Électrovannes bistables (canaux MOSFET carte Quad MOS)
+// Commande par impulsion : pulse HIGH pendant DUREE_IMPULSION_EV_MS puis LOW
+// OUT1/OUT2 = impulsion OUVRIR, OUT3/OUT4 = impulsion FERMER
 // -----------------------------------------------------------------------------
 
-#define PIN_EV_CANON    16      // QMOS OUT1
-#define PIN_EV_POUMON   17      // QMOS OUT2
-// GPIO 26 = QMOS OUT3 — non utilisé
-// GPIO 27 = QMOS OUT4 — non utilisé
+#define PIN_EV_CANON_OUVRIR    16      // QMOS OUT1 — impulsion OUVRIR canon
+#define PIN_EV_POUMON_OUVRIR   17      // QMOS OUT2 — impulsion OUVRIR poumon
+#define PIN_EV_CANON_FERMER    26      // QMOS OUT3 — impulsion FERMER canon
+#define PIN_EV_POUMON_FERMER   27      // QMOS OUT4 — impulsion FERMER poumon
+
+// Durée de l'impulsion de commande EV bistable (ms)
+// Valeur terrain à valider — ajustable avant hardcode définitif
+#define DUREE_IMPULSION_EV_MS      100
+#define DUREE_IMPULSION_EV_MS_MIN   20
+#define DUREE_IMPULSION_EV_MS_MAX  500
 
 // -----------------------------------------------------------------------------
 // ENTRÉES — Capteurs et contacts
 // Contacts NC (Normalement Fermés) — logique : LOW = normal, HIGH = danger/actif
 // -----------------------------------------------------------------------------
 
-// Capteur vitesse bobine — diviseur 10kΩ/3.3kΩ (12V → ~3V)
+// Capteur vitesse bobine — diviseur 10kΩ/5.6kΩ (8V → ~2.87V)
+// Capteur 2 fils : 2V sans pastille, 8V avec pastille devant le capteur
 // Pas de pull-up interne — GPIO input-only
 #define PIN_CAPTEUR_VITESSE     34
 
@@ -67,38 +76,20 @@
 #define PIN_HEARTBEAT            23
 
 // -----------------------------------------------------------------------------
-// MOSFETs secours — carte Quad MOS OUT3/OUT4
-// -----------------------------------------------------------------------------
-#define PIN_MOSFET_SECOURS_CANON   26   // QMOS OUT3
-#define PIN_MOSFET_SECOURS_POUMON  27   // QMOS OUT4
-
-// -----------------------------------------------------------------------------
-// Relais de basculement MOSFET — HIGH level trigger
-// LOW = repos = COM→NC = MOSFET principal
-// HIGH = actif = COM→NO = MOSFET secours
-// -----------------------------------------------------------------------------
-#define PIN_RELAIS_CANON    2
-#define PIN_RELAIS_POUMON   4
-
-// -----------------------------------------------------------------------------
 // INA3221 — module I2C 3 canaux (tension + courant)
-// CH1 = EV_CANON, CH2 = EV_POUMON, CH3 = Batterie 12V
+// CH3 = Batterie 12V (seul canal actif — EVs bistables sans surveillance courant)
 // -----------------------------------------------------------------------------
 #define I2C_SDA_PIN             21
 #define I2C_SCL_PIN             22
 #define INA3221_I2C_ADDR        0x40   // A0 → GND
 
-#define INA3221_CH_EV_CANON     1
-#define INA3221_CH_EV_POUMON    2
 #define INA3221_CH_BATTERIE     3
-
-// Seuils détection MOSFET
-#define SEUIL_TENSION_EV_V      6.0f   // > 6V = EV alimentée
-#define SEUIL_COURANT_EV_MA    50.0f   // < 50mA = circuit suspect
 
 // -----------------------------------------------------------------------------
 // Watchdog matériel TPL5010DDCR (optionnel — CONFIG_IRRI_TPL5010)
 // DONE → impulsion toutes les 2s depuis state_machine_task()
 // RESET → EN ESP32 : reboot si timeout (Rext=3.3MΩ → ~5.3s)
+// Note : après reboot, EVs bistables restent dans leur dernier état mécanique
+// jusqu'aux impulsions FERMER envoyées par gpio_handler_init() (~2s après boot)
 // -----------------------------------------------------------------------------
 #define PIN_TPL5010_DONE        13

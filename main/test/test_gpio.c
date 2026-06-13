@@ -117,6 +117,63 @@ static void test_lire_entrees(void)
 }
 
 // =============================================================================
+// Tests 6-9 — EVs bistables
+// =============================================================================
+
+static void test_ev_bistable_ouverture(void)
+{
+    gpio_handler_test_reset();
+    if (!gpio_ev_canon_get()) {
+        gpio_ev_canon_set(true);
+        if (gpio_ev_canon_get()) {
+            PASS("ev_bistable_ouverture");
+        } else {
+            FAIL("ev_bistable_ouverture", "etat attendu=ouvert obtenu=ferme");
+        }
+    } else {
+        FAIL("ev_bistable_ouverture", "etat initial incorrect");
+    }
+}
+
+static void test_ev_bistable_fermeture(void)
+{
+    gpio_handler_test_reset();
+    gpio_ev_canon_set(true);
+    gpio_ev_canon_set(false);
+    if (!gpio_ev_canon_get()) {
+        PASS("ev_bistable_fermeture");
+    } else {
+        FAIL("ev_bistable_fermeture", "etat attendu=ferme obtenu=ouvert");
+    }
+}
+
+static void test_ev_bistable_idempotent(void)
+{
+    gpio_handler_test_reset();
+    gpio_ev_poumon_set(true);
+    gpio_ev_poumon_set(true);   // double commande — ne doit pas crasher
+    if (gpio_ev_poumon_get()) {
+        PASS("ev_bistable_idempotent");
+    } else {
+        FAIL("ev_bistable_idempotent", "etat perdu apres double commande");
+    }
+}
+
+static void test_ev_all_off(void)
+{
+    gpio_handler_test_reset();
+    gpio_ev_canon_set(true);
+    gpio_ev_poumon_set(true);
+    gpio_all_ev_off();
+    if (!gpio_ev_canon_get() && !gpio_ev_poumon_get()) {
+        PASS("ev_all_off");
+    } else {
+        FAIL("ev_all_off", "canon=%d poumon=%d (attendu 0/0)",
+             gpio_ev_canon_get(), gpio_ev_poumon_get());
+    }
+}
+
+// =============================================================================
 // Point d'entrée
 // =============================================================================
 void test_gpio_run(void)
@@ -128,6 +185,10 @@ void test_gpio_run(void)
     test_vitesse_apres_reset();
     test_compteur_impulsions();
     test_lire_entrees();
+    test_ev_bistable_ouverture();
+    test_ev_bistable_fermeture();
+    test_ev_bistable_idempotent();
+    test_ev_all_off();
 
     ESP_LOGI(TAG, "=== Fin tests GPIO ===");
 }

@@ -3,7 +3,7 @@
 Document de référence pour le **montage complet** du boîtier : synoptique général,
 bornier, conditionnement des entrées, chaîne de puissance EV, I2C, et checklist de
 mise sous tension. Pour le détail composant par composant (INA3221, TPL5010,
-relais, points de test), voir [HARDWARE.md](HARDWARE.md).
+points de test), voir [HARDWARE.md](HARDWARE.md).
 
 > ⚠️ **Règle unifiée (décision 2026-06-11)** : le firmware n'active **aucune pull-up
 > interne**. Toutes les entrées contacts exigent leur résistance **10 kΩ externe**.
@@ -20,27 +20,25 @@ relais, points de test), voir [HARDWARE.md](HARDWARE.md).
  │                                                                            │
  │  ┌────────────────────────────┐         ┌─────────────────┐                │
  │  │  ESP32 Quad MOS Switch     │   I2C   │  INA3221 0x40   │                │
- │  │                            ├─SDA 21──┤  CH1 EV_CANON   │                │
- │  │  12V IN ◄── borne 1/2      ├─SCL 22──┤  CH2 EV_POUMON  │                │
- │  │                            │         │  CH3 Batterie   │                │
- │  │  OUT1 GPIO16 ─► Relais1 NC │         └─────────────────┘                │
- │  │  OUT3 GPIO26 ─► Relais1 NO ├─ COM ─► INA CH1 ─► borne 3-4 ─► EV_CANON   │
- │  │  OUT2 GPIO17 ─► Relais2 NC │                                            │
- │  │  OUT4 GPIO27 ─► Relais2 NO ├─ COM ─► INA CH2 ─► borne 5-6 ─► EV_POUMON  │
- │  │  GPIO2  ─► bobine Relais 1 │                                            │
- │  │  GPIO4  ─► bobine Relais 2 │         ┌─────────────────┐                │
- │  │  GPIO13 ─► TPL5010 DONE    ├─────────┤ TPL5010 watchdog│                │
- │  │  EN     ◄─ TPL5010 RESET   │         │ Rext 3,3MΩ→GND  │                │
- │  │  GPIO23 ─► LED heartbeat   │         └─────────────────┘                │
- │  │                            │                                            │
- │  │  GPIO34 ◄─[diviseur]─ borne 8   ◄── Capteur vitesse (signal)            │
- │  │  GPIO35 ◄─[pull-up]── borne 9   ◄── Fin de course (NC)                  │
- │  │  GPIO32 ◄─[pull-up]── borne 10  ◄── Sécurité spires (NC)                │
- │  │  GPIO33 ◄─[pull-up]── borne 11  ◄── Contact poumon plein (NC)           │
- │  │  GPIO25 ◄─[pull-up]── borne 12  ◄── Pressostat (NC)                     │
+ │  │                            ├─SDA 21──┤  CH3 Batterie   │                │
+ │  │  12V IN ◄── borne 1/2      ├─SCL 22──┤                 │                │
+ │  │                            │         └─────────────────┘                │
+ │  │  OUT1 GPIO16 ──────────────┤                                            │
+ │  │  OUT2 GPIO17 ──────────────┤──► LM2596 (12V→6V) ──► bobines EV         │
+ │  │  OUT3 GPIO26 ──────────────┤    (OUVRIR/FERMER canon et poumon)         │
+ │  │  OUT4 GPIO27 ──────────────┘                                            │
+ │  │  GPIO13 ─► TPL5010 DONE    ├─────────┐                                 │
+ │  │  EN     ◄─ TPL5010 RESET   │  ┌──────┴──────────┐                      │
+ │  │  GPIO23 ─► LED heartbeat   │  │ TPL5010 watchdog│                      │
+ │  │                            │  │ Rext 3,3MΩ→GND  │                      │
+ │  │  GPIO34 ◄─[diviseur]─ borne 8   ◄── Capteur vitesse (signal 2V/8V)     │
+ │  │  GPIO35 ◄─[pull-up]── borne 9   ◄── Fin de course (NC)                 │
+ │  │  GPIO32 ◄─[pull-up]── borne 10  ◄── Sécurité spires (NC)               │
+ │  │  GPIO33 ◄─[pull-up]── borne 11  ◄── Contact poumon plein (NC)          │
+ │  │  GPIO25 ◄─[pull-up]── borne 12  ◄── Pressostat (NC)                    │
  │  └────────────────────────────┘                                            │
  │                                                                            │
- │   Bornier DIN 12 voies : [1][2][3][4][5][6] │ [7][8][9][10][11][12]        │
+ │   Bornier DIN 12 voies : [1][2][3][4][5][6] │ [7][8][9][10][11][12]       │
  │                            PUISSANCE        │       SIGNAUX                │
  └────────────────────────────────────────────────────────────────────────────┘
         │    │                                       │
@@ -53,26 +51,31 @@ relais, points de test), voir [HARDWARE.md](HARDWARE.md).
 ## Bornier 12 voies — affectation
 
 Principe : **puissance à gauche (1-6), signaux à droite (7-12)** — les transitoires
-de commutation des EV (≈ 1 A) ne longent pas les entrées 3,3 V haute impédance.
+de commutation des EV (≈ 800 mA sur 100 ms) ne longent pas les entrées 3,3 V haute
+impédance.
 
 | Borne | Signal | Câblage côté boîtier | Câblage côté terrain |
 |---|---|---|---|
-| 1 | 12V+ batterie | → VIN carte QMOS, repiquage → borne 7 | Câble rouge batterie |
-| 2 | GND batterie | → GND carte, retour contacts | Câble noir batterie + fil retour commun contacts |
-| 3 | EV_CANON + | ← COM relais 1 (via INA3221 CH1) | Paire torsadée vers EV canon |
-| 4 | EV_CANON − | → GND | idem (2ᵉ fil de la paire) |
-| 5 | EV_POUMON + | ← COM relais 2 (via INA3221 CH2) | Paire torsadée vers EV poumon |
-| 6 | EV_POUMON − | → GND | idem |
-| 7 | Capteur vitesse alim | ← repiquage 12V borne 1 | Fil alim capteur (souvent brun) |
-| 8 | Capteur vitesse signal | → diviseur 10k/3,3k → GPIO 34 | Fil signal (souvent noir) |
+| 1 | 12V+ batterie | → VIN carte QMOS, → VIN LM2596, repiquage → borne 7 | Câble rouge batterie |
+| 2 | GND batterie | → GND carte, GND LM2596, retour EV et contacts | Câble noir batterie + fil retour commun |
+| 3 | EV_CANON OUVRIR | ← LM2596 6V via QMOS OUT1 (GPIO 16) | Fil bobine ouverture EV canon |
+| 4 | EV_CANON FERMER | ← LM2596 6V via QMOS OUT3 (GPIO 26) | Fil bobine fermeture EV canon |
+| 5 | EV_POUMON OUVRIR | ← LM2596 6V via QMOS OUT2 (GPIO 17) | Fil bobine ouverture EV poumon |
+| 6 | EV_POUMON FERMER | ← LM2596 6V via QMOS OUT4 (GPIO 27) | Fil bobine fermeture EV poumon |
+| 7 | Capteur vitesse alim | ← repiquage 12V borne 1 | Fil alimentation capteur |
+| 8 | Capteur vitesse signal | → diviseur 10k/5,6k → GPIO 34 | Fil signal capteur (2V/8V) |
 | 9 | Fin de course | → pull-up 10k → GPIO 35 | 1 fil du contact NC |
 | 10 | Sécurité spires | → pull-up 10k → GPIO 32 | 1 fil du contact NC |
 | 11 | Contact poumon plein | → pull-up 10k → GPIO 33 | 1 fil du contact NC |
 | 12 | Pressostat | → pull-up 10k → GPIO 25 | 1 fil du contact NC |
 
+> **Retour des EV** : le fil commun (GND) des deux EVs (bornes 3-6, côté bobine −)
+> rentre sur la **borne 2** (GND commun). Chaque EV a donc 2 fils actifs (OUVRIR et
+> FERMER) + 1 fil retour commun.
+>
 > **Retour des contacts** : le 2ᵉ fil de chacun des 4 contacts NC (bornes 9-12) est
-> **chaîné en un seul fil de retour** côté machine, qui rentre sur la **borne 2**
-> (GND). Les courants sont de l'ordre de 0,3 mA par contact (3,3 V / 10 kΩ) — aucun
+> **chaîné en un seul fil de retour** côté machine, qui rentre sur la **borne 2**.
+> Les courants sont de l'ordre de 0,3 mA par contact (3,3 V / 10 kΩ) — aucun
 > problème de chute de tension sur un retour commun.
 > Le GND du capteur vitesse rentre aussi sur la borne 2.
 
@@ -125,60 +128,74 @@ déclenchée — et la 5ᵉ qui rend la résistance obligatoire.
 
 ## Capteur vitesse (bornes 7-8 → GPIO 34)
 
-Capteur actif 3 fils (NPN open-collector, signal 12 V). GPIO 34 est **input-only**
-(pas de sortie, pas de pull interne possible) — le diviseur fait office de
-conditionnement complet.
+Capteur **2 fils** (alimentation + signal) : sans pastille → 2 V au bornier, avec
+pastille → 8 V. GPIO 34 est **input-only** (pas de sortie, pas de pull interne
+possible) — le diviseur fait office de conditionnement complet.
 
 ```
  borne 7 (12V) ──► alim capteur
- borne 8 (signal 12V) ──┐
-                       [R1 = 10 kΩ]
-                        ├──────────► GPIO 34
-                       [R2 = 3,3 kΩ]
-                        │
-                       GND
+ borne 8 (signal 2V/8V) ──┐
+                          [R1 = 10 kΩ]
+                           ├──────────► GPIO 34
+                          [R2 = 5,6 kΩ]
+                           │
+                          GND
 
- V_gpio = 12 × 3300 / 13300 ≈ 2,98 V  (< 3,3 V ✅)
+ V_gpio (HIGH, 8V) = 8 × 5600 / 15600 ≈ 2,87 V  (> seuil HIGH 2,31 V ✅)
+ V_gpio (LOW,  2V) = 2 × 5600 / 15600 ≈ 0,72 V  (< seuil LOW  0,80 V ✅)
 ```
+
+> ⚠️ **Modification matérielle obligatoire** : remplacer l'ancienne résistance
+> R2 = 3,3 kΩ par **5,6 kΩ**. Avec 3,3 kΩ, la tension HIGH (8V) ne dépasse pas
+> 2,00 V — sous le seuil de détection de l'ESP32 (2,31 V).
 
 Résistances soudées sur fil + gaine thermo, au plus près de la carte.
 Anti-rebond : 50 ms dans l'ISR (`DEBOUNCE_VITESSE_MS`) — fronts montants comptés.
 
 ---
 
-## Chaîne de puissance EV — MOSFET principal / secours / relais / INA3221
+## Chaîne de puissance EV — bistables à impulsion 6 V / 5 W
 
-Chaque EV a un chemin **principal** (OUT1/OUT2) et un chemin **secours**
-(OUT3/OUT4), sélectionnés par un relais SPDT. L'INA3221 est sur le **fil commun
-après le COM du relais** : il mesure toujours le chemin actif.
+Les EVs sont **bistables** : une brève impulsion électrique (100 ms) suffit pour
+changer d'état (ouvrir ou fermer). La vanne mémorise sa position mécaniquement,
+sans courant permanent. Deux bobines distinctes par EV : une pour OUVRIR, une pour
+FERMER.
+
+**Abaissement tension** : un module **LM2596** abaisse le 12 V batterie à **6 V**
+pour alimenter les 4 sorties MOSFET (courant de crête ≈ 830 mA × 100 ms par
+impulsion).
 
 ```
-            ┌─ NC ◄── QMOS OUT1 (GPIO 16, principal)
- COM ───────┤
-  │         └─ NO ◄── QMOS OUT3 (GPIO 26, secours)
-  │
-  ▼                       Relais 1 — bobine pilotée par GPIO 2
- INA3221 CH1              (LOW = principal, HIGH = secours)
- (shunt 0,1 Ω)
-  │
-  ▼
- borne 3 ── EV_CANON + ── EV_CANON − ── borne 4 ── GND
+ Batterie 12V ──► LM2596 (réglé 6V) ──► VCC QMOS (commune aux 4 sorties)
+
+ QMOS OUT1 (GPIO 16) ──► borne 3 ──► bobine OUVRIR  EV_CANON
+ QMOS OUT3 (GPIO 26) ──► borne 4 ──► bobine FERMER  EV_CANON
+ QMOS OUT2 (GPIO 17) ──► borne 5 ──► bobine OUVRIR  EV_POUMON
+ QMOS OUT4 (GPIO 27) ──► borne 6 ──► bobine FERMER  EV_POUMON
+
+ Retour commun bobines ──► borne 2 (GND)
 ```
 
-Identique pour EV_POUMON : OUT2 (GPIO 17) / OUT4 (GPIO 27), relais 2 (GPIO 4),
-INA3221 CH2, bornes 5-6.
+**Fonctionnement firmware** :
+- Au boot : impulsion FERMER simultanée sur les 2 EVs → état connu dès le départ.
+- Ouverture : impulsion 100 ms sur la bobine OUVRIR uniquement ; l'état est mémorisé
+  en RAM (`s_ev_canon_ouverte`, `s_ev_poumon_ouverte`).
+- Fermeture d'urgence (`gpio_all_ev_off`) : les deux bobines FERMER pulsent
+  simultanément (100 ms total).
+- Commande redondante ignorée : si l'EV est déjà dans l'état voulu, aucune impulsion
+  n'est envoyée.
 
-**Réglages des modules relais** (à faire avant montage) :
-- cavalier sur **HIGH level trigger** ;
-- VCC signal = **3,3 V**, JD-VCC bobine = **12 V** (cavalier JD-VCC retiré,
-  alimentations séparées).
+**Comportement au reset watchdog** : après un reset TPL5010, les EVs restent dans
+leur état mécanique pendant ~7 s (5,3 s timeout watchdog + ~2 s boot ESP32). Le
+boot envoie ensuite les impulsions FERMER. Ce délai est accepté comme comportement
+de sécurité dégradé.
 
-Au repos (GPIO 2/4 LOW), COM–NC fermé → chemin principal. Le basculement secours
-est automatique sur détection de panne MOSFET (voir HARDWARE.md, PR-19).
+> L'INA3221 n'est **pas** connecté aux EVs bistables : sans courant permanent,
+> il n'y a rien à mesurer. La surveillance EV est supprimée.
 
 ---
 
-## I2C — INA3221 (mesures EV + batterie)
+## I2C — INA3221 (batterie uniquement)
 
 ```
  ESP32 GPIO 21 (SDA) ◄──► INA3221 SDA
@@ -186,16 +203,14 @@ est automatique sur détection de panne MOSFET (voir HARDWARE.md, PR-19).
  3,3V ──────────────────► INA3221 VCC      A0 → GND (adresse 0x40)
  GND  ──────────────────► INA3221 GND
 
- CH1 : en série fil EV_CANON  (COM relais 1 → borne 3)   — tension + courant
- CH2 : en série fil EV_POUMON (COM relais 2 → borne 5)   — tension + courant
- CH3 : V_BUS+ sur borne 1 (12V), V_BUS− sur borne 2      — tension batterie
+ CH3 : V_BUS+ sur borne 1 (12V), V_BUS− sur borne 2 (GND) — tension batterie
 ```
 
 Câbles I2C courts (< 20 cm) et éloignés des fils EV. Le module MCU-3221 embarque
 déjà ses pull-ups I2C.
 
 > Si l'INA3221 est absent/débranché, l'UI affiche batterie « Inconnue » (gris,
-> 0 V) — aucune tension n'est inventée. La surveillance MOSFET est inactive.
+> 0 V) — aucune tension n'est inventée.
 
 ---
 
@@ -219,14 +234,15 @@ RC fail-safe (désactivé par défaut, Config → Machine).
 
 ## Ordre de montage conseillé
 
-1. **Rail DIN** fixé dans le boîtier ; bornier 12 voies + carte QMOS + INA3221 + 2 relais.
-2. **Réglages avant câblage** : cavaliers relais (HIGH trigger, JD-VCC séparé), A0
-   de l'INA à GND.
-3. **Puissance** : bornes 1-2 → carte QMOS ; chaînes EV (OUT → relais → INA → bornes
-   3-6) ; vérifier le serrage, ce sont les seuls fils qui portent ≈ 1 A.
+1. **Rail DIN** fixé dans le boîtier ; bornier 12 voies + carte QMOS + INA3221 + module
+   LM2596.
+2. **Réglages avant câblage** : ajuster le LM2596 à 6 V (multimètre, potentiomètre) ;
+   vérifier A0 de l'INA à GND.
+3. **Puissance** : bornes 1-2 → carte QMOS et LM2596 ; chaînes EV (LM2596 → OUT1-4 →
+   bornes 3-6) ; vérifier le serrage, ce sont les seuls fils qui portent ≈ 800 mA.
 4. **Conditionnement signaux** : répartiteur 1→4 sur le 3,3 V, souder les 4
    pull-ups 10 kΩ (deux fils en Y sur la patte de sortie : GPIO + borne) et le
-   diviseur 10k/3,3k, gaine thermo, raccorder bornes 7-12.
+   diviseur 10k/5,6k, gaine thermo, raccorder bornes 7-12.
 5. **I2C + watchdog** : INA3221 (21/22), TPL5010 (13/EN).
 6. **Contrôles hors tension** (checklist ci-dessous) puis mise sous tension USB
    seule d'abord (12 V débranché), puis 12 V.
@@ -239,13 +255,17 @@ RC fail-safe (désactivé par défaut, Config → Machine).
 |---|---|---|---|
 | 1 | Pas de court 12V/GND | Ohmmètre bornes 1-2 | > 1 kΩ (carte QMOS en entrée) |
 | 2 | Pull-ups présentes | Ohmmètre GPIO 25/32/33/35 ↔ 3,3V | ≈ 10 kΩ chacune |
-| 3 | Diviseur vitesse | Ohmmètre GPIO 34 ↔ GND | ≈ 3,3 kΩ |
-| 4 | Relais au repos | Continuité COM ↔ NC | fermé (les 2 relais) |
-| 5 | Cavaliers relais | Visuel | HIGH trigger, JD-VCC séparé |
-| 6 | Adresse INA | Visuel A0 | A0 → GND (0x40) |
-| 7 | Contacts NC au repos | Continuité bornes 9-12 ↔ borne 2, capteurs branchés | fermé (LOW au boot) |
-| 8 | Test fil coupé | Débrancher un contact, lire l'UI | sécurité/alarme correspondante déclenchée |
+| 3 | Diviseur vitesse | Ohmmètre GPIO 34 ↔ GND | ≈ 5,6 kΩ |
+| 4 | LM2596 réglé à 6V | Multimètre V_out LM2596 (12V branché) | 5,8 V – 6,2 V |
+| 5 | Adresse INA | Visuel A0 | A0 → GND (0x40) |
+| 6 | Contacts NC au repos | Continuité bornes 9-12 ↔ borne 2, capteurs branchés | fermé (LOW au boot) |
+| 7 | Test fil coupé | Débrancher un contact, lire l'UI | sécurité/alarme correspondante déclenchée |
+| 8 | Test impulsion EV | Lancer un arrosage court, écouter les EVs | claquement mécanique à l'ouverture et à la fermeture |
 
-Le contrôle 8 est le test fonctionnel de la règle fail-safe : **chaque entrée
+Le contrôle 7 est le test fonctionnel de la règle fail-safe : **chaque entrée
 débranchée doit déclencher le même comportement que la sécurité réelle**
 (SEC-1 fin de course, SEC-2 débordement, pression absente → PAUSE_PRESSION).
+
+Le contrôle 8 confirme que les impulsions 6 V / 100 ms activent mécaniquement les
+EVs bistables — un claquement distinct doit être audible à l'ouverture et à la
+fermeture de chaque vanne.

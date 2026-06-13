@@ -58,12 +58,12 @@ static void test_cycle_normal_poumon_plein(void)
     gpio_ev_canon_set(true);  // canon ouvert, session active
 
     // Initialement en SOUS_VIDANGE : poumon fermé
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_EV_POUMON));
+    TEST_ASSERT_FALSE(gpio_ev_poumon_get());
 
     // t_vidange_s=2s → 20 ticks + 2 ticks (SOUS_ATTENTE→SOUS_REMPLISSAGE)
     // Résultat : SOUS_REMPLISSAGE, EV_POUMON ouvert
     avancer(22);
-    TEST_ASSERT_EQUAL_INT(1, gpio_get_level(PIN_EV_POUMON));
+    TEST_ASSERT_TRUE(gpio_ev_poumon_get());
     TEST_ASSERT_EQUAL_INT(ETAT_EN_COURS, state_machine_get_etat());
 
     // Capteur poumon_plein déclenché (bobine pleine)
@@ -71,7 +71,7 @@ static void test_cycle_normal_poumon_plein(void)
     avancer(1);
 
     // Cycle terminé : poumon refermé, cliquet avancé, session progressée
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_EV_POUMON));
+    TEST_ASSERT_FALSE(gpio_ev_poumon_get());
     TEST_ASSERT_EQUAL_INT(ETAT_EN_COURS, state_machine_get_etat());
 
     machine_status_t s;

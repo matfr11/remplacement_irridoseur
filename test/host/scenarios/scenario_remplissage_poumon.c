@@ -53,15 +53,15 @@ static void test_retry_delai_vidange(void)
     TEST_ASSERT_EQUAL_INT(1, state_machine_test_get_nb_tentatives());
 
     // EV_POUMON doit être OFF (vidange en cours) immédiatement après le timeout
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_EV_POUMON));
+    TEST_ASSERT_FALSE(gpio_ev_poumon_get());
 
     // Dans les 4 s suivantes (< t_vidange_s=5 s) : EV_POUMON reste OFF
     avancer(40); // 40 ticks = 4 s
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_EV_POUMON));
+    TEST_ASSERT_FALSE(gpio_ev_poumon_get());
 
     // Après 5 s total de vidange (15 ticks de plus → dépasse t_vidange_s)
     avancer(15); // 1.5 s supplémentaires → total > 5 s
-    TEST_ASSERT_EQUAL_INT(1, gpio_get_level(PIN_EV_POUMON)); // ré-ouvert
+    TEST_ASSERT_TRUE(gpio_ev_poumon_get()); // ré-ouvert
     TEST_ASSERT_EQUAL_INT(ETAT_REMPLISSAGE_POUMON, state_machine_get_etat());
 
     state_machine_cmd_stop();

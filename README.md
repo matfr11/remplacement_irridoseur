@@ -93,13 +93,11 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 | Rail DIN 15cm | Fixé dans boîtier | 1 |
 | Résistances 10 kΩ × 4 | Pull-up contacts NC — soudées en Y sur fils + gaine thermo | 4 |
 | Bornier de répartition 1→4 | Distribution du 3,3V vers les 4 pull-ups | 1 |
-| Diviseur 10 kΩ + 3,3 kΩ | Capteur vitesse 12V → 3V — soudé sur fil + gaine thermo | 1 set |
-| **Module INA3221 3 canaux I2C** | MCU-3221, shunts 0,1 Ω intégrés, CH1=EV_CANON CH2=EV_POUMON CH3=Batterie | 1 |
-| **Module relais 1 canal 12V × 2** | Optocouplé, NC/NO/COM, cavalier HIGH level trigger, bobine 12V | 2 |
+| Diviseur 10 kΩ + 5,6 kΩ | Capteur vitesse 2 fils 2V/8V → ESP32 — soudé sur fil + gaine thermo | 1 set |
+| **Module LM2596** | Abaisseur de tension 12V → 6V pour alimenter les bobines EV bistables | 1 |
+| **Module INA3221 3 canaux I2C** | MCU-3221, mesure tension batterie CH3 uniquement | 1 |
 
-> ⚠️ **GPIO EV_CANON et EV_POUMON** (canaux MOSFET OUT1/OUT2) sont à identifier sur le schéma technique de la carte Quad MOS avant mise sous tension. Voir `main/gpio_config.h`.
->
-> Les **modules relais** doivent être configurés en **HIGH level trigger** (cavalier physique sur le module). VCC signal : 3,3V — JD-VCC bobine : 12V (alimentation séparée).
+> ⚠️ **Régler le LM2596 à 6V** avant tout câblage (multimètre sur la sortie, potentiomètre ajustable). Les bobines EV sont prévues pour 6V / 5W — alimenter en 12V les détruirait.
 
 ---
 
@@ -109,18 +107,16 @@ DEROULE ← flanc fin_course (mesure longueur déployée tracteur)   (reprise au
 
 | GPIO | Direction | Signal | Conditionnement |
 |---|---|---|---|
-| **34** | INPUT | Capteur vitesse bobine | Diviseur 10 kΩ/3,3 kΩ — 12V→3V — pas de pull-up interne |
+| **34** | INPUT | Capteur vitesse bobine | Diviseur 10 kΩ/5,6 kΩ — 2V/8V → ESP32 — pas de pull-up interne |
 | **35** | INPUT | Fin de course canon | Pull-up 10 kΩ externe **obligatoire** — contact NC |
 | **32** | INPUT | Sécurité spires | Pull-up 10 kΩ externe **obligatoire** — contact NC |
 | **33** | INPUT | Contact poumon plein | Pull-up 10 kΩ externe **obligatoire** — contact NC |
 | **25** | INPUT | Pressostat | Pull-up 10 kΩ externe **obligatoire** — contact NC |
 | **0** | INPUT | Bouton physique carte | Bouton intégré carte Quad MOS |
-| **16** | OUTPUT | EV_CANON 12V — MOSFET principal | QMOS OUT1 carte Quad MOS |
-| **17** | OUTPUT | EV_POUMON 12V — MOSFET principal | QMOS OUT2 carte Quad MOS |
-| **26** | OUTPUT | EV_CANON — MOSFET secours | QMOS OUT3 — activé si OUT1 défaillant |
-| **27** | OUTPUT | EV_POUMON — MOSFET secours | QMOS OUT4 — activé si OUT2 défaillant |
-| **2** | OUTPUT | Relais basculement EV_CANON | LOW=principal (NC), HIGH=secours (NO) |
-| **4** | OUTPUT | Relais basculement EV_POUMON | LOW=principal (NC), HIGH=secours (NO) |
+| **16** | OUTPUT | EV_CANON OUVRIR — impulsion 100ms | QMOS OUT1 via LM2596 6V |
+| **17** | OUTPUT | EV_POUMON OUVRIR — impulsion 100ms | QMOS OUT2 via LM2596 6V |
+| **26** | OUTPUT | EV_CANON FERMER — impulsion 100ms | QMOS OUT3 via LM2596 6V |
+| **27** | OUTPUT | EV_POUMON FERMER — impulsion 100ms | QMOS OUT4 via LM2596 6V |
 | **21** | I2C SDA | INA3221 | Bus I2C partageable |
 | **22** | I2C SCL | INA3221 | Bus I2C partageable |
 | **23** | OUTPUT | Heartbeat RC fail-safe (LED carte) | Toggle 1 Hz — activable depuis Config → Machine |
@@ -150,16 +146,18 @@ montage : [docs/dev/SCHEMA_CABLAGE.md](docs/dev/SCHEMA_CABLAGE.md).
 |---|---|
 | 1 | 12V+ batterie (+ repiquage alim capteur vitesse → borne 7) |
 | 2 | GND batterie + retour commun des contacts |
-| 3-4 | EV_CANON + / − ← COM relais 1 (NC→OUT1 / NO→OUT3) via INA3221 CH1 |
-| 5-6 | EV_POUMON + / − ← COM relais 2 (NC→OUT2 / NO→OUT4) via INA3221 CH2 |
+| 3 | EV_CANON OUVRIR ← LM2596 6V via QMOS OUT1 (GPIO 16) |
+| 4 | EV_CANON FERMER ← LM2596 6V via QMOS OUT3 (GPIO 26) |
+| 5 | EV_POUMON OUVRIR ← LM2596 6V via QMOS OUT2 (GPIO 17) |
+| 6 | EV_POUMON FERMER ← LM2596 6V via QMOS OUT4 (GPIO 27) |
 | 7 | Capteur vitesse — alim 12V |
-| 8 | Capteur vitesse — signal → diviseur 10k/3,3k → GPIO 34 |
+| 8 | Capteur vitesse — signal (2V/8V) → diviseur 10k/5,6k → GPIO 34 |
 | 9 | Fin de course → pull-up 10k → GPIO 35 |
 | 10 | Sécurité spires → pull-up 10k → GPIO 32 |
 | 11 | Contact poumon plein → pull-up 10k → GPIO 33 |
 | 12 | Pressostat → pull-up 10k → GPIO 25 |
 
-> La mesure tension batterie (anciennement bornes 13-14 + diviseur 100 kΩ/27 kΩ) est désormais assurée par l'INA3221 CH3 câblé directement sur les bornes 1 (12V) et 2 (GND).
+> Fil commun (GND) des bobines EV ramené sur la borne 2.
 > Si l'INA3221 est absent ou débranché, l'UI affiche l'état batterie **« Inconnue »** (gris, 0 V) — aucune tension n'est inventée.
 
 ---
@@ -170,9 +168,8 @@ montage : [docs/dev/SCHEMA_CABLAGE.md](docs/dev/SCHEMA_CABLAGE.md).
 main/
 ├── gpio_config.h           — affectation GPIO centralisée (⚠️ identifier OUT1/OUT2 Quad MOS)
 ├── main.c                  — app_main, init, tâches FreeRTOS
-├── gpio_handler.c/h        — config GPIO, ISR vitesse, contacts NC fail-safe, routage secours MOSFET
-├── ina3221.c/h             — driver I2C INA3221 3 canaux — tension + courant EV/batterie
-├── mosfet_surveillance.c/h — détection panne MOSFET (CC, HS, EV débranchée), basculement relais secours
+├── gpio_handler.c/h        — config GPIO, ISR vitesse, contacts NC fail-safe, pilotage EV bistables (impulsions 100ms)
+├── ina3221.c/h             — driver I2C INA3221 — tension batterie CH3 uniquement
 ├── securites.c/h           — watchdog SEC-1 / SEC-2 / SEC-P — exécuté en premier dans le tick
 ├── batterie.c/h            — tension batterie via INA3221 CH3, seuils NVS configurables, simulation
 ├── state_machine.c/h       — 10 états, sous-états poumon, pause pression, cmd_resume, stats campagne
@@ -338,7 +335,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 
 | Paramètre | Comment mesurer | Défaut / valeur connue |
 |---|---|---|
-| `PIN_EV_CANON` / `PIN_EV_POUMON` | QMOS OUT1/OUT2 carte Quad MOS | GPIO **16** / **17** ✅ |
+| `PIN_EV_CANON_OUVRIR` / `PIN_EV_POUMON_OUVRIR` | QMOS OUT1/OUT2 via LM2596 6V | GPIO **16** / **17** ✅ |
 | `t_vidange_s` | Chrono depuis EV_POUMON=OFF jusqu'à détection reprise capteur | 2,0 s ⚠️ à affiner terrain |
 | `cycles_par_tour` | Compter les cycles poumon pour 1 tour complet de bobine | **40** sur ST1 Bis ✅ |
 
@@ -374,6 +371,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | **fix/PR-19** | ✅ Fait | 8 corrections post-revue : bug critique lecture pin secours, verifier_apres hors mutex, guard INA3221 sur fil EV commun, retour bool basculement, reset relais urgence, filtre tension batterie |
 | **fix/code-review** | ✅ Fait | 10 corrections revue complète : mutex récursif urgence (critique), guards NaN/sqrtf/powf hydraulique, validation NVS floats, guards mécanique, taille OTA, stack telemetry, null-termination strings |
 | **PR-20** | ✅ Fait | Watchdog matériel TPL5010DDCR — GPIO13 DONE, reboot ESP32 via EN si state_machine bloquée > 5,3s (Rext=3,3MΩ), option Kconfig `CONFIG_IRRI_TPL5010` |
+| **refonte/ev-bistables** | ✅ Fait | ⚠️ Rupture matérielle — EVs bistables à impulsion 6V/5W (2 MOSFETs/EV : OUVRIR/FERMER), LM2596 12V→6V, capteur vitesse 2 fils 2V/8V (diviseur 5,6kΩ), suppression mosfet_surveillance + relais SPDT + INA CH1/CH2 |
 
 ---
 

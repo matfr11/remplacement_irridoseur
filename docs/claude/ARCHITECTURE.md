@@ -149,13 +149,12 @@ main.c
 | **17** | SORTIE | EV_POUMON | HIGH = ouvert | Canal MOSFET Quad MOS OUT2 |
 | **23** | SORTIE | LED carte / Heartbeat RC | toggle 1Hz si `heartbeat_rc_on=true` | LED verte carte — défaut OFF |
 | **25** | ENTRÉE | Pressostat | LOW = pression OK, HIGH = absent | Pull-up 10kΩ externe, NC |
-| **26** | — | QMOS OUT3 (non utilisé) | — | Canal MOSFET Quad MOS libre |
-| **27** | — | QMOS OUT4 (non utilisé) | — | Canal MOSFET Quad MOS libre |
+| **26** | SORTIE | EV_CANON FERMER | impulsion 100ms HIGH → fermeture mécanique | QMOS OUT3 via LM2596 6V |
+| **27** | SORTIE | EV_POUMON FERMER | impulsion 100ms HIGH → fermeture mécanique | QMOS OUT4 via LM2596 6V |
 | **32** | ENTRÉE | Sécurité spires (débordement) | LOW = normal, HIGH = SEC-2 | Pull-up 10kΩ externe, NC |
 | **33** | ENTRÉE | Contact poumon plein | LOW = en cours, HIGH = plein | Pull-up 10kΩ externe, NC |
-| **34** | ENTRÉE | Capteur vitesse (impulsions) | flancs montants ISR | Diviseur 10kΩ/3.3kΩ (12V→3V) |
+| **34** | ENTRÉE | Capteur vitesse (impulsions) | flancs montants ISR | Diviseur 10kΩ/5,6kΩ (8V→2,87V) |
 | **35** | ENTRÉE | Fin de course canon | LOW = canon dehors, HIGH = rentré (SEC-1) | Pull-up 10kΩ externe, NC |
-| **36** | ENTRÉE | Tension batterie (ADC1) | analogique 0..3.3V | Diviseur R1=100kΩ / R2=27kΩ |
 
 **Logique universelle NC** : LOW = repos/normal, HIGH = danger/actif.
 Fil coupé → HIGH → sécurité active → fail-safe.

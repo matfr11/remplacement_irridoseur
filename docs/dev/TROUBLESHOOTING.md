@@ -31,7 +31,7 @@
 2. Aucun cycle poumon encore terminé (la vitesse s'affiche après le premier cycle complet)
 3. Capteur d'impulsions non câblé (GPIO 34) — n'affecte que la mesure de LONGUEUR,
    pas la vitesse (le calcul par impulsions a été retiré)
-   → Vérifier GPIO 34, diviseur 10kΩ/3.3kΩ si la longueur ne progresse pas
+   → Vérifier GPIO 34, diviseur 10kΩ/5,6kΩ si la longueur ne progresse pas
 
 ---
 

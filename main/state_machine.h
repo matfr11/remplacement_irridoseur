@@ -139,11 +139,6 @@ typedef struct {
     float           cfg_cycles_par_tour;
     bool            cfg_heartbeat_rc_on;
 
-    // MOSFETs EV — état et secours
-    bool            mosfet_canon_secours;
-    bool            mosfet_poumon_secours;
-    char            mosfet_canon_etat[20];   // "OK" / "grillé CC" / "HS ouvert" / "EV débranchée"
-    char            mosfet_poumon_etat[20];
 } machine_status_t;
 
 // Session summary pour télémétrie fin de session
