@@ -32,19 +32,23 @@ Risques résiduels :
 
 ```
 Cause : bug logiciel, corruption mémoire, stack insuffisant
-Durée : jusqu'au reboot automatique par watchdog (~3s)
+Durée : jusqu'au reboot automatique par watchdog TPL5010 (~5,3s)
 
 Séquence :
-  1. ESP32 gelé → plus de tick state_machine
-  2. EV figées dans leur dernier état pendant ~3s
-  3. Watchdog hardware déclenche reboot
-  4. Reboot → ETAT_VEILLE → EV=OFF ✅
+  1. ESP32 gelé → plus de tick state_machine → plus d'impulsion DONE sur TPL5010
+  2. EVs bistables figées dans leur dernier état mécanique (pas de courant nécessaire)
+  3. TPL5010 déclenche RESET après ~5,3s → reboot ESP32
+  4. Boot (~2s) : gpio_handler_init() envoie impulsions FERMER sur les 2 EVs → état connu ✅
+  5. Durée totale avec EVs ouvertes : ~7s — jugé acceptable (décision 2026-06-13)
 
 Risques résiduels :
-  - 3s avec EV dans état inconnu → faible impact
+  - ~7s avec EVs dans état inconnu avant fermeture forcée au boot
   - Progression perdue → même problème que coupure
-  - Si watchdog désactivé → EV figées indéfiniment 🔴
+  - Si watchdog désactivé → EVs figées indéfiniment 🔴
 ```
+
+> **EVs bistables — comportement au reset** : fermeture différée ~7s (5,3s timeout TPL5010 +
+> ~2s boot ESP32 + impulsion FERMER). Acceptable car le débit maxi sur ~7s est faible.
 
 ### 1.3 Coupure WiFi / perte connexion téléphone
 

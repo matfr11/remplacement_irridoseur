@@ -71,14 +71,14 @@ static void test_cmd_ev_manuel_en_veille(void)
     TEST_ASSERT_EQUAL_INT(ETAT_VEILLE, state_machine_get_etat());
 
     state_machine_cmd_ev_canon_set(true);
-    TEST_ASSERT_EQUAL_INT(1, gpio_get_level(PIN_EV_CANON));
+    TEST_ASSERT_TRUE(gpio_ev_canon_get());
     state_machine_cmd_ev_canon_set(false);
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_EV_CANON));
+    TEST_ASSERT_FALSE(gpio_ev_canon_get());
 
     state_machine_cmd_ev_poumon_set(true);
-    TEST_ASSERT_EQUAL_INT(1, gpio_get_level(PIN_EV_POUMON));
+    TEST_ASSERT_TRUE(gpio_ev_poumon_get());
     state_machine_cmd_ev_poumon_set(false);
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_EV_POUMON));
+    TEST_ASSERT_FALSE(gpio_ev_poumon_get());
 }
 
 static void test_cmd_ev_ignore_hors_veille(void)
@@ -87,8 +87,8 @@ static void test_cmd_ev_ignore_hors_veille(void)
     state_machine_test_injecter_etat(ETAT_ARRET_URGENCE);
     state_machine_cmd_ev_canon_set(true);
     state_machine_cmd_ev_poumon_set(true);
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_EV_CANON));
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_EV_POUMON));
+    TEST_ASSERT_FALSE(gpio_ev_canon_get());
+    TEST_ASSERT_FALSE(gpio_ev_poumon_get());
 }
 
 // ── cmd_start_deroule : VEILLE → DEROULE, ignoré ailleurs ────────────────────

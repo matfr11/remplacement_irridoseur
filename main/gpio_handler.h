@@ -26,14 +26,13 @@ void gpio_handler_init(void);
 // Lecture snapshot atomique de toutes les entrées
 void gpio_handler_lire_entrees(entrees_t *entrees);
 
-// Sorties électrovannes
+// Sorties électrovannes bistables (impulsion 100ms)
 void gpio_ev_canon_set(bool actif);
 void gpio_ev_poumon_set(bool actif);
-void gpio_all_ev_off(void);     // FAIL-SAFE — coupe tout immédiatement
+void gpio_all_ev_off(void);     // FAIL-SAFE — impulsions FERMER simultanées (100ms)
 
-// État réel des EV — lit le pin actif (principal ou secours après basculement MOSFET).
-// Toujours préférer ces getters à gpio_get_level(PIN_EV_*) : après basculement,
-// le pin principal reste à 0 alors que l'EV est pilotée par OUT3/OUT4.
+// État logique des EVs — retourne l'état mémorisé en RAM (pas de lecture GPIO :
+// les EVs bistables ne tirent aucun courant en régime permanent).
 bool gpio_ev_canon_get(void);
 bool gpio_ev_poumon_get(void);
 

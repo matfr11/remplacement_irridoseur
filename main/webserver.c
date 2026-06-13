@@ -153,11 +153,7 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         "\"cfg_fin_course_seuil_m\":%.1f,"
         "\"coupure_detectee\":%s,"
         "\"vitesse_max_m_h\":%.1f,"
-        "\"dose_corrigee_mm\":%.1f,"
-        "\"mosfet_canon_secours\":%s,"
-        "\"mosfet_poumon_secours\":%s,"
-        "\"mosfet_canon_etat\":\"%s\","
-        "\"mosfet_poumon_etat\":\"%s\""
+        "\"dose_corrigee_mm\":%.1f"
         "}",
         etat_to_str(s->etat), (int)s->etat,
         prog_nom,
@@ -224,11 +220,7 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         s->cfg_fin_course_seuil_m,
         s->coupure_detectee     ? "true" : "false",
         s->vitesse_max_m_h,
-        s->dose_corrigee_mm,
-        s->mosfet_canon_secours  ? "true" : "false",
-        s->mosfet_poumon_secours ? "true" : "false",
-        s->mosfet_canon_etat,
-        s->mosfet_poumon_etat
+        s->dose_corrigee_mm
     );
 }
 

@@ -39,9 +39,8 @@ Le firmware contrôle la durée des pauses (T_attente) pour ajuster la vitesse.
 |---|---|
 | `state_machine.c` | Chef d'orchestre. Contient les 10 états, la régulation, et toutes les décisions. Les autres modules lui fournissent des données ou exécutent ses ordres. |
 | `securites.c` | Watchdog de sécurité. Appelé EN PREMIER à chaque tick (100ms). Coupe tout si danger (débordement bobine ou fin de course inattendu). |
-| `gpio_handler.c` | Lit les capteurs et pilote les électrovannes. Contient l'ISR du capteur de vitesse. Route les commandes EV vers le MOSFET principal ou secours selon l'état des relais. |
-| `ina3221.c` | Driver I2C INA3221 3 canaux. Mesure tension + courant sur EV_CANON (CH1), EV_POUMON (CH2) et batterie (CH3). Retourne 0 si non initialisé (safe pour test mode). |
-| `mosfet_surveillance.c` | Détecte les pannes MOSFET (court-circuit grillé, circuit ouvert, EV débranchée) via INA3221. Bascule automatiquement sur OUT3/OUT4 via relais SPDT. Déclenche urgence si principal ET secours défaillants. |
+| `gpio_handler.c` | Lit les capteurs et pilote les électrovannes bistables. Contient l'ISR du capteur de vitesse. Envoie des impulsions 100ms (OUVRIR/FERMER) et mémorise l'état logique en RAM. |
+| `ina3221.c` | Driver I2C INA3221 3 canaux. Mesure tension batterie sur CH3 uniquement. Retourne 0 si non initialisé (safe pour test mode). |
 | `regulation.c` | Calculs de régulation : combien de temps attendre entre deux cycles poumon pour avoir la bonne vitesse. Feedforward + correction proportionnelle. |
 | `calculs_hydraulique.c` | Formule analytique Torricelli : Q=k_q×buse²×√p_buse, V=Q×1000/(larg×dose). Validation programme (bornes ±25%, portée, V_max). |
 | `calculs_mecanique.c` | Géométrie de la bobine : quel rayon à l'étage courant, quelle distance avance-t-on par impulsion capteur. |
@@ -75,7 +74,6 @@ GPIO 35, 32, 33, 25 (contacts NC)
 
 INA3221 I2C (GPIO 21 SDA / GPIO 22 SCL)
   → ina3221_lire_canal(CH3) → tension_v → batterie_lire_voltage() → batt_status_t
-  → ina3221_lire_canal(CH1/CH2) → {tension_v, courant_ma} → mosfet_surveillance.c
 
 TICK MACHINE D'ÉTATS (100ms)
 ─────────────────────────────

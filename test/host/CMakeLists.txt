@@ -22,7 +22,6 @@ set(PROD_SRCS
   ../../main/gpio_handler.c
   ../../main/securites.c
   ../../main/batterie.c
-  ../../main/mosfet_surveillance.c
   ../../main/json_utils.c
 )
 
@@ -43,7 +42,6 @@ add_executable(irrifrance_tests
   test_json_utils.c
   test_config_nvs.c
   test_batterie.c
-  test_mosfet_surveillance.c
   scenarios/scenario_cycle_normal.c
   scenarios/scenario_perte_pression.c
   scenarios/scenario_urgences.c

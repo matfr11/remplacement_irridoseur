@@ -83,9 +83,9 @@ static void test_scenario_cycle_sans_tempo(void)
     state_machine_cmd_stop();
     TEST_ASSERT_EQUAL_INT(ETAT_ARRET_FINAL, state_machine_get_etat());
     ASSERT_EVS(false, false);
-    // Relais secours jamais commutés en fonctionnement normal
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_RELAIS_CANON));
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_RELAIS_POUMON));
+    // EVs fermées — état logique vérifié via getters bistable
+    TEST_ASSERT_FALSE(gpio_ev_canon_get());
+    TEST_ASSERT_FALSE(gpio_ev_poumon_get());
 }
 
 // Scénario 2 — cycle avec tempo départ

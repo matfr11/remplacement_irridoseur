@@ -121,11 +121,6 @@ Diffusé toutes les **500ms** à tous les clients connectés.
   "vitesse_max_m_h": 0.0,         // float, vitesse max physique si T_attente < 0 (0 sinon)
   "dose_corrigee_mm": 0.0,        // float, dose réelle à vitesse_max (0 sinon)
 
-  // ── Surveillance MOSFETs (PR-19) ──────────────────────────────────────────
-  "mosfet_canon_secours": false,  // bool, true si EV_CANON basculée sur MOSFET secours (OUT3)
-  "mosfet_poumon_secours": false, // bool, true si EV_POUMON basculée sur MOSFET secours (OUT4)
-  "mosfet_canon_etat": "OK",      // string, état du MOSFET principal EV_CANON (voir tableau)
-  "mosfet_poumon_etat": "OK"      // string, état du MOSFET principal EV_POUMON (voir tableau)
 }
 ```
 
@@ -157,18 +152,6 @@ Diffusé toutes les **500ms** à tous les clients connectés.
 | `"CORRECTE"` | 11.8..12.4V |
 | `"FAIBLE"` | cfg_batt_warn_v..11.8V |
 | `"CRITIQUE"` | < cfg_batt_crit_v |
-
-### Valeurs `mosfet_canon_etat` / `mosfet_poumon_etat`
-
-| Valeur (string) | Signification | Cause typique |
-|---|---|---|
-| `"OK"` | MOSFET sain, secours inactif | — |
-| `"grillé CC"` | Court-circuit — tension présente même GPIO=LOW | MOSFET claqué en court-circuit |
-| `"HS ouvert"` | Circuit ouvert — pas de tension même GPIO=HIGH | MOSFET grillé en circuit ouvert |
-| `"EV débranchée"` | Courant < 50 mA alors que tension présente | Fil EV débranché ou coupé |
-
-> Ces champs contiennent l'état du **MOSFET principal** uniquement. Quand `mosfet_*_secours=false`,
-> l'état est toujours `"OK"` (aucune panne détectée).
 
 ---
 

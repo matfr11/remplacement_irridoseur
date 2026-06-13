@@ -5,6 +5,66 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [refonte/ev-bistables] — 2026-06-13 — EVs bistables à impulsion + capteur 2 fils 2V/8V
+
+### ⚠️ Rupture de compatibilité matérielle
+
+Le firmware supposait des **électrovannes monostables** (courant continu) avec failover par
+relais SPDT. Le matériel réel est fondamentalement différent.
+
+### Changed — Architecture matérielle
+
+- **EVs bistables à impulsion 6V/5W** : une brève impulsion 100 ms suffit pour changer d'état
+  (OUVRIR ou FERMER) ; la vanne mémorise sa position mécaniquement sans courant permanent
+- **4 sorties MOSFET, 2 par EV** : OUT1/GPIO16 = EV_CANON_OUVRIR, OUT3/GPIO26 = EV_CANON_FERMER,
+  OUT2/GPIO17 = EV_POUMON_OUVRIR, OUT4/GPIO27 = EV_POUMON_FERMER
+- **Module LM2596** : abaisse le 12V batterie à 6V pour alimenter les bobines EV
+- **Capteur vitesse 2 fils 2V/8V** : sans pastille → 2V, avec pastille → 8V — remplace
+  l'ancienne conception 3 fils NPN 12V
+- **Diviseur capteur** : R2 = 3,3 kΩ → **5,6 kΩ** (8V → 2,87V ✅ / 2V → 0,72V ✅ pour l'ESP32)
+
+### Removed
+
+- **Module `mosfet_surveillance`** entièrement supprimé : les EVs bistables n'ont pas de courant
+  permanent à mesurer, et 4 bobines + batterie dépassent les 3 canaux disponibles de l'INA3221
+- **Relais SPDT** (GPIO2, GPIO4) : le failover par relais est impossible avec des EVs bistables
+  (état mécanique inconnu à la reprise)
+- **INA3221 CH1/CH2** : débranchés ; le module INA ne surveille plus que la batterie (CH3)
+- Champs `mosfet_canon_secours`, `mosfet_poumon_secours`, `mosfet_canon_etat`, `mosfet_poumon_etat`
+  retirés de `machine_status_t` et du JSON WebSocket
+
+### Changed — Firmware
+
+- `gpio_config.h` : nouveaux noms `PIN_EV_CANON_OUVRIR/FERMER`, `PIN_EV_POUMON_OUVRIR/FERMER`,
+  `DUREE_IMPULSION_EV_MS = 100` ; suppression `PIN_RELAIS_*`, `PIN_MOSFET_SECOURS_*`,
+  `SEUIL_TENSION_EV_V`, `SEUIL_COURANT_EV_MA`, `INA3221_CH_EV_*`
+- `gpio_handler.c` : `gpio_ev_canon_set()` / `gpio_ev_poumon_set()` envoient une impulsion
+  (HIGH 100ms puis LOW) au lieu d'un niveau continu ; état mémorisé en RAM
+  (`s_ev_canon_ouverte`, `s_ev_poumon_ouverte`) — pas de lecture GPIO possible
+- `gpio_ev_canon_get()` / `gpio_ev_poumon_get()` : retournent l'état RAM mémorisé
+- `gpio_all_ev_off()` : pulse simultanée FERMER sur les deux EVs (100ms total)
+- Boot : `gpio_handler_init()` appelle `gpio_all_ev_off()` pour établir un état connu
+- Commande redondante ignorée (idempotent) : si l'EV est déjà dans l'état voulu, aucune
+  impulsion n'est envoyée
+
+### Comportement au reset watchdog
+
+Après un reset TPL5010 (~5,3s timeout + ~2s boot), les EVs restent dans leur état mécanique
+~7s avant que le boot envoie les impulsions FERMER. Comportement jugé acceptable.
+
+### Tests
+
+- `test_mosfet_surveillance.c` supprimé (embarqué + host)
+- `test_gpio.c` (embarqué) : 4 nouveaux tests EVs bistables (ouverture, fermeture, idempotent,
+  all_off) ; macro `ASSERT_EVS` utilise les getters d'état mémorisé
+
+### Docs
+
+- `docs/dev/SCHEMA_CABLAGE.md` : synoptique, bornier, capteur vitesse et chaîne EV mis à jour
+- `docs/dev/HARDWARE.md` : EVs bistables, LM2596, nouveau diviseur, suppression section relais
+
+---
+
 ## [fix/materiel-absent] — 2026-06-11 — INA absent ≠ batterie 12,5 V, pressostat débranché ≠ pression OK
 
 Constats terrain v1.2.10 (banc sans INA3221 ni pressostat, sans pull-ups externes) :

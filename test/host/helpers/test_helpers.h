@@ -12,13 +12,12 @@ void config_set_programme_invalide(void);
 // (max 500 ticks). Renvoie le nombre de ticks effectués, -1 si état non atteint.
 int aller_a_etat(etat_machine_t etat_cible, int max_ticks);
 
-// Vérifie l'état physique des deux électrovannes (niveaux GPIO réels).
-// Ajouté après la revue 2026-06 : les scénarios validaient les transitions
-// d'états sans jamais vérifier les sorties physiques correspondantes.
-// Nécessite mock_gpio.h + gpio_config.h dans le fichier appelant.
+// Vérifie l'état logique des deux électrovannes bistables.
+// Utilise les getters d'état mémorisé (EVs bistables = pas de courant permanent).
+// Nécessite gpio_handler.h dans le fichier appelant.
 #define ASSERT_EVS(canon, poumon) do {                                          \
     TEST_ASSERT_EQUAL_INT_MESSAGE((canon)  ? 1 : 0,                             \
-        gpio_get_level(PIN_EV_CANON),  "niveau GPIO EV canon inattendu");       \
+        gpio_ev_canon_get()  ? 1 : 0, "etat logique EV canon inattendu");      \
     TEST_ASSERT_EQUAL_INT_MESSAGE((poumon) ? 1 : 0,                             \
-        gpio_get_level(PIN_EV_POUMON), "niveau GPIO EV poumon inattendu");      \
+        gpio_ev_poumon_get() ? 1 : 0, "etat logique EV poumon inattendu");     \
 } while (0)

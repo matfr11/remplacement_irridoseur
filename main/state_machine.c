@@ -1,6 +1,5 @@
 #include "state_machine.h"
 #include "batterie.h"
-#include "mosfet_surveillance.h"
 #include "telemetry.h"
 #include "securites.h"
 #include "gpio_handler.h"
@@ -877,19 +876,6 @@ void tick_state_machine(void)
     s_status.vitesse_max_m_h        = s_vitesse_max_m_h;
     s_status.dose_corrigee_mm       = s_dose_corrigee_mm;
 
-    ev_canal_t mc = mosfet_get_etat(PIN_EV_CANON);
-    ev_canal_t mp = mosfet_get_etat(PIN_EV_POUMON);
-    s_status.mosfet_canon_secours  = mc.secours_actif;
-    s_status.mosfet_poumon_secours = mp.secours_actif;
-    strncpy(s_status.mosfet_canon_etat,
-            mosfet_etat_str(mc.secours_actif ? mc.etat_principal : MOSFET_OK),
-            sizeof(s_status.mosfet_canon_etat) - 1);
-    s_status.mosfet_canon_etat[sizeof(s_status.mosfet_canon_etat) - 1] = '\0';
-    strncpy(s_status.mosfet_poumon_etat,
-            mosfet_etat_str(mp.secours_actif ? mp.etat_principal : MOSFET_OK),
-            sizeof(s_status.mosfet_poumon_etat) - 1);
-    s_status.mosfet_poumon_etat[sizeof(s_status.mosfet_poumon_etat) - 1] = '\0';
-
     // Heartbeat PIN_HEARTBEAT (GPIO 23) pour circuit RC fail-safe (conditionnel)
     if (s_cfg_machine.heartbeat_rc_on) {
         if (now_ms() - s_heartbeat_ms >= 500) {
@@ -905,7 +891,6 @@ void tick_state_machine(void)
     }
 
     xSemaphoreGiveRecursive(s_mutex);
-    mosfet_verifier_post_tick();   // hors mutex — no-op sans INA, sinon 20ms + 2 lectures I2C
 }
 
 // ---------------------------------------------------------------------------
@@ -974,7 +959,6 @@ void state_machine_cmd_reset(void)
         s_t_rempl_min_s = 5.0f;
         config_nvs_sauver_t_rempl_min(5.0f);
         config_nvs_sauver_machine(&s_cfg_machine);
-        mosfet_reset_etat();
         s_t_session_debut_ms = 0;  // fige s_status.duree_s (session interrompue par urgence)
         entrer_etat(ETAT_VEILLE);
     } else if (s_etat == ETAT_ARRET_FINAL) {
@@ -1081,7 +1065,7 @@ void state_machine_cmd_start_deroule(void)
 
 void state_machine_declencher_urgence(const char *raison)
 {
-    // Mutex récursif : safe depuis tick (mutex déjà tenu) et depuis mosfet_verifier_post_tick (sans mutex).
+    // Mutex récursif : safe depuis tick (mutex déjà tenu) et depuis securites_watchdog (sans mutex).
     xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
     gpio_all_ev_off();
     if (s_etat != ETAT_ARRET_URGENCE) {

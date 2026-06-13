@@ -5,7 +5,6 @@
 #include "config_nvs.h"
 #include "batterie.h"
 #include "ina3221.h"
-#include "mosfet_surveillance.h"
 #include "gpio_handler.h"
 #include "state_machine.h"
 #include "webserver.h"
@@ -60,14 +59,12 @@ void app_main(void)
     extern void test_regulation_run(void);
     extern void test_state_machine_run(void);
     extern void test_config_nvs_run(void);
-    extern void test_mosfet_surveillance_run(void);
     test_calculs_hydraulique_run();
     test_calculs_mecanique_run();
     test_gpio_run();
     test_regulation_run();
     test_state_machine_run();
     test_config_nvs_run();
-    test_mosfet_surveillance_run();
     ESP_LOGI(TAG, "=== Tests terminés ===");
 #endif
 
@@ -80,22 +77,13 @@ void app_main(void)
 #endif
 
 #ifndef CONFIG_IRRI_TEST_MODE
-    // INA3221 I2C — CH1=EV_CANON, CH2=EV_POUMON, CH3=Batterie
+    // INA3221 I2C — CH3=Batterie (EVs bistables sans surveillance courant)
     if (ina3221_init() != ESP_OK)
-        ESP_LOGW(TAG, "INA3221 non disponible — surveillance MOSFET et batterie désactivées");
-
-    // Surveillance MOSFETs — GPIO relais et secours
-    mosfet_surveillance_init();
+        ESP_LOGW(TAG, "INA3221 non disponible — surveillance batterie désactivée");
 #endif
 
     // Batterie (utilise INA3221 CH3)
     ESP_ERROR_CHECK(batterie_init());
-
-#ifndef CONFIG_IRRI_TEST_MODE
-    // Test MOSFETs au démarrage (~300ms)
-    if (!mosfet_test_demarrage())
-        ESP_LOGE(TAG, "Défaillance MOSFETs critique au démarrage");
-#endif
 
     // Machine d'états
 #ifdef CONFIG_IRRI_WOKWI_MODE

@@ -1,6 +1,5 @@
 #include "gpio_handler.h"
 #include "gpio_config.h"
-#include "mosfet_surveillance.h"
 #include "driver/gpio.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -30,6 +29,11 @@ static volatile int64_t  s_last_isr_us = 0;
 static bool  s_vitesse_depuis_cycles_poumon = false;
 static float s_vitesse_estimee_mh = 0.0f;
 
+// État logique des EVs bistables — mémorisé en RAM (pas lisible sur GPIO
+// car bistable = pas de courant en régime permanent).
+static bool s_ev_canon_ouverte  = false;
+static bool s_ev_poumon_ouverte = false;
+
 // =============================================================================
 // ISR
 // =============================================================================
@@ -54,19 +58,22 @@ static void IRAM_ATTR isr_capteur_vitesse(void *arg)
 
 void gpio_handler_init(void)
 {
-    // Sorties EV principales uniquement — OUT3/OUT4 et relais sont sous
-    // responsabilité exclusive de mosfet_surveillance_init()
+    // Sorties EV bistables — OUT1/OUT2 (OUVRIR) + OUT3/OUT4 (FERMER)
     gpio_config_t out_cfg = {
-        .pin_bit_mask = (1ULL << PIN_EV_CANON) |
-                        (1ULL << PIN_EV_POUMON),
+        .pin_bit_mask = (1ULL << PIN_EV_CANON_OUVRIR)  |
+                        (1ULL << PIN_EV_POUMON_OUVRIR)  |
+                        (1ULL << PIN_EV_CANON_FERMER)   |
+                        (1ULL << PIN_EV_POUMON_FERMER),
         .mode         = GPIO_MODE_INPUT_OUTPUT,
         .pull_up_en   = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type    = GPIO_INTR_DISABLE,
     };
     gpio_config(&out_cfg);
-    gpio_set_level(PIN_EV_CANON,  0);
-    gpio_set_level(PIN_EV_POUMON, 0);
+    gpio_set_level(PIN_EV_CANON_OUVRIR,  0);
+    gpio_set_level(PIN_EV_POUMON_OUVRIR, 0);
+    gpio_set_level(PIN_EV_CANON_FERMER,  0);
+    gpio_set_level(PIN_EV_POUMON_FERMER, 0);
 
     // Entrées — résistances pull-up externes, pas de pull interne
     gpio_config_t in_cfg = {
@@ -91,9 +98,13 @@ void gpio_handler_init(void)
     gpio_install_isr_service(0);
     gpio_isr_handler_add(PIN_CAPTEUR_VITESSE, isr_capteur_vitesse, NULL);
 
-    ESP_LOGI(TAG, "GPIO init — EV_CANON=%d EV_POUMON=%d secours=%d/%d",
-             PIN_EV_CANON, PIN_EV_POUMON,
-             PIN_MOSFET_SECOURS_CANON, PIN_MOSFET_SECOURS_POUMON);
+    // Impulsions FERMER au boot — garantit un état mécanique connu
+    // (EVs bistables conservent leur position après coupure d'alimentation)
+    gpio_all_ev_off();
+
+    ESP_LOGI(TAG, "GPIO init — CANON OUVRIR=%d FERMER=%d | POUMON OUVRIR=%d FERMER=%d",
+             PIN_EV_CANON_OUVRIR, PIN_EV_CANON_FERMER,
+             PIN_EV_POUMON_OUVRIR, PIN_EV_POUMON_FERMER);
 }
 
 // =============================================================================
@@ -109,63 +120,50 @@ void gpio_handler_lire_entrees(entrees_t *entrees)
 }
 
 // =============================================================================
-// Sorties
+// Sorties EV bistables
 // =============================================================================
 
 void gpio_ev_canon_set(bool actif)
 {
-    // Lire depuis le pin actif AVANT verifier_avant (peut être le secours)
-    int pin_reel = mosfet_secours_actif(PIN_EV_CANON)
-                 ? PIN_MOSFET_SECOURS_CANON : PIN_EV_CANON;
-    bool etat_actuel = gpio_get_level(pin_reel) != 0;
-    mosfet_verifier_avant(PIN_EV_CANON, etat_actuel);
-
-    // Recalculer : verifier_avant peut avoir déclenché un basculement
-    pin_reel = mosfet_secours_actif(PIN_EV_CANON)
-             ? PIN_MOSFET_SECOURS_CANON : PIN_EV_CANON;
-    gpio_set_level(pin_reel, actif ? 1 : 0);
-    // verifier_apres déplacé dans mosfet_verifier_post_tick() — hors mutex
+    if (actif == s_ev_canon_ouverte) return;
+    int pin = actif ? PIN_EV_CANON_OUVRIR : PIN_EV_CANON_FERMER;
+    gpio_set_level(pin, 1);
+    vTaskDelay(pdMS_TO_TICKS(DUREE_IMPULSION_EV_MS));
+    gpio_set_level(pin, 0);
+    s_ev_canon_ouverte = actif;
 }
 
 void gpio_ev_poumon_set(bool actif)
 {
-    // Lire depuis le pin actif AVANT verifier_avant (peut être le secours)
-    int pin_reel = mosfet_secours_actif(PIN_EV_POUMON)
-                 ? PIN_MOSFET_SECOURS_POUMON : PIN_EV_POUMON;
-    bool etat_actuel = gpio_get_level(pin_reel) != 0;
-    mosfet_verifier_avant(PIN_EV_POUMON, etat_actuel);
-
-    // Recalculer : verifier_avant peut avoir déclenché un basculement
-    pin_reel = mosfet_secours_actif(PIN_EV_POUMON)
-             ? PIN_MOSFET_SECOURS_POUMON : PIN_EV_POUMON;
-    gpio_set_level(pin_reel, actif ? 1 : 0);
-    // verifier_apres déplacé dans mosfet_verifier_post_tick() — hors mutex
+    if (actif == s_ev_poumon_ouverte) return;
+    int pin = actif ? PIN_EV_POUMON_OUVRIR : PIN_EV_POUMON_FERMER;
+    gpio_set_level(pin, 1);
+    vTaskDelay(pdMS_TO_TICKS(DUREE_IMPULSION_EV_MS));
+    gpio_set_level(pin, 0);
+    s_ev_poumon_ouverte = actif;
 }
 
 bool gpio_ev_canon_get(void)
 {
-    int pin = mosfet_secours_actif(PIN_EV_CANON)
-            ? PIN_MOSFET_SECOURS_CANON : PIN_EV_CANON;
-    return gpio_get_level(pin) != 0;
+    return s_ev_canon_ouverte;
 }
 
 bool gpio_ev_poumon_get(void)
 {
-    int pin = mosfet_secours_actif(PIN_EV_POUMON)
-            ? PIN_MOSFET_SECOURS_POUMON : PIN_EV_POUMON;
-    return gpio_get_level(pin) != 0;
+    return s_ev_poumon_ouverte;
 }
 
 void gpio_all_ev_off(void)
 {
-    // Arrêt d'urgence — DIRECT et INCONDITIONNEL, sans surveillance MOSFET.
-    // Coupe principal ET secours ET remet les relais en position repos (NC).
-    gpio_set_level(PIN_EV_CANON,              0);
-    gpio_set_level(PIN_EV_POUMON,             0);
-    gpio_set_level(PIN_MOSFET_SECOURS_CANON,  0);
-    gpio_set_level(PIN_MOSFET_SECOURS_POUMON, 0);
-    gpio_set_level(PIN_RELAIS_CANON,          0);
-    gpio_set_level(PIN_RELAIS_POUMON,         0);
+    // Impulsions FERMER simultanées — 100ms au lieu de 200ms séquentiel
+    // Appelable depuis n'importe quel contexte tâche FreeRTOS (pas depuis ISR)
+    gpio_set_level(PIN_EV_CANON_FERMER,  1);
+    gpio_set_level(PIN_EV_POUMON_FERMER, 1);
+    vTaskDelay(pdMS_TO_TICKS(DUREE_IMPULSION_EV_MS));
+    gpio_set_level(PIN_EV_CANON_FERMER,  0);
+    gpio_set_level(PIN_EV_POUMON_FERMER, 0);
+    s_ev_canon_ouverte  = false;
+    s_ev_poumon_ouverte = false;
 }
 
 // =============================================================================
@@ -231,6 +229,8 @@ void gpio_handler_test_reset(void)
     s_last_isr_us           = 0;
     s_vitesse_depuis_cycles_poumon = false;
     s_vitesse_estimee_mh    = 0.0f;
+    s_ev_canon_ouverte      = false;
+    s_ev_poumon_ouverte     = false;
     portEXIT_CRITICAL(&s_mux);
 }
 

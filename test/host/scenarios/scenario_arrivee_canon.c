@@ -45,8 +45,8 @@ static void test_arrivee_sans_tempo(void)
 
     // Sécurité fin de course déclenchée : arrêt immédiat des deux vannes
     TEST_ASSERT_EQUAL_INT(ETAT_ARRET_FINAL, state_machine_get_etat());
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_EV_POUMON));  // poumon coupé
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_EV_CANON));   // canon fermé
+    TEST_ASSERT_FALSE(gpio_ev_poumon_get());  // poumon coupé
+    TEST_ASSERT_FALSE(gpio_ev_canon_get());   // canon fermé
 
     // Capteur libéré → retour en VEILLE
     state_machine_test_set_fin_course(false);
@@ -80,18 +80,18 @@ static void test_arrivee_avec_tempo(void)
     state_machine_test_set_fin_course(true);
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_TEMPO_ARRIVEE, state_machine_get_etat());
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_EV_POUMON));  // poumon coupé
-    TEST_ASSERT_EQUAL_INT(1, gpio_get_level(PIN_EV_CANON));   // canon encore ouvert
+    TEST_ASSERT_FALSE(gpio_ev_poumon_get());  // poumon coupé
+    TEST_ASSERT_TRUE(gpio_ev_canon_get());   // canon encore ouvert
 
     // À 9,9 s : le timer n'a pas encore expiré
     avancer(99);
     TEST_ASSERT_EQUAL_INT(ETAT_TEMPO_ARRIVEE, state_machine_get_etat());
-    TEST_ASSERT_EQUAL_INT(1, gpio_get_level(PIN_EV_CANON));
+    TEST_ASSERT_TRUE(gpio_ev_canon_get());
 
     // Au 100e tick (t_dans_etat = 10 s) : expiration → canon fermé
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_ARRET_FINAL, state_machine_get_etat());
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_EV_CANON));
+    TEST_ASSERT_FALSE(gpio_ev_canon_get());
 }
 
 // Test C — pression coupée pendant TEMPO_ARRIVEE : canon fermé immédiatement
@@ -117,13 +117,13 @@ static void test_arrivee_pression_coupee_pendant_tempo(void)
     state_machine_test_set_fin_course(true);
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_TEMPO_ARRIVEE, state_machine_get_etat());
-    TEST_ASSERT_EQUAL_INT(1, gpio_get_level(PIN_EV_CANON));
+    TEST_ASSERT_TRUE(gpio_ev_canon_get());
 
     // Pression perdue en cours d'arrosage sur place → fermeture immédiate du canon
     state_machine_test_set_pression(false);
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_ARRET_FINAL, state_machine_get_etat());
-    TEST_ASSERT_EQUAL_INT(0, gpio_get_level(PIN_EV_CANON));
+    TEST_ASSERT_FALSE(gpio_ev_canon_get());
 }
 
 void suite_scenario_arrivee_canon(void)

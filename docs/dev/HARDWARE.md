@@ -17,14 +17,12 @@ Carte de développement AliExpress avec ESP32-D0WD-V3 (ESP32-32E) et 4 canaux MO
 │  [USB-C]  ←── programmation + alimentation          │
 │  [12V IN] ←── alimentation terrain (batterie 12V)  │
 │                                                     │
-│  OUT1 (GPIO 16) → EV_CANON  12V  (MOSFET principal)│
-│  OUT2 (GPIO 17) → EV_POUMON 12V  (MOSFET principal)│
-│  OUT3 (GPIO 26) → EV_CANON  12V  (MOSFET secours)  │
-│  OUT4 (GPIO 27) → EV_POUMON 12V  (MOSFET secours)  │
+│  OUT1 (GPIO 16) → EV_CANON  OUVRIR  (via LM2596 6V)│
+│  OUT2 (GPIO 17) → EV_POUMON OUVRIR  (via LM2596 6V)│
+│  OUT3 (GPIO 26) → EV_CANON  FERMER  (via LM2596 6V)│
+│  OUT4 (GPIO 27) → EV_POUMON FERMER  (via LM2596 6V)│
 │                                                     │
 │  GPIO  0 ←── Bouton physique carte                 │
-│  GPIO  2  ──► Relais SPDT EV_CANON  (NC/NO switch) │
-│  GPIO  4  ──► Relais SPDT EV_POUMON (NC/NO switch) │
 │  GPIO 21  ──► I2C SDA (INA3221)                    │
 │  GPIO 22  ──► I2C SCL (INA3221)                    │
 │  GPIO 13  ──► TPL5010 DONE (watchdog HW)            │
@@ -32,7 +30,7 @@ Carte de développement AliExpress avec ESP32-D0WD-V3 (ESP32-32E) et 4 canaux MO
 │  GPIO 25 ←── Pressostat (NC, pull-up 10kΩ)         │
 │  GPIO 32 ←── Sécurité spires (NC, pull-up 10kΩ)    │
 │  GPIO 33 ←── Contact poumon plein (NC, pull-up 10kΩ)│
-│  GPIO 34 ←── Capteur vitesse (diviseur 10k/3.3k)   │
+│  GPIO 34 ←── Capteur vitesse (diviseur 10k/5.6k)   │
 │  GPIO 35 ←── Fin de course (NC, pull-up 10kΩ)      │
 └─────────────────────────────────────────────────────┘
 ```
@@ -49,12 +47,12 @@ détaillé : [SCHEMA_CABLAGE.md](SCHEMA_CABLAGE.md#bornier-12-voies--affectation
 |---|---|---|---|---|
 | 1 | 12V+ batterie | IN | Rouge | → VIN carte, repiquage alim capteur vitesse → borne 7 |
 | 2 | GND batterie | — | Noir | Masse commune + retour commun des 4 contacts |
-| 3 | EV_CANON + | OUT | — | ← COM relais 1 (NC→OUT1 / NO→OUT3) via INA3221 CH1 |
-| 4 | EV_CANON − | OUT | — | GND |
-| 5 | EV_POUMON + | OUT | — | ← COM relais 2 (NC→OUT2 / NO→OUT4) via INA3221 CH2 |
-| 6 | EV_POUMON − | OUT | — | GND |
+| 3 | EV_CANON OUVRIR | OUT | — | ← LM2596 6V via QMOS OUT1 (GPIO 16) |
+| 4 | EV_CANON FERMER | OUT | — | ← LM2596 6V via QMOS OUT3 (GPIO 26) |
+| 5 | EV_POUMON OUVRIR | OUT | — | ← LM2596 6V via QMOS OUT2 (GPIO 17) |
+| 6 | EV_POUMON FERMER | OUT | — | ← LM2596 6V via QMOS OUT4 (GPIO 27) |
 | 7 | Capteur vitesse alim | OUT | — | 12V repiqué de la borne 1 |
-| 8 | Capteur vitesse signal | IN | — | Diviseur 10 kΩ/3,3 kΩ → GPIO 34 |
+| 8 | Capteur vitesse signal | IN | — | Diviseur 10 kΩ/5,6 kΩ → GPIO 34 |
 | 9 | Fin de course | IN | — | Pull-up 10 kΩ vers 3,3V → GPIO 35 |
 | 10 | Sécurité spires | IN | — | Pull-up 10 kΩ vers 3,3V → GPIO 32 |
 | 11 | Contact poumon plein | IN | — | Pull-up 10 kΩ vers 3,3V → GPIO 33 |
@@ -62,7 +60,8 @@ détaillé : [SCHEMA_CABLAGE.md](SCHEMA_CABLAGE.md#bornier-12-voies--affectation
 
 > Le 2ᵉ fil de chaque contact NC est chaîné en un **retour commun** côté machine,
 > raccordé sur la borne 2 (courants ≈ 0,3 mA/contact — aucune chute sensible).
-> Tension batterie mesurée par INA3221 CH3 (I2C) — plus de diviseur résistif sur GPIO 36.
+> Le fil commun des bobines EV (côté −) est également ramené sur la borne 2.
+> Tension batterie mesurée par INA3221 CH3 (I2C).
 
 ---
 
@@ -102,23 +101,26 @@ anomalie (HIGH) plutôt que d'ignorer le problème.
 
 ## Diviseur de tension — capteur vitesse (GPIO 34)
 
-Le capteur de vitesse produit un signal 12V (sortie transistor NPN open-collector). Le diviseur
-ramène ce signal à moins de 3.3V pour l'ESP32.
+Capteur **2 fils** (alimentation + signal) : sans pastille → 2 V au bornier, avec pastille → 8 V.
+Le diviseur adapte ces niveaux aux seuils logiques de l'ESP32.
+
+> ⚠️ **Modification matérielle obligatoire** : remplacer l'ancienne résistance R2 = 3,3 kΩ par
+> **5,6 kΩ**. L'ancienne valeur était prévue pour un signal 12V ; avec 8V max et R2=3,3kΩ la
+> tension HIGH ne dépasse pas 2,00 V — sous le seuil de détection ESP32 (2,31 V).
 
 ```
-12V ──┤
-       R1 = 10kΩ
-      ├──────────────── GPIO 34 (input, pas de pull-up interne)
-       R2 = 3.3kΩ
-      ├──────────────── GND
+borne 7 (12V) ──► alim capteur
+borne 8 (signal 2V/8V) ──┐
+                         R1 = 10 kΩ
+                          ├──────────────── GPIO 34 (input-only, pas de pull-up interne)
+                         R2 = 5,6 kΩ
+                          ├──────────────── GND
 ```
 
 **Calcul** :
 ```
-V_gpio = V_in × R2 / (R1 + R2)
-       = 12V × 3300 / (10000 + 3300)
-       = 12V × 0.248
-       = 2.98V  ← en dessous du seuil 3.3V ✅
+V_gpio (HIGH, 8V) = 8 × 5600 / (10000 + 5600) ≈ 2,87 V  (> seuil HIGH 2,31 V ✅)
+V_gpio (LOW,  2V) = 2 × 5600 / 15600           ≈ 0,72 V  (< seuil LOW  0,80 V ✅)
 ```
 
 GPIO 34 est **input-only** sur ESP32 (pas de pull-up interne, pas de sortie possible).
@@ -143,40 +145,12 @@ Batterie 12V ──── INA3221 CH3 V_BUS (+) ────┐
 
 | Canal | Signal | Mesure |
 |---|---|---|
-| CH1 | EV_CANON | Tension (V) + courant (mA) — détection panne MOSFET |
-| CH2 | EV_POUMON | Tension (V) + courant (mA) — détection panne MOSFET |
 | CH3 | Batterie 12V | Tension (V) — niveau batterie |
 
-Résolution bus voltage : 8 mV/LSB. Shunt R = 0,1 Ω → résolution courant : 0,4 mA/LSB.
+Résolution bus voltage : 8 mV/LSB.
 
-> Avantage vs ADC GPIO 36 : pas de conflit ADC2/WiFi, mesure tension ET courant simultanée
-> sur les canaux EV, libère GPIO 36 pour d'éventuels besoins futurs.
-
----
-
-## Relais SPDT — basculement MOSFET principal / secours
-
-Deux modules relais SPDT 12V bobine / signal 3,3V sont ajoutés pour basculer automatiquement
-vers les MOSFETs de secours (OUT3/OUT4) en cas de panne du MOSFET principal (OUT1/OUT2).
-
-**Configuration physique** : cavalier du module positionné sur déclenchement niveau HAUT.
-
-```
-                    ┌────── COM ─── EV (câble terrain)
-GPIO  2 → Relais 1 ─┤ LOW  = repos = NC ─── MOSFET OUT1 (GPIO 16) — principal
-(EV_CANON)          └ HIGH = actif = NO ─── MOSFET OUT3 (GPIO 26) — secours
-
-                    ┌────── COM ─── EV (câble terrain)
-GPIO  4 → Relais 2 ─┤ LOW  = repos = NC ─── MOSFET OUT2 (GPIO 17) — principal
-(EV_POUMON)         └ HIGH = actif = NO ─── MOSFET OUT4 (GPIO 27) — secours
-```
-
-**Séquence de basculement** (automatique, sans interruption de l'arrosage) :
-1. INA3221 détecte anomalie (CC, HS ouvert, EV débranchée)
-2. OUT3 ou OUT4 est pré-synchronisé avec le niveau courant de OUT1/OUT2 (anti-glitch)
-3. Relais bascule : COM passe de NC (principal) à NO (secours)
-4. LED/badge UI indique `SECOURS ACTIF`
-5. Si secours aussi défaillant → `ARRET_URGENCE`
+> Les EVs bistables ne consomment du courant que pendant l'impulsion de 100 ms. Sans courant
+> permanent, CH1 et CH2 ne mesureraient rien d'utile — ils ne sont pas câblés.
 
 ---
 
@@ -253,10 +227,10 @@ sur la LED verte de la carte). Désactivé par défaut (`heartbeat_rc_on = false
 |---|---|---|
 | Tension batterie | Multimètre sur bornes 1-2 | 11.5..14V |
 | Tension batterie INA3221 | Log UART `batterie_v` ou UI web | Cohérent avec multimètre ±0.1V |
-| Signal GPIO 34 (vitesse) | Oscilloscope sur GPIO 34 | Fronts 0-3V, fréquence variable |
-| EV_CANON ouverte | Multimètre sur sortie MOSFET actif | ~12V (Vbat - chute MOSFET) |
-| EV_CANON courant | INA3221 CH1 log UART | 500..1200 mA selon EV |
-| Relais SPDT au repos | Multimètre continuité COM–NC | Fermé (LOW sur GPIO 2/4) |
+| Tension LM2596 (sortie 6V) | Multimètre sur sortie LM2596 (12V branché) | 5,8..6,2 V |
+| Signal GPIO 34 (vitesse) | Oscilloscope ou multimètre (pastille face capteur) | ~2,87 V HIGH / ~0,72 V LOW |
+| Impulsion EV_CANON | Oscilloscope sur OUT1 ou OUT3 pendant commande | 6V / 100ms |
+| Claquement EV bistable | Auditif lors d'un arrosage court | Claquement à l'ouverture et à la fermeture |
 | TPL5010 DONE (GPIO 13) | LED 330Ω sur GPIO 13 ou log serie filtre tpl5010:D | 100ms HIGH toutes les ~2s |
 | TPL5010 reboot | Commenter `tpl5010_done_pulse()` + flash + observer monitor | Reboot après ~5.3s |
 | Continuité contacts NC | Mode continuité bornes 9-12 ↔ borne 2, capteurs branchés | Fermé (LOW) au repos |
