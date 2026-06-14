@@ -42,7 +42,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ matrix.config.sdkconfig }}
-          path: build/irrifrance_*.bin
+          path: build/irrifrance_${{ matrix.config.sdkconfig }}*.bin
 
   release:
     needs: build
