@@ -211,7 +211,7 @@ test/host/                  — tests unitaires PC (Unity/CMake, sans matériel)
 
 | Namespace | Contenu |
 |---|---|
-| `irri_machine` | Profil actif, t_vidange, facteur_correction, Kp, cycles_par_tour, modes dégradés, seuils batterie |
+| `irri_machine` | Profil actif, t_vidange, t_ouv_canon_s, facteur_correction, Kp, cycles_par_tour, modes dégradés, reprise_auto_on, seuils batterie |
 | `irri_prog` × 5 | Programmes d'arrosage (dose, largeur, buse, pression, temporisations) |
 | `irri_state` | Raison du dernier arrêt urgence + longueurs (persistant après redémarrage) |
 | `irri_stats` | Stats campagne cumulatives (surface ha, volume m³, dose moy, vitesse moy, nb sessions, durée) |
@@ -337,6 +337,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 |---|---|---|
 | `PIN_EV_CANON_OUVRIR` / `PIN_EV_POUMON_OUVRIR` | QMOS OUT1/OUT2 via LM2596 6V | GPIO **16** / **17** ✅ |
 | `t_vidange_s` | Chrono depuis EV_POUMON=OFF jusqu'à détection reprise capteur | 2,0 s ⚠️ à affiner terrain |
+| `t_ouv_canon_s` | Timer stabilisation pression dans le canon avant 1er cycle poumon (Config → Machine, plage 5–60 s) | 20 s |
 | `cycles_par_tour` | Compter les cycles poumon pour 1 tour complet de bobine | **40** sur ST1 Bis ✅ |
 
 > Avec `cycles_par_tour > 0`, la vitesse est automatiquement estimée depuis les cycles poumon (mode dégradé vitesse transparent) — le capteur optionnel de vitesse reste utile pour la calibration.
@@ -372,6 +373,7 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | **fix/code-review** | ✅ Fait | 10 corrections revue complète : mutex récursif urgence (critique), guards NaN/sqrtf/powf hydraulique, validation NVS floats, guards mécanique, taille OTA, stack telemetry, null-termination strings |
 | **PR-20** | ✅ Fait | Watchdog matériel TPL5010DDCR — GPIO13 DONE, reboot ESP32 via EN si state_machine bloquée > 5,3s (Rext=3,3MΩ), option Kconfig `CONFIG_IRRI_TPL5010` |
 | **refonte/ev-bistables** | ✅ Fait | ⚠️ Rupture matérielle — EVs bistables à impulsion 6V/5W (2 MOSFETs/EV : OUVRIR/FERMER), LM2596 12V→6V, capteur vitesse 2 fils 2V/8V (diviseur 5,6kΩ), suppression mosfet_surveillance + relais SPDT + INA CH1/CH2 |
+| **feat/reprise-auto** | ✅ Fait | Timer `t_ouv_canon_s` configurable (défaut 20 s) — EV_CANON ouvre d'abord, pression se stabilise avant 1er poumon. Reprise auto `reprise_auto_on` après reboot watchdog sans intervention opérateur |
 
 ---
 
