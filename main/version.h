@@ -2,5 +2,5 @@
 
 #define IRRI_VERSION_MAJOR  2
 #define IRRI_VERSION_MINOR  1
-#define IRRI_VERSION_PATCH  3
-#define IRRI_VERSION        "2.1.3"
+#define IRRI_VERSION_PATCH  4
+#define IRRI_VERSION        "2.1.4"

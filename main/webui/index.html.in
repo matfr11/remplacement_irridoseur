@@ -65,6 +65,9 @@ nav button svg{width:22px;height:22px}
 .alert{background:#4a1a1a;border-left:3px solid var(--red);padding:8px 12px;border-radius:6px;font-size:13px;margin-bottom:8px;word-break:break-word}
 .alert-warn{background:#3a2e00;border-color:var(--yellow)}
 
+/* toast */
+#toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:#2E7D32;color:#fff;padding:8px 18px;border-radius:20px;font-size:14px;pointer-events:none;opacity:0;transition:opacity .25s;z-index:999}
+
 /* stats grid */
 .stat-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px}
 .stat-row:last-child{border-bottom:none}
@@ -127,6 +130,7 @@ details>summary::-webkit-details-marker{display:none}
 </style>
 </head>
 <body>
+<div id="toast">Paramètres sauvegardés</div>
 <div id="app">
   <div id="content">
 
@@ -323,7 +327,7 @@ details>summary::-webkit-details-marker{display:none}
         <div class="detail-body">
           <div class="toggle-row">
             <label>Mode dégradé contact poumon</label>
-            <label class="tgl"><input type="checkbox" id="m-mdp" onchange="toggleModeB(); saveMachine()"><span class="tgl-slider"></span></label>
+            <label class="tgl"><input type="checkbox" id="m-mdp" onchange="toggleModeB()"><span class="tgl-slider"></span></label>
           </div>
           <div class="toggle-row">
             <label>Bypass sécurité spires <span style="color:#ef9a9a;font-size:11px">(capteur défaillant)</span></label>
@@ -769,7 +773,6 @@ function toggleTempo(which) {
 function toggleModeB() {
   const on = document.getElementById('m-mdp').checked;
   show('m-trempl-wrap', on);
-  saveMachine();
 }
 
 function renameProg() {
@@ -804,8 +807,17 @@ function saveProg() {
   configDirty = false;
 }
 
+let _toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg || 'Sauvegardé';
+  t.style.opacity = '1';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { t.style.opacity = '0'; }, 2000);
+}
+
 function saveMachine() {
-  if (window._prodLockApplied) return;
   sendCmd({
     cmd: 'save_machine',
     machine_active: parseInt(document.getElementById('m-machine').value),
@@ -827,6 +839,7 @@ function saveMachine() {
     reprise_auto_on: document.getElementById('m-reprise-auto').checked
   });
   configDirty = false;
+  showToast('Paramètres sauvegardés');
 }
 
 function resetEtalonnage() {

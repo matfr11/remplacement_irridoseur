@@ -59,7 +59,7 @@ typedef struct {
     .n_cycles_calib    = 3,     \
     .mode_deg_poumon   = false, \
     .mode_deg_spires   = false, \
-    .t_rempl_fixe_s    = 0.0f,  \
+    .t_rempl_fixe_s    = 4.0f,  \
     .denivele_m        = 0.0f,  \
     .cycles_par_tour   = 0.0f,  \
     .heartbeat_rc_on    = false, \
