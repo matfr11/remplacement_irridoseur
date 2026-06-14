@@ -25,6 +25,7 @@ void suite_scenario_reboot(void);
 void suite_scenario_bilan_session(void);
 void suite_scenario_parametres(void);
 void suite_scenario_commandes_api(void);
+void suite_scenario_batterie(void);
 
 int main(void)
 {
@@ -49,6 +50,7 @@ int main(void)
     suite_scenario_bilan_session();
     suite_scenario_parametres();
     suite_scenario_commandes_api();
+    suite_scenario_batterie();
 
     return UNITY_END();
 }
