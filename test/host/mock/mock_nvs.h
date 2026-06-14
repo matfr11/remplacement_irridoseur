@@ -1,5 +1,6 @@
 #pragma once
 #include "esp_idf_stubs.h"
+#include "esp_system.h"
 #include <stddef.h>
 
 // Stub NVS sur RAM — implémenté dans mock_nvs.c
@@ -25,3 +26,6 @@ esp_err_t nvs_erase_all(nvs_handle_t handle);
 
 // Réinitialise tout le stockage RAM (entre tests)
 void mock_nvs_reset(void);
+
+// Contrôle la raison de reboot retournée par esp_reset_reason() (défaut ESP_RST_EXT)
+void mock_set_reset_reason(esp_reset_reason_t r);

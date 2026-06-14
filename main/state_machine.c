@@ -16,6 +16,7 @@
 #include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_system.h"
 #include <string.h>
 #include <math.h>
 
@@ -242,10 +243,22 @@ void state_machine_init(void)
         if (session_etait_active && s_longueur_enroulee > 0.0f) {
             s_coupure_detectee = true;
             if (s_cfg_machine.reprise_auto_on) {
-                // Reprise automatique : redémarre seul dès que la pression est présente
-                s_demarrage_autorise = true;
-                ESP_LOGW(TAG, "Coupure detectee - reprise auto activee (enroule=%.1fm)",
-                         s_longueur_enroulee);
+                // Reprise auto seulement sur reboot inattendu (TPL5010/crash).
+                // Sur POWERON (opérateur coupe l'alim) ou reboot logiciel : attendre.
+                esp_reset_reason_t raison = esp_reset_reason();
+                bool reboot_inattendu = (raison == ESP_RST_EXT      ||
+                                         raison == ESP_RST_PANIC     ||
+                                         raison == ESP_RST_TASK_WDT  ||
+                                         raison == ESP_RST_WDT);
+                if (reboot_inattendu) {
+                    s_demarrage_autorise = true;
+                    ESP_LOGW(TAG, "Coupure detectee - reprise auto (raison=%d enroule=%.1fm)",
+                             raison, s_longueur_enroulee);
+                } else {
+                    s_demarrage_autorise = false;
+                    ESP_LOGW(TAG, "Coupure detectee - reprise auto ignoree (mise sous tension normale raison=%d)",
+                             raison);
+                }
             } else {
                 s_demarrage_autorise = false;  // attendre choix opérateur (reprendre ou reset)
                 ESP_LOGW(TAG, "Coupure detectee - session interrompue (enroule=%.1fm)",
