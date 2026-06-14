@@ -5,6 +5,30 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [feat/reprise-auto-ouv-canon] — 2026-06-14
+
+### Added
+
+- **Timer `t_ouv_canon_s`** (configurable NVS, défaut 20 s, plage 5–60 s) : à l'entrée de
+  `ETAT_OUVERTURE_CANON`, l'EV_CANON s'ouvre immédiatement pour laisser la pression se
+  stabiliser dans le canon ; le premier cycle poumon ne démarre qu'après l'écoulement du timer.
+  Remplace l'ancien comptage de 30 ticks de pression stable (~3 s).
+- **Reprise automatique `reprise_auto_on`** (configurable NVS, défaut false) : après un reboot
+  watchdog TPL5010 (coupure détectée = `session_active=1` sans arrêt propre), la machine
+  redémarre seule dès que la pression est présente, sans nécessiter d'intervention de
+  l'opérateur. La notification "coupure détectée" reste visible dans l'UI. Les longueurs
+  (position NVS) sont restaurées dans les deux cas.
+- UI Config → Machine : champ "Stabilisation pression avant poumon (s)" et toggle
+  "Reprise auto après plantage"
+
+### Changed
+
+- `ETAT_OUVERTURE_CANON` : transition basée sur `t_dans_etat` (temps réel ms) plutôt
+  qu'un compteur de ticks ; tests mis à jour (`mock_time_advance_ms(20000)` à la place
+  des boucles de 30 ticks)
+
+---
+
 ## [refonte/ev-bistables] — 2026-06-13 — EVs bistables à impulsion + capteur 2 fils 2V/8V
 
 ### ⚠️ Rupture de compatibilité matérielle

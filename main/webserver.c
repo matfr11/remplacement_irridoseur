@@ -151,6 +151,8 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         "\"cfg_batt_crit_v\":%.1f,"
         "\"cfg_heartbeat_rc_on\":%s,"
         "\"cfg_fin_course_seuil_m\":%.1f,"
+        "\"cfg_t_ouv_canon_s\":%.0f,"
+        "\"cfg_reprise_auto_on\":%s,"
         "\"coupure_detectee\":%s,"
         "\"vitesse_max_m_h\":%.1f,"
         "\"dose_corrigee_mm\":%.1f"
@@ -218,6 +220,8 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         s->cfg_batt_crit_v,
         s->cfg_heartbeat_rc_on  ? "true" : "false",
         s->cfg_fin_course_seuil_m,
+        s->cfg_t_ouv_canon_s,
+        s->cfg_reprise_auto_on  ? "true" : "false",
         s->coupure_detectee     ? "true" : "false",
         s->vitesse_max_m_h,
         s->dose_corrigee_mm
@@ -321,6 +325,12 @@ static void handle_ws_command(const char *data, size_t len)
         if (json_parse_float(data, "cycles_par_tour",    &f)) cfg.cycles_par_tour     = f;
         if (json_parse_bool (data, "heartbeat_rc_on",    &b)) cfg.heartbeat_rc_on      = b;
         if (json_parse_float(data, "fin_course_seuil_m", &f)) cfg.fin_course_seuil_m  = f;
+        if (json_parse_float(data, "t_ouv_canon_s",      &f)) {
+            if (f < 5.0f)  f = 5.0f;
+            if (f > 60.0f) f = 60.0f;
+            cfg.t_ouv_canon_s = f;
+        }
+        if (json_parse_bool (data, "reprise_auto_on",    &b)) cfg.reprise_auto_on      = b;
         config_nvs_sauver_machine(&cfg);
         {
             float w = 11.5f, c = 11.0f;

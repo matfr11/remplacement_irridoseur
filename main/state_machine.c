@@ -16,6 +16,7 @@
 #include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_system.h"
 #include <string.h>
 #include <math.h>
 
@@ -102,8 +103,7 @@ static bool s_sim_fin_course  = false;
 static bool s_sim_secu_spires = false;
 #endif
 
-// Stabilisation pression OUVERTURE_CANON (compteurs remis à 0 dans entrer_etat)
-static int   s_tick_pression_stable  = 0;
+// Absence pression OUVERTURE_CANON — remis à 0 dans entrer_etat
 static int   s_tick_pression_absente = 0;
 static bool  s_reprise_pression      = false;  // entrée OUVERTURE_CANON depuis PAUSE_PRESSION
 static bool    s_tempo_depart_effectuee  = false; // tempo départ terminée (ou non configurée)
@@ -125,7 +125,6 @@ static void entrer_etat(etat_machine_t nouvel_etat)
     s_etat     = nouvel_etat;
     s_t_etat_ms = now_ms();
     if (nouvel_etat == ETAT_OUVERTURE_CANON) {
-        s_tick_pression_stable  = 0;   // stabilisation toujours rejouée intégralement
         s_tick_pression_absente = 0;
     }
     if (nouvel_etat == ETAT_REMPLISSAGE_POUMON) {
@@ -243,9 +242,28 @@ void state_machine_init(void)
         s_demarrage_autorise = true;   // démarrage auto dès mise en pression
         if (session_etait_active && s_longueur_enroulee > 0.0f) {
             s_coupure_detectee = true;
-            s_demarrage_autorise = false;  // attendre choix opérateur (reprendre ou reset)
-            ESP_LOGW(TAG, "Coupure detectee - session interrompue (enroule=%.1fm)",
-                     s_longueur_enroulee);
+            if (s_cfg_machine.reprise_auto_on) {
+                // Reprise auto seulement sur reboot inattendu (TPL5010/crash).
+                // Sur POWERON (opérateur coupe l'alim) ou reboot logiciel : attendre.
+                esp_reset_reason_t raison = esp_reset_reason();
+                bool reboot_inattendu = (raison == ESP_RST_EXT      ||
+                                         raison == ESP_RST_PANIC     ||
+                                         raison == ESP_RST_TASK_WDT  ||
+                                         raison == ESP_RST_WDT);
+                if (reboot_inattendu) {
+                    s_demarrage_autorise = true;
+                    ESP_LOGW(TAG, "Coupure detectee - reprise auto (raison=%d enroule=%.1fm)",
+                             raison, s_longueur_enroulee);
+                } else {
+                    s_demarrage_autorise = false;
+                    ESP_LOGW(TAG, "Coupure detectee - reprise auto ignoree (mise sous tension normale raison=%d)",
+                             raison);
+                }
+            } else {
+                s_demarrage_autorise = false;  // attendre choix opérateur (reprendre ou reset)
+                ESP_LOGW(TAG, "Coupure detectee - session interrompue (enroule=%.1fm)",
+                         s_longueur_enroulee);
+            }
         }
     }
 
@@ -293,59 +311,59 @@ static void handle_veille(const entrees_t *e, int64_t t_dans_etat)
 
 static void handle_ouverture_canon(const entrees_t *e, int64_t t_dans_etat)
 {
-    (void)t_dans_etat;
+    // Pression absente 1s d'affilée : ne pas rester bloqué EV_CANON ouverte.
+    // Le pressostat peut "clignoter" pendant la montée en pression — d'où le seuil.
     if (e->pression_ok) {
-        s_tick_pression_stable++;
         s_tick_pression_absente = 0;
     } else {
-        s_tick_pression_stable = 0;
-        // Pression absente 1s d'affilée : ne pas rester bloqué EV_CANON ouverte.
-        // Le pressostat peut "clignoter" pendant la montée en pression — d'où le seuil.
         if (++s_tick_pression_absente >= 10) {
             gpio_ev_canon_set(false);
             if (s_reprise_pression) {
-                // Session en cours — retour pause, la reprise retentera la stabilisation
+                // Session en cours — retour pause, la reprise retentera le timer
                 entrer_etat(ETAT_PAUSE_PRESSION);
             } else {
                 // Le démarrage n'a jamais abouti — retour VEILLE, redémarrage auto
-                // (séquence complète : stabilisation + tempo) à la prochaine pression
+                // (timer complet rejoué) à la prochaine pression
                 s_demarrage_autorise = true;
                 entrer_etat(ETAT_VEILLE);
             }
             return;
         }
     }
-    if (s_tick_pression_stable >= 30) {
-        if (s_reprise_pression) {
-            // Reprise après PAUSE_PRESSION : stabilisation rejouée. Session préservée.
-            s_reprise_pression = false;
-            if (!s_tempo_depart_effectuee
-                && s_cfg_prog.tempo_depart_on && s_cfg_prog.tempo_depart_s > 0) {
-                // Tempo départ interrompue — reprise pour le temps restant uniquement
-                // (s_tempo_depart_ecoulee_ms cumule le temps déjà effectué)
-                entrer_etat(ETAT_TEMPO_DEPART);
-                return;
-            }
-            // Tempo déjà effectuée (ou non configurée) — pas de re-tempo
-            gpio_ev_poumon_set(true);
-            s_nb_tentatives = 0;
-            entrer_etat(ETAT_REMPLISSAGE_POUMON);
+    // Timer configurable : laisser la pression se stabiliser dans le canon
+    // avant d'actionner le poumon (défaut 20s).
+    int64_t seuil_ms = (int64_t)(s_cfg_machine.t_ouv_canon_s * 1000.0f);
+    if (t_dans_etat < seuil_ms) return;
+
+    if (s_reprise_pression) {
+        // Reprise après PAUSE_PRESSION : timer rejoué. Session préservée.
+        s_reprise_pression = false;
+        if (!s_tempo_depart_effectuee
+            && s_cfg_prog.tempo_depart_on && s_cfg_prog.tempo_depart_s > 0) {
+            // Tempo départ interrompue — reprise pour le temps restant uniquement
+            // (s_tempo_depart_ecoulee_ms cumule le temps déjà effectué)
+            entrer_etat(ETAT_TEMPO_DEPART);
             return;
         }
-        s_t_session_debut_ms = now_ms();
-        s_duree_pause_ms = 0;
-        s_bilan_envoye   = false;
-        regulation_reset_calibration();
-        s_tempo_depart_ecoulee_ms = 0;  // nouvelle session — tempo complète
-        if (s_cfg_prog.tempo_depart_on && s_cfg_prog.tempo_depart_s > 0) {
-            s_tempo_depart_effectuee = false;
-            entrer_etat(ETAT_TEMPO_DEPART);
-        } else {
-            s_tempo_depart_effectuee = true;  // aucune tempo configurée
-            gpio_ev_poumon_set(true);
-            s_nb_tentatives = 0;
-            entrer_etat(ETAT_REMPLISSAGE_POUMON);
-        }
+        // Tempo déjà effectuée (ou non configurée) — pas de re-tempo
+        gpio_ev_poumon_set(true);
+        s_nb_tentatives = 0;
+        entrer_etat(ETAT_REMPLISSAGE_POUMON);
+        return;
+    }
+    s_t_session_debut_ms = now_ms();
+    s_duree_pause_ms = 0;
+    s_bilan_envoye   = false;
+    regulation_reset_calibration();
+    s_tempo_depart_ecoulee_ms = 0;  // nouvelle session — tempo complète
+    if (s_cfg_prog.tempo_depart_on && s_cfg_prog.tempo_depart_s > 0) {
+        s_tempo_depart_effectuee = false;
+        entrer_etat(ETAT_TEMPO_DEPART);
+    } else {
+        s_tempo_depart_effectuee = true;  // aucune tempo configurée
+        gpio_ev_poumon_set(true);
+        s_nb_tentatives = 0;
+        entrer_etat(ETAT_REMPLISSAGE_POUMON);
     }
 }
 
@@ -872,6 +890,8 @@ void tick_state_machine(void)
     s_status.cfg_cycles_par_tour  = s_cfg_machine.cycles_par_tour;
     s_status.cfg_heartbeat_rc_on    = s_cfg_machine.heartbeat_rc_on;
     s_status.cfg_fin_course_seuil_m = s_cfg_machine.fin_course_seuil_m;
+    s_status.cfg_t_ouv_canon_s      = s_cfg_machine.t_ouv_canon_s;
+    s_status.cfg_reprise_auto_on    = s_cfg_machine.reprise_auto_on;
     s_status.coupure_detectee       = s_coupure_detectee;
     s_status.vitesse_max_m_h        = s_vitesse_max_m_h;
     s_status.dose_corrigee_mm       = s_dose_corrigee_mm;

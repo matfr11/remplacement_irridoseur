@@ -86,11 +86,10 @@ static void test_scenario_mode_degrade_b_initial(void)
     mock_time_advance_ms(100);
     TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
 
-    // Pression stable 30 ticks → REMPLISSAGE_POUMON
-    for (int i = 0; i < 31; i++) {
-        tick_state_machine();
-        mock_time_advance_ms(100);
-    }
+    // Timer t_ouv_canon_s (20s) écoulé → REMPLISSAGE_POUMON
+    mock_time_advance_ms(20000);
+    tick_state_machine();
+    mock_time_advance_ms(100);
     TEST_ASSERT_EQUAL_INT(ETAT_REMPLISSAGE_POUMON, state_machine_get_etat());
 
     // 20 ticks (2s) sans gpio poumon_plein → doit transitionner vers EN_COURS

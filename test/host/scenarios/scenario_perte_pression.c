@@ -56,8 +56,9 @@ static void test_scenario_pause_reprise(void)
     TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
     ASSERT_EVS(true, false);   // canon ré-ouvert pour stabiliser
 
-    // 30 ticks de pression stable → REMPLISSAGE_POUMON
-    avancer(30);
+    // Timer t_ouv_canon_s (20s) écoulé → REMPLISSAGE_POUMON
+    mock_time_advance_ms(20000);
+    avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_REMPLISSAGE_POUMON, state_machine_get_etat());
 
     // Poumon plein → EN_COURS
@@ -84,7 +85,8 @@ static void test_scenario_perte_pendant_remplissage(void)
     set_pression(true);
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
-    avancer(30);
+    mock_time_advance_ms(20000);  // timer t_ouv_canon_s écoulé
+    avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_REMPLISSAGE_POUMON, state_machine_get_etat());
 
     // Poumon plein → EN_COURS

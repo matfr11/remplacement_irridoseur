@@ -1,4 +1,5 @@
 #include "mock_nvs.h"
+#include "esp_system.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -22,6 +23,7 @@ typedef struct {
 } nvs_ns_t;
 
 static nvs_ns_t s_store[MAX_NS];
+static esp_reset_reason_t s_reset_reason = ESP_RST_EXT;
 
 static nvs_ns_t *find_or_create_ns(const char *ns)
 {
@@ -194,4 +196,9 @@ esp_err_t nvs_erase_all(nvs_handle_t h)
 void mock_nvs_reset(void)
 {
     memset(s_store, 0, sizeof(s_store));
+    s_reset_reason = ESP_RST_EXT;
 }
+
+// --- mock esp_reset_reason ---
+esp_reset_reason_t esp_reset_reason(void) { return s_reset_reason; }
+void mock_set_reset_reason(esp_reset_reason_t r) { s_reset_reason = r; }

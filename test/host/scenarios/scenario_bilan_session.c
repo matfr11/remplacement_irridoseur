@@ -49,7 +49,8 @@ static void demarrer_session_en_cours(void)
 {
     avancer(1);   // VEILLE → OUVERTURE_CANON
     TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
-    avancer(31);  // pression stable → REMPLISSAGE_POUMON
+    mock_time_advance_ms(20000);  // timer t_ouv_canon_s (20s) écoulé → REMPLISSAGE_POUMON
+    avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_REMPLISSAGE_POUMON, state_machine_get_etat());
 
     // Longueurs réalistes : 100 m déployés, 80 m de progression session
@@ -175,7 +176,8 @@ static void test_bilan_exclut_pause_pression(void)
     set_pression(true);
     avancer(1);
     TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
-    avancer(30);
+    mock_time_advance_ms(20000);  // timer t_ouv_canon_s écoulé → REMPLISSAGE_POUMON
+    avancer(1);
     gpio_set_level(PIN_POUMON_PLEIN, 1);
     avancer(1);
     gpio_set_level(PIN_POUMON_PLEIN, 0);
