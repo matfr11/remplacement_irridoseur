@@ -323,7 +323,7 @@ details>summary::-webkit-details-marker{display:none}
         <div class="detail-body">
           <div class="toggle-row">
             <label>Mode dégradé contact poumon</label>
-            <label class="tgl"><input type="checkbox" id="m-mdp" onchange="toggleModeB()"><span class="tgl-slider"></span></label>
+            <label class="tgl"><input type="checkbox" id="m-mdp" onchange="toggleModeB(); saveMachine()"><span class="tgl-slider"></span></label>
           </div>
           <div class="toggle-row">
             <label>Bypass sécurité spires <span style="color:#ef9a9a;font-size:11px">(capteur défaillant)</span></label>
@@ -345,6 +345,7 @@ details>summary::-webkit-details-marker{display:none}
             <label>Seuil fin de course normale (m) <span style="color:#90a4ae;font-size:11px">fin_course ignorée par SEC-1 si restant ≤ seuil</span></label>
             <input id="m-fc-seuil" type="number" min="0" max="50" step="1">
           </div>
+          <button class="btn btn-blue" onclick="saveMachine()">Enregistrer</button>
         </div>
       </details>
 
