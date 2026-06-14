@@ -19,11 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup ESP-IDF
-        uses: espressif/esp-idf-ci-action@v1
-        with:
-          esp_idf_version: v5.5.2
-
       - name: Vérifier cohérence tag / version.h
         run: |
           TAG="${GITHUB_REF_NAME#v}"
@@ -34,8 +29,11 @@ jobs:
           fi
 
       - name: Build firmware
-        run: |
-          idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.${{ matrix.config.sdkconfig }}" build
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.2
+          target: esp32
+          command: idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.${{ matrix.config.sdkconfig }}" build
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
