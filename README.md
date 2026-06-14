@@ -276,11 +276,11 @@ idf.py build
 
 ```bash
 # ST1 Bis + SR 100C
-idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_sr100c" build
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_82_330_sr100c" build
 # → build/irrifrance_st1bis82330_sr100c_v1.2.11.bin
 
 # ST1 Bis + SR 150C
-idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_sr150c" build
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_82_330_sr150c" build
 ```
 
 Les releases GitHub sont buildées automatiquement sur `git tag v*`.

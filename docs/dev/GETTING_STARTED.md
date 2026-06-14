@@ -81,10 +81,10 @@ Taille actuelle : ~933 KB, 53% flash libre sur ESP32 4MB.
 
 ```bash
 # ST1 Bis + SR 100C (produit : irrifrance_st1bis82330_sr100c_v1.2.11.bin)
-idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_sr100c" build
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_82_330_sr100c" build
 
 # ST1 Bis + SR 150C
-idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_sr150c" build
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_82_330_sr150c" build
 ```
 
 En mode production, `machine_active` et `abaque_idx` sont verrouillés à la compilation.

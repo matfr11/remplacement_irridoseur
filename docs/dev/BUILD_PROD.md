@@ -43,8 +43,8 @@ Firmware nommé avec machine + canon + version ✅
 Format : irrifrance_{machine}_{canon}_v{version}.bin
 
 Exemples :
-  irrifrance_st1bis82330_sr100c_v1.2.3.bin
-  irrifrance_st1bis82330_sr150c_v1.2.3.bin
+  irrifrance_st1bis_82_330_sr100c_v1.2.3.bin
+  irrifrance_st1bis_82_330_sr150c_v1.2.3.bin
   irrifrance_st2atp82290_sr150c_v1.2.3.bin
 
 Machine : identifiant sans espaces ni caractères spéciaux
@@ -197,7 +197,7 @@ if(CONFIG_IRRI_PROD)
 
     # Identifier machine et canon depuis sdkconfig
     if(CONFIG_IRRI_MACHINE_ST1BIS_82_330)
-        set(MACHINE_ID "st1bis82330")
+        set(MACHINE_ID "st1bis_82_330")
         set(MACHINE_LABEL "ST1 Bis Ø82-330m")
     elseif(CONFIG_IRRI_MACHINE_ST2ATP_82_290)
         set(MACHINE_ID "st2atp82290")
@@ -238,7 +238,7 @@ project(${FIRMWARE_NAME})
   "firmware_machine": "ST1 Bis Ø82-330m",
   "firmware_canon":   "SR 100C",
   "firmware_prod":    true,
-  "firmware_nom":     "irrifrance_st1bis82330_sr100c_v1.2.3"
+  "firmware_nom":     "irrifrance_st1bis_82_330_sr100c_v1.2.3"
 }
 ```
 
@@ -324,18 +324,24 @@ idf.py build
 ### Build production — ST1 Bis + SR 100C
 
 ```bash
-# Méthode 1 — via sdkconfig.prod
-cp sdkconfig.prod sdkconfig
+# Supprimer le sdkconfig dev s'il existe
+rm -f sdkconfig
+
+# Première passe — génère le sdkconfig PROD depuis les defaults
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_82_330_sr100c" build
+
+# Reconfigurer pour appliquer le nom PROD (limitation ESP-IDF : sdkconfig
+# est généré après le premier cmake, idf.py reconfigure force la relecture)
+idf.py reconfigure
 idf.py build
 
-# Méthode 2 — via variables d'environnement
-idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_sr100c" \
-       build
-
-# Sortie : build/irrifrance_st1bis82330_sr100c_v1.2.3.bin
+# Sortie : build/irrifrance_st1bis_82_330_sr100c_v2.1.1.bin
 ```
 
-### sdkconfig.st1bis_sr100c (fichier à créer)
+> En CI (GitHub Actions), `sdkconfig` n'existe jamais au départ — les deux passes
+> sont déjà enchaînées automatiquement par ESP-IDF.
+
+### sdkconfig.st1bis_82_330_sr100c (fichier à créer)
 
 ```
 CONFIG_IRRI_PROD=y
@@ -343,7 +349,7 @@ CONFIG_IRRI_MACHINE_ST1BIS_82_330=y
 CONFIG_IRRI_CANON_SR100C=y
 ```
 
-### sdkconfig.st1bis_sr150c
+### sdkconfig.st1bis_82_330_sr150c
 
 ```
 CONFIG_IRRI_PROD=y
@@ -410,8 +416,8 @@ jobs:
 
             | Fichier | Machine | Canon |
             |---------|---------|-------|
-            | irrifrance_st1bis82330_sr100c_*.bin | ST1 Bis Ø82-330m | SR 100C |
-            | irrifrance_st1bis82330_sr150c_*.bin | ST1 Bis Ø82-330m | SR 150C |
+            | irrifrance_st1bis_82_330_sr100c_*.bin | ST1 Bis Ø82-330m | SR 100C |
+            | irrifrance_st1bis_82_330_sr150c_*.bin | ST1 Bis Ø82-330m | SR 150C |
 
             ## Installation
             Flasher via OTA depuis la web UI Config → Mise à jour firmware
@@ -435,8 +441,8 @@ jobs:
    git push origin v1.2.3
 
 5. GitHub Actions build automatiquement :
-   irrifrance_st1bis82330_sr100c_v1.2.3.bin
-   irrifrance_st1bis82330_sr150c_v1.2.3.bin
+   irrifrance_st1bis_82_330_sr100c_v1.2.3.bin
+   irrifrance_st1bis_82_330_sr150c_v1.2.3.bin
    ...
 
 6. Release GitHub créée automatiquement
@@ -489,8 +495,8 @@ Pour la communauté GitHub :
 Nouveau :
   Kconfig.projbuild           ← options PROD/machine/canon
   main/version.h              ← version sémantique
-  sdkconfig.st1bis_sr100c     ← config prod ST1 Bis + SR 100C
-  sdkconfig.st1bis_sr150c     ← config prod ST1 Bis + SR 150C
+  sdkconfig.st1bis_82_330_sr100c     ← config prod ST1 Bis + SR 100C
+  sdkconfig.st1bis_82_330_sr150c     ← config prod ST1 Bis + SR 150C
   .github/workflows/release.yml ← build + release automatique
 
 Modifier :
