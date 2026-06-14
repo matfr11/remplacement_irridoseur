@@ -269,7 +269,22 @@ git clone git@github.com:matfr11/remplacement_irridoseur.git
 cd remplacement_irridoseur
 idf.py set-target esp32
 idf.py build
+# → build/irrifrance_dev.bin
 ```
+
+#### Build production (profil machine + canon verrouillés)
+
+```bash
+# ST1 Bis + SR 100C
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_sr100c" build
+# → build/irrifrance_st1bis82330_sr100c_v1.2.11.bin
+
+# ST1 Bis + SR 150C
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_sr150c" build
+```
+
+Les releases GitHub sont buildées automatiquement sur `git tag v*`.
+Voir [docs/dev/BUILD_PROD.md](docs/dev/BUILD_PROD.md) pour le workflow complet.
 
 ### Flash
 
@@ -285,7 +300,7 @@ python -m esptool --chip esp32 -b 460800 --before default_reset --after hard_res
     0x1000 build\bootloader\bootloader.bin `
     0x8000 build\partition_table\partition-table.bin `
     0xe000 build\ota_data_initial.bin `
-    0x10000 build\irrifrance-esp32.bin
+    0x10000 build\irrifrance_dev.bin
 ```
 
 ### Tests unitaires PC (sans matériel)
@@ -374,6 +389,8 @@ Au premier démarrage, les valeurs par défaut issues de la fiche technique sont
 | **PR-20** | ✅ Fait | Watchdog matériel TPL5010DDCR — GPIO13 DONE, reboot ESP32 via EN si state_machine bloquée > 5,3s (Rext=3,3MΩ), option Kconfig `CONFIG_IRRI_TPL5010` |
 | **refonte/ev-bistables** | ✅ Fait | ⚠️ Rupture matérielle — EVs bistables à impulsion 6V/5W (2 MOSFETs/EV : OUVRIR/FERMER), LM2596 12V→6V, capteur vitesse 2 fils 2V/8V (diviseur 5,6kΩ), suppression mosfet_surveillance + relais SPDT + INA CH1/CH2 |
 | **feat/reprise-auto** | ✅ Fait | Timer `t_ouv_canon_s` configurable (défaut 20 s) — EV_CANON ouvre d'abord, pression se stabilise avant 1er poumon. Reprise auto `reprise_auto_on` après reboot watchdog sans intervention opérateur |
+| **feat/protection-batterie** | ✅ Fait | Arrêt d'urgence si batterie critique en session active — poll accéléré 30 s → 5 s en alerte — 3 tests |
+| **feat/build-prod** | ✅ Fait | Mode production Kconfig — nommage firmware `irrifrance_{machine}_{canon}_v{version}.bin` — `version.h` source canonique — CI release GitHub Actions sur `git tag v*` |
 
 ---
 

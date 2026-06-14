@@ -77,6 +77,20 @@ idf.py build
 
 Taille actuelle : ~933 KB, 53% flash libre sur ESP32 4MB.
 
+### Build production (profil machine + canon verrouillés)
+
+```bash
+# ST1 Bis + SR 100C (produit : irrifrance_st1bis82330_sr100c_v1.2.11.bin)
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_sr100c" build
+
+# ST1 Bis + SR 150C
+idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.st1bis_sr150c" build
+```
+
+En mode production, `machine_active` et `abaque_idx` sont verrouillés à la compilation.
+Les paramètres terrain (`t_vidange_s`, `facteur_correction`, etc.) restent configurables en NVS.
+Voir [BUILD_PROD.md](BUILD_PROD.md) pour le workflow complet et la release GitHub Actions.
+
 ---
 
 ## Flash et monitor
