@@ -5,6 +5,46 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [fix/review-build-prod] — 2026-06-14
+
+### Fixed
+
+- **`t_ouv_canon_s` clampé à la lecture NVS** (`main/config_nvs.c`) : un blob NVS corrompu
+  avec `t_ouv_canon_s = 0` provoquait une transition immédiate OUVERTURE_CANON→poumon.
+  Clamp `[5..60]` appliqué sur la valeur chargée, comme en HTTP save.
+- **Footer version visible depuis tous les onglets** (`main/webui/index.html.in`) :
+  la mise à jour de `#footer-version` est désormais dans `updateUI()` (chaque message WS)
+  plutôt que dans `loadConfigFromStatus()` (onglet Config uniquement).
+- **Vérification cohérence tag / `version.h` en CI** (`.github/workflows/release.yml`) :
+  un step échoue si le tag Git (ex. `v2.2.0`) ne correspond pas à `IRRI_VERSION` dans `version.h`.
+- **Erreurs NVS inattendues loguées** (`main/config_nvs.c`) : codes autres que
+  `NOT_FOUND`/`INVALID_LENGTH` déclenchaient un fallback silencieux. Ajout `LOGW`.
+- **`saveMachine()` bloquée en PROD** (`main/webui/index.html.in`) : évite d'écrire des
+  valeurs machine/abaque incorrectes en NVS depuis la web UI en mode PROD.
+- **`CONFIG_LOG_DEFAULT_LEVEL=2` en PROD** (`sdkconfig.st1bis_82_330_sr100c/sr150c`) :
+  réduit le niveau de log à WARNING pour les firmwares terrain.
+- **Défaut abaque aligné sur usage terrain** (`main/config_nvs.h`) : `abaque_idx=1` (SR100C)
+  au lieu de `0` (SR150C) — cohérent avec le Kconfig PROD et l'usage de Mathieu.
+
+### Added
+
+- **Constantes nommées** `MACHINE_IDX_ST1BIS_82_330`, `ABAQUE_IDX_SR100C`, `ABAQUE_IDX_SR150C`
+  (`machines.h`, `abaques.h`) : les indices utilisés dans le bloc PROD de `config_nvs.c`
+  sont maintenant nommés — plus lisibles et résistants à un réordonnancement des tables.
+- **Tests reboot** : `ESP_RST_PANIC`, `ESP_RST_TASK_WDT`, `ESP_RST_WDT` couverts dans
+  `scenario_reboot.c` — les 3 causes de crash/watchdog déclenchent bien `reprise_auto_on`.
+- **Test clamp `t_ouv_canon_s`** (`test_config_nvs.c`) : vérifie que `0.0f` dans le blob
+  est clampé à `20.0f` au chargement NVS.
+
+### Changed
+
+- **`querySelectorAll` PROD** (`main/webui/index.html.in`) : guard `_prodLockApplied` —
+  les queries DOM ne sont exécutées qu'une seule fois, pas à chaque message WS.
+- **CI `release.yml`** : suppression du second `idf.py reconfigure` + `build` redondant
+  (IDF auto-reconfigure au premier build sur checkout propre).
+
+---
+
 ## [feat/build-prod] — 2026-06-14
 
 ### Added

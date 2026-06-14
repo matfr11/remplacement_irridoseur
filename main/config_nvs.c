@@ -1,5 +1,7 @@
 #include "config_nvs.h"
 #include "version.h"
+#include "machines/machines.h"
+#include "abaques/abaques.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "esp_log.h"
@@ -44,20 +46,27 @@ esp_err_t config_nvs_charger_machine(config_machine_t *cfg)
         if (ret == ESP_ERR_NVS_NOT_FOUND || ret == ESP_ERR_NVS_INVALID_LENGTH) {
             ESP_LOGW(TAG, "Config machine incompatible ou absente — valeurs par defaut");
             *cfg = defaut;
+        } else if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "nvs_get_blob inattendu: 0x%x — valeurs par defaut", ret);
+            *cfg = defaut;
         }
     }
+
+    // Clamp t_ouv_canon_s — blob NVS corrompu peut contenir 0 ou valeur negative
+    if (cfg->t_ouv_canon_s < 5.0f || cfg->t_ouv_canon_s > 60.0f)
+        cfg->t_ouv_canon_s = 20.0f;
 
 #ifdef CONFIG_IRRI_PROD
     // Verrouiller machine_active et abaque_idx sur les valeurs compilées
     #if defined(CONFIG_IRRI_MACHINE_ST1BIS_82_330)
-        cfg->machine_active = 0;
+        cfg->machine_active = MACHINE_IDX_ST1BIS_82_330;
     #else
         #error "IRRI_PROD activé mais aucun profil machine sélectionné"
     #endif
     #if defined(CONFIG_IRRI_CANON_SR100C)
-        cfg->abaque_idx = 1;
+        cfg->abaque_idx = ABAQUE_IDX_SR100C;
     #elif defined(CONFIG_IRRI_CANON_SR150C)
-        cfg->abaque_idx = 0;
+        cfg->abaque_idx = ABAQUE_IDX_SR150C;
     #else
         #error "IRRI_PROD activé mais aucun abaque canon sélectionné"
     #endif

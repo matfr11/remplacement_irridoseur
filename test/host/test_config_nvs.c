@@ -22,11 +22,12 @@ static void test_lire_machine_nvs_vierge_retourne_defauts(void)
 {
     config_machine_t m;
     memset(&m, 0xFF, sizeof(m));
-    TEST_ASSERT_EQUAL(ESP_OK, config_nvs_charger_machine(&m));
+    config_nvs_charger_machine(&m);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 2.0f,  m.t_vidange_s);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 1.0f,  m.facteur_correction);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 10.0f, m.fin_course_seuil_m);
-    TEST_ASSERT_EQUAL_INT(0, m.abaque_idx);
+    TEST_ASSERT_EQUAL_INT(1, m.abaque_idx);    // défaut SR100C
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 20.0f, m.t_ouv_canon_s);  // clamp défaut
 }
 
 static void test_lire_machine_blob_ancienne_version_retourne_defauts(void)
@@ -40,8 +41,23 @@ static void test_lire_machine_blob_ancienne_version_retourne_defauts(void)
     nvs_close(h);
 
     config_machine_t m;
-    TEST_ASSERT_EQUAL(ESP_OK, config_nvs_charger_machine(&m));
+    config_nvs_charger_machine(&m);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 2.0f, m.t_vidange_s);   // défaut, pas le blob corrompu
+}
+
+static void test_t_ouv_canon_clampe_si_blob_corrompu(void)
+{
+    // t_ouv_canon_s = 0 dans le blob → doit être clampé à 20s (défaut)
+    nvs_handle_t h;
+    TEST_ASSERT_EQUAL(ESP_OK, nvs_open("irri_machine", NVS_READWRITE, &h));
+    config_machine_t blob = CFG_MACHINE_DEFAUT;
+    blob.t_ouv_canon_s = 0.0f;
+    TEST_ASSERT_EQUAL(ESP_OK, nvs_set_blob(h, "cfg", &blob, sizeof(blob)));
+    nvs_close(h);
+
+    config_machine_t m;
+    config_nvs_charger_machine(&m);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 20.0f, m.t_ouv_canon_s);
 }
 
 // ── Seuils batterie : round-trip + validation à la lecture ───────────────────
@@ -132,6 +148,7 @@ void suite_config_nvs(void)
     unity_suite_setup(local_setUp, local_tearDown);
     RUN_TEST(test_lire_machine_nvs_vierge_retourne_defauts);
     RUN_TEST(test_lire_machine_blob_ancienne_version_retourne_defauts);
+    RUN_TEST(test_t_ouv_canon_clampe_si_blob_corrompu);
     RUN_TEST(test_batt_seuils_roundtrip);
     RUN_TEST(test_batt_seuils_hors_plage_ignores_a_la_lecture);
     RUN_TEST(test_reset_stats_remet_tout_a_zero);

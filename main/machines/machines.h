@@ -36,6 +36,9 @@ typedef struct {
     float   facteur_correction;     // Étalonnage longueur (défaut 1.0)
 } machine_profile_t;
 
+// Indices dans MACHINES_LISTE[]
+#define MACHINE_IDX_ST1BIS_82_330  0
+
 // Profils disponibles
 extern const machine_profile_t MACHINE_ST1BIS_82_330;
 

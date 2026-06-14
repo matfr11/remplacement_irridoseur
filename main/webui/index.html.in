@@ -658,6 +658,19 @@ function updateUI() {
     if (b) b.disabled = irriBlocked;
   });
 
+  // Footer version — toujours visible, mis à jour dès le premier message WS
+  if (s.firmware_version) {
+    var fv = document.getElementById('footer-version');
+    if (fv) fv.textContent = 'v' + s.firmware_version + (s.firmware_prod ? ' PROD' : '');
+  }
+
+  // Mode PROD — verrouiller sélecteurs machine/canon (une seule fois)
+  if (s.firmware_prod && !window._prodLockApplied) {
+    document.querySelectorAll('.prod-lock').forEach(function(el){ el.style.display='none'; });
+    document.querySelectorAll('.prod-badge').forEach(function(el){ el.style.display='block'; });
+    window._prodLockApplied = true;
+  }
+
   // Config : mettre à jour les champs seulement si pas d'édition en cours
   if (!configDirty && activeTab === 'config') loadConfigFromStatus();
 }
@@ -694,18 +707,12 @@ function loadConfigFromStatus() {
   if (s.cfg_t_ouv_canon_s != null)  setField('m-touv-canon', s.cfg_t_ouv_canon_s);
   if (s.cfg_reprise_auto_on != null) setCheck('m-reprise-auto', s.cfg_reprise_auto_on);
 
-  // Mode PROD — verrouiller sélecteurs machine/canon
+  // Mode PROD — noms machine/canon en lecture seule
   if (s.firmware_prod) {
-    document.querySelectorAll('.prod-lock').forEach(function(el){ el.style.display='none'; });
-    document.querySelectorAll('.prod-badge').forEach(function(el){ el.style.display='block'; });
     var mn = document.getElementById('prod-machine-nom');
     var an = document.getElementById('prod-abaque-nom');
     if (mn) mn.textContent = s.machine_nom || '--';
     if (an) an.textContent = s.abaque_nom  || '--';
-  }
-  if (s.firmware_version) {
-    var fv = document.getElementById('footer-version');
-    if (fv) fv.textContent = 'v' + s.firmware_version + (s.firmware_prod ? ' PROD' : '');
   }
 
   // Champs programme actif depuis JSON statut (prog_* fields)
@@ -797,6 +804,7 @@ function saveProg() {
 }
 
 function saveMachine() {
+  if (window._prodLockApplied) return;
   sendCmd({
     cmd: 'save_machine',
     machine_active: parseInt(document.getElementById('m-machine').value),

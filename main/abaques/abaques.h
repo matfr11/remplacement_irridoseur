@@ -38,6 +38,10 @@ typedef struct {
     float         esp_factor;      // Espacement = portee * esp_factor
 } canon_abaque_t;
 
+// Indices dans ABAQUES_LISTE[]
+#define ABAQUE_IDX_SR150C  0
+#define ABAQUE_IDX_SR100C  1
+
 // Abaques disponibles
 extern const canon_abaque_t ABAQUE_SR150C;
 extern const canon_abaque_t ABAQUE_SR100C;

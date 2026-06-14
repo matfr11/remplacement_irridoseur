@@ -186,7 +186,7 @@ static void test_calc_vitesse_coherent_avec_lookup(void)
     float v_sm = state_machine_calc_vitesse(4.9f, 17.3f, 25.0f, 60.0f,
                                             &debit_sm, &p_buse_sm);
     float debit_ref = 0.0f, p_buse_ref = 0.0f;
-    float v_ref = lookup_vitesse_cible(&ABAQUE_SR150C, 4.9f, 17.3f, 25.0f, 60.0f,
+    float v_ref = lookup_vitesse_cible(&ABAQUE_SR100C, 4.9f, 17.3f, 25.0f, 60.0f,
                                        &debit_ref, &p_buse_ref);
     TEST_ASSERT_TRUE(v_ref > 0.0f);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, v_ref, v_sm);
@@ -220,6 +220,16 @@ static void test_get_vitesse_max(void)
 
 static void test_programme_preview_nominal(void)
 {
+    // Forcer SR150C pour ce test (valeurs de référence issues de cet abaque)
+    config_machine_t m = CFG_MACHINE_DEFAUT;
+    m.machine_active = 0;
+    m.t_vidange_s    = 5.0f;
+    m.kp_regulation  = 0.1f;
+    m.n_cycles_calib = 3;
+    m.abaque_idx     = ABAQUE_IDX_SR150C;
+    config_nvs_sauver_machine(&m);
+    state_machine_init();
+
     float esp = calcul_esp_nominal_m(&ABAQUE_SR150C, 4.9f, 17.3f);
     programme_preview_t pr = state_machine_programme_preview(4.9f, 17.3f, 25.0f, esp);
 

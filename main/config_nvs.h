@@ -64,7 +64,7 @@ typedef struct {
     .cycles_par_tour   = 0.0f,  \
     .heartbeat_rc_on    = false, \
     .fin_course_seuil_m = 10.0f, \
-    .abaque_idx         = 0,     \
+    .abaque_idx         = 1,     \
     .t_ouv_canon_s      = 20.0f, \
     .reprise_auto_on    = false, \
 }

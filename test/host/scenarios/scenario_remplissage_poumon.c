@@ -35,8 +35,8 @@ static void test_abaque_nom_dans_statut(void)
 {
     machine_status_t s;
     state_machine_get_status(&s);
-    // CFG_MACHINE_DEFAUT : machine_active=0 → abaque_idx=0 → SR 150C
-    TEST_ASSERT_EQUAL_STRING("SR 150C", s.abaque_nom);
+    // CFG_MACHINE_DEFAUT : machine_active=0 → abaque_idx=1 → SR 100C
+    TEST_ASSERT_EQUAL_STRING("SR 100C", s.abaque_nom);
 }
 
 // Test B — retry remplissage poumon : délai t_vidange_s avant ré-ouverture EV_POUMON

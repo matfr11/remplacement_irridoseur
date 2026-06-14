@@ -137,6 +137,64 @@ static void test_reprise_manuelle_apres_coupure(void)
     TEST_ASSERT_EQUAL_FLOAT(20.0f,  s.longueur_enroulee_m);
 }
 
+// Tests F/G/H — reprise auto sur les raisons crash/watchdog (ESP_RST_PANIC, TASK_WDT, WDT)
+static void test_reprise_auto_apres_panic(void)
+{
+    config_machine_t m = CFG_MACHINE_DEFAUT;
+    m.t_vidange_s     = 5.0f;
+    m.reprise_auto_on = true;
+    config_nvs_sauver_machine(&m);
+    config_nvs_sauver_session_active(true);
+    config_nvs_sauver_deroule(100.0f);
+    config_nvs_sauver_longueur(250.0f);
+
+    mock_set_reset_reason(ESP_RST_PANIC);
+    mock_time_reset();
+    state_machine_init();
+
+    tick_state_machine();
+    mock_time_advance_ms(100);
+    TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
+}
+
+static void test_reprise_auto_apres_task_wdt(void)
+{
+    config_machine_t m = CFG_MACHINE_DEFAUT;
+    m.t_vidange_s     = 5.0f;
+    m.reprise_auto_on = true;
+    config_nvs_sauver_machine(&m);
+    config_nvs_sauver_session_active(true);
+    config_nvs_sauver_deroule(100.0f);
+    config_nvs_sauver_longueur(250.0f);
+
+    mock_set_reset_reason(ESP_RST_TASK_WDT);
+    mock_time_reset();
+    state_machine_init();
+
+    tick_state_machine();
+    mock_time_advance_ms(100);
+    TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
+}
+
+static void test_reprise_auto_apres_wdt(void)
+{
+    config_machine_t m = CFG_MACHINE_DEFAUT;
+    m.t_vidange_s     = 5.0f;
+    m.reprise_auto_on = true;
+    config_nvs_sauver_machine(&m);
+    config_nvs_sauver_session_active(true);
+    config_nvs_sauver_deroule(100.0f);
+    config_nvs_sauver_longueur(250.0f);
+
+    mock_set_reset_reason(ESP_RST_WDT);
+    mock_time_reset();
+    state_machine_init();
+
+    tick_state_machine();
+    mock_time_advance_ms(100);
+    TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
+}
+
 // Test E — reprise_auto_on=true mais ESP_RST_POWERON :
 //   l'opérateur a coupé l'alimentation → pas de reprise auto, attend intervention
 static void test_reprise_auto_ignoree_poweron(void)
@@ -172,5 +230,8 @@ void suite_scenario_reboot(void)
     RUN_TEST(test_boot_apres_urgence_nvs);
     RUN_TEST(test_reprise_auto_apres_coupure);
     RUN_TEST(test_reprise_manuelle_apres_coupure);
+    RUN_TEST(test_reprise_auto_apres_panic);
+    RUN_TEST(test_reprise_auto_apres_task_wdt);
+    RUN_TEST(test_reprise_auto_apres_wdt);
     RUN_TEST(test_reprise_auto_ignoree_poweron);
 }

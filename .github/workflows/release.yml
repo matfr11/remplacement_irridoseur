@@ -24,11 +24,18 @@ jobs:
         with:
           esp_idf_version: v5.5.2
 
+      - name: Vérifier cohérence tag / version.h
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VER=$(grep 'define IRRI_VERSION ' main/version.h | grep -oP '"[^"]+"' | tr -d '"')
+          if [ "$TAG" != "$VER" ]; then
+            echo "ERREUR : tag $TAG != version.h $VER"
+            exit 1
+          fi
+
       - name: Build firmware
         run: |
           idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.${{ matrix.config.sdkconfig }}" build
-          idf.py reconfigure
-          idf.py build
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
