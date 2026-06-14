@@ -5,6 +5,21 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [feat/protection-batterie] — 2026-06-14
+
+### Added
+
+- **Arrêt d'urgence sur batterie critique** : si la tension mesurée par l'INA3221 CH3
+  passe sous le seuil critique configuré (défaut 11,0 V) pendant une session active,
+  les EVs sont fermées et `ETAT_ARRET_URGENCE` est déclenché avec la raison
+  `"Batterie critique (X.XV)"`. Hors session (VEILLE, ARRET_FINAL…), aucune action.
+- **Poll accéléré** : quand la tension descend sous le seuil warn (défaut 11,5 V),
+  la fréquence de lecture INA3221 passe de 30 s à 5 s pour réagir plus vite.
+- 3 nouveaux tests : batterie faible (cycle continue + accélération poll), critique
+  en session (urgence + EVs fermées), critique hors session (aucune action).
+
+---
+
 ## [feat/reprise-auto-ouv-canon] — 2026-06-14
 
 ### Added

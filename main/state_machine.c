@@ -69,10 +69,11 @@ static bool              s_bilan_envoye = false;
 static config_stats_t    s_stats;
 
 // Batterie
-static batt_status_t s_batt        = {0};
-static float         s_batt_warn_v = 11.5f;
-static float         s_batt_crit_v = 11.0f;
-static int           s_batt_tick   = 299;  // declenche mesure au 1er tick
+static batt_status_t s_batt              = {0};
+static float         s_batt_warn_v       = 11.5f;
+static float         s_batt_crit_v       = 11.0f;
+static int           s_batt_tick         = 299;  // declenche mesure au 1er tick
+static bool          s_batt_alerte_active = false; // poll 5s si tension < warn
 
 // Doit être true pour que VEILLE puisse démarrer (protège contre redémarrage auto après stop/urgence)
 static bool              s_demarrage_autorise = true;  // false uniquement après ARRET_URGENCE
@@ -701,15 +702,38 @@ static void handle_deroule(const entrees_t *e)
 // ---------------------------------------------------------------------------
 void tick_state_machine(void)
 {
-    if (++s_batt_tick >= 300) {
+    // Poll 30s normal, 5s si tension < seuil warn (alerte imminente)
+    int batt_periode = s_batt_alerte_active ? 50 : 300;
+    if (++s_batt_tick >= batt_periode) {
         s_batt_tick = 0;
         s_batt = batterie_get_status();
+        s_batt_alerte_active = (s_batt.etat == BATT_ETAT_FAIBLE ||
+                                 s_batt.etat == BATT_ETAT_CRITIQUE);
     }
 
     xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
 
     // SEC priorité absolue — avant tout traitement état
     securites_watchdog();
+
+    // Batterie critique en session active → fermeture EVs + arrêt d'urgence
+    if (s_batt.etat == BATT_ETAT_CRITIQUE && s_batt.voltage_v > 0.0f) {
+        switch (s_etat) {
+            case ETAT_OUVERTURE_CANON:
+            case ETAT_TEMPO_DEPART:
+            case ETAT_REMPLISSAGE_POUMON:
+            case ETAT_EN_COURS:
+            case ETAT_PAUSE_PRESSION:
+            case ETAT_TEMPO_ARRIVEE: {
+                char msg[48];
+                snprintf(msg, sizeof(msg),
+                         "Batterie critique (%.1fV)", s_batt.voltage_v);
+                state_machine_declencher_urgence(msg);
+                break;
+            }
+            default: break;
+        }
+    }
 
     entrees_t e;
     gpio_handler_lire_entrees(&e);
@@ -1277,6 +1301,9 @@ void state_machine_test_reset(void)
     s_nb_tentatives      = 0;
     s_bilan_envoye       = false;
     s_demarrage_autorise = true;
+    s_batt_tick          = 299;   // 1er tick du prochain test → lecture immédiate
+    s_batt_alerte_active = false;
+    s_batt               = (batt_status_t){0};
     gpio_ev_canon_set(false);
     gpio_ev_poumon_set(false);
 }

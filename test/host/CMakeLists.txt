@@ -54,6 +54,7 @@ add_executable(irrifrance_tests
   scenarios/scenario_bilan_session.c
   scenarios/scenario_parametres.c
   scenarios/scenario_commandes_api.c
+  scenarios/scenario_batterie.c
   ${PROD_SRCS}
 )
 
