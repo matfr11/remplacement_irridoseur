@@ -12,7 +12,7 @@
 
 typedef enum {
     ETAT_VEILLE,              // Attente conditions démarrage
-    ETAT_OUVERTURE_CANON,     // EV_CANON=ON, attend pression stable 3s
+    ETAT_OUVERTURE_CANON,     // EV_CANON=ON, attend t_ouv_canon_s (défaut 20s) avant 1er cycle poumon
     ETAT_TEMPO_DEPART,        // EV_CANON=ON, arrosage sur place avant enroulement
     ETAT_REMPLISSAGE_POUMON,  // EV_POUMON=ON, attend contact poumon plein
     ETAT_EN_COURS,            // EV_CANON=ON, régulation cycles poumon active
@@ -138,6 +138,8 @@ typedef struct {
     int             cfg_abaque_idx;
     float           cfg_cycles_par_tour;
     bool            cfg_heartbeat_rc_on;
+    float           cfg_t_ouv_canon_s;
+    bool            cfg_reprise_auto_on;
 
 } machine_status_t;
 

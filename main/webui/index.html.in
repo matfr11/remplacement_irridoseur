@@ -300,6 +300,7 @@ details>summary::-webkit-details-marker{display:none}
             <select id="m-abaque"><option value="0">SR 150C</option><option value="1">SR 100C</option></select>
           </div>
           <div class="field"><label>T. vidange poumon (s) &#9888;</label><input id="m-tvidange" type="number" min="0" max="60" step="0.1"></div>
+          <div class="field"><label>Stabilisation pression avant poumon (s) <span style="color:#90a4ae;font-size:11px">[5..60]</span></label><input id="m-touv-canon" type="number" min="5" max="60" step="1"></div>
           <div class="field"><label>Dénivelé (m)</label><input id="m-denivele" type="number" min="-50" max="50" step="0.5"></div>
           <div class="field"><label>Gain Kp</label><input id="m-kp" type="number" min="0" max="2" step="0.01"></div>
           <div class="field-row">
@@ -329,6 +330,10 @@ details>summary::-webkit-details-marker{display:none}
           <div class="toggle-row">
             <label>Circuit RC heartbeat (GPIO 2) <span style="color:#90a4ae;font-size:11px">activer si circuit câblé</span></label>
             <label class="tgl"><input type="checkbox" id="m-heartbeat" onchange="saveMachine()"><span class="tgl-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <label>Reprise auto après plantage <span style="color:#90a4ae;font-size:11px">redémarre seul dès pression OK</span></label>
+            <label class="tgl"><input type="checkbox" id="m-reprise-auto" onchange="saveMachine()"><span class="tgl-slider"></span></label>
           </div>
           <div class="field" id="m-trempl-wrap" style="display:none">
             <label>T. remplissage fixe (s)</label>
@@ -684,6 +689,8 @@ function loadConfigFromStatus() {
   if (s.mode_degrade_spires != null) setCheck('m-mds', s.mode_degrade_spires);
   if (s.cfg_heartbeat_rc_on != null) setCheck('m-heartbeat', s.cfg_heartbeat_rc_on);
   if (s.cfg_fin_course_seuil_m != null) setField('m-fc-seuil', s.cfg_fin_course_seuil_m);
+  if (s.cfg_t_ouv_canon_s != null)  setField('m-touv-canon', s.cfg_t_ouv_canon_s);
+  if (s.cfg_reprise_auto_on != null) setCheck('m-reprise-auto', s.cfg_reprise_auto_on);
 
   // Champs programme actif depuis JSON statut (prog_* fields)
   if (s.prog_dose_mm != null)         setField('p-dose', s.prog_dose_mm || '');
@@ -790,7 +797,9 @@ function saveMachine() {
     batt_warn_v: parseFloat(document.getElementById('m-batt-warn').value) || 11.5,
     batt_crit_v: parseFloat(document.getElementById('m-batt-crit').value) || 11.0,
     heartbeat_rc_on: document.getElementById('m-heartbeat').checked,
-    fin_course_seuil_m: parseFloat(document.getElementById('m-fc-seuil').value) || 10
+    fin_course_seuil_m: parseFloat(document.getElementById('m-fc-seuil').value) || 10,
+    t_ouv_canon_s: parseFloat(document.getElementById('m-touv-canon').value) || 20,
+    reprise_auto_on: document.getElementById('m-reprise-auto').checked
   });
   configDirty = false;
 }
@@ -810,7 +819,9 @@ function resetEtalonnage() {
     batt_warn_v: parseFloat(document.getElementById('m-batt-warn').value) || 11.5,
     batt_crit_v: parseFloat(document.getElementById('m-batt-crit').value) || 11.0,
     heartbeat_rc_on: document.getElementById('m-heartbeat').checked,
-    fin_course_seuil_m: parseFloat(document.getElementById('m-fc-seuil').value) || 10
+    fin_course_seuil_m: parseFloat(document.getElementById('m-fc-seuil').value) || 10,
+    t_ouv_canon_s: parseFloat(document.getElementById('m-touv-canon').value) || 20,
+    reprise_auto_on: document.getElementById('m-reprise-auto').checked
   });
 }
 
@@ -839,7 +850,9 @@ function openDerouleCorrection() {
         batt_warn_v: st.cfg_batt_warn_v || 11.5,
         batt_crit_v: st.cfg_batt_crit_v || 11.0,
         heartbeat_rc_on: st.cfg_heartbeat_rc_on || false,
-        fin_course_seuil_m: st.cfg_fin_course_seuil_m || 10
+        fin_course_seuil_m: st.cfg_fin_course_seuil_m || 10,
+        t_ouv_canon_s: st.cfg_t_ouv_canon_s || 20,
+        reprise_auto_on: st.cfg_reprise_auto_on || false
       });
       return;
     }

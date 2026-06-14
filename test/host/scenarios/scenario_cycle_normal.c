@@ -22,7 +22,7 @@ static void local_setUp(void)
 
 static void local_tearDown(void) { state_machine_test_reset(); }
 
-// Avance jusqu'à REMPLISSAGE_POUMON (via OUVERTURE_CANON, 32 ticks max)
+// Avance jusqu'à REMPLISSAGE_POUMON (via OUVERTURE_CANON + timer 20s)
 static int avancer_vers_remplissage(void)
 {
     // 1 tick → OUVERTURE_CANON
@@ -30,11 +30,10 @@ static int avancer_vers_remplissage(void)
     mock_time_advance_ms(100);
     if (state_machine_get_etat() != ETAT_OUVERTURE_CANON) return -1;
 
-    // 30 ticks (pression stable) → REMPLISSAGE_POUMON
-    for (int i = 0; i < 31; i++) {
-        tick_state_machine();
-        mock_time_advance_ms(100);
-    }
+    // Timer t_ouv_canon_s (20s) écoulé → REMPLISSAGE_POUMON
+    mock_time_advance_ms(20000);
+    tick_state_machine();
+    mock_time_advance_ms(100);
     return (state_machine_get_etat() == ETAT_REMPLISSAGE_POUMON) ? 0 : -2;
 }
 
@@ -113,11 +112,10 @@ static void test_scenario_cycle_avec_tempo(void)
     // OUVERTURE_CANON : canon ouvert pour stabiliser, poumon fermé
     ASSERT_EVS(true, false);
 
-    // Pression stable 30 ticks → TEMPO_DEPART
-    for (int i = 0; i < 31; i++) {
-        tick_state_machine();
-        mock_time_advance_ms(100);
-    }
+    // Timer t_ouv_canon_s (20s) écoulé → TEMPO_DEPART
+    mock_time_advance_ms(20000);
+    tick_state_machine();
+    mock_time_advance_ms(100);
     TEST_ASSERT_EQUAL_INT(ETAT_TEMPO_DEPART, state_machine_get_etat());
     // TEMPO_DEPART : on arrose (canon ouvert), poumon pas encore rempli
     ASSERT_EVS(true, false);

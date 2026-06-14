@@ -30,6 +30,8 @@ typedef struct {
     bool    heartbeat_rc_on;        // Heartbeat PIN_HEARTBEAT (GPIO 23) pour circuit RC fail-safe (défaut OFF)
     float   fin_course_seuil_m;     // Longueur restante en dessous de laquelle fin_course = fin normale (défaut 10m)
     int     abaque_idx;             // Index abaque canon actif (0=SR150C, 1=SR100C)
+    float   t_ouv_canon_s;          // Timer stabilisation pression OUVERTURE_CANON avant poumon (défaut 20s, plage 5..60)
+    bool    reprise_auto_on;        // Reprise automatique après plantage watchdog (défaut OFF)
 } config_machine_t;
 
 // -----------------------------------------------------------------------------
@@ -63,6 +65,8 @@ typedef struct {
     .heartbeat_rc_on    = false, \
     .fin_course_seuil_m = 10.0f, \
     .abaque_idx         = 0,     \
+    .t_ouv_canon_s      = 20.0f, \
+    .reprise_auto_on    = false, \
 }
 
 // -----------------------------------------------------------------------------

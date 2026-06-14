@@ -77,9 +77,69 @@ static void test_boot_apres_urgence_nvs(void)
     TEST_ASSERT_EQUAL_INT(ETAT_VEILLE, state_machine_get_etat());
 }
 
+// Test C — reprise automatique (reprise_auto_on=true) :
+//   boot après coupure → transition directe VEILLE→OUVERTURE_CANON dès pression OK
+static void test_reprise_auto_apres_coupure(void)
+{
+    config_machine_t m = CFG_MACHINE_DEFAUT;
+    m.t_vidange_s     = 5.0f;
+    m.reprise_auto_on = true;
+    config_nvs_sauver_machine(&m);
+
+    config_nvs_sauver_session_active(true);
+    config_nvs_sauver_deroule(100.0f);
+    config_nvs_sauver_longueur(250.0f);
+
+    mock_time_reset();
+    state_machine_init();
+
+    // 1 tick → OUVERTURE_CANON (reprise auto, sans attendre l'opérateur)
+    tick_state_machine();
+    mock_time_advance_ms(100);
+    TEST_ASSERT_EQUAL_INT(ETAT_OUVERTURE_CANON, state_machine_get_etat());
+    ASSERT_EVS(true, false);  // canon ouvert, poumon fermé
+
+    // Longueurs restaurées depuis NVS (ST1 Bis 330m : abs_start=230, session=20m)
+    machine_status_t s;
+    state_machine_get_status(&s);
+    TEST_ASSERT_EQUAL_FLOAT(100.0f, s.longueur_deroulee_m);
+    TEST_ASSERT_EQUAL_FLOAT(20.0f,  s.longueur_enroulee_m);
+}
+
+// Test D — reprise manuelle (reprise_auto_on=false) :
+//   boot après coupure → machine attend décision opérateur (comportement actuel)
+static void test_reprise_manuelle_apres_coupure(void)
+{
+    config_machine_t m = CFG_MACHINE_DEFAUT;
+    m.t_vidange_s     = 5.0f;
+    // reprise_auto_on = false (défaut)
+    config_nvs_sauver_machine(&m);
+
+    config_nvs_sauver_session_active(true);
+    config_nvs_sauver_deroule(100.0f);
+    config_nvs_sauver_longueur(250.0f);
+
+    mock_time_reset();
+    state_machine_init();
+
+    // 1 tick → reste en VEILLE (attend intervention opérateur)
+    tick_state_machine();
+    mock_time_advance_ms(100);
+    TEST_ASSERT_EQUAL_INT(ETAT_VEILLE, state_machine_get_etat());
+    ASSERT_EVS(false, false);
+
+    machine_status_t s;
+    state_machine_get_status(&s);
+    TEST_ASSERT_TRUE(s.coupure_detectee);
+    TEST_ASSERT_EQUAL_FLOAT(100.0f, s.longueur_deroulee_m);
+    TEST_ASSERT_EQUAL_FLOAT(20.0f,  s.longueur_enroulee_m);
+}
+
 void suite_scenario_reboot(void)
 {
     unity_suite_setup(local_setUp, local_tearDown);
     RUN_TEST(test_coupure_courant_detectee);
     RUN_TEST(test_boot_apres_urgence_nvs);
+    RUN_TEST(test_reprise_auto_apres_coupure);
+    RUN_TEST(test_reprise_manuelle_apres_coupure);
 }
