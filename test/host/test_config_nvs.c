@@ -22,7 +22,7 @@ static void test_lire_machine_nvs_vierge_retourne_defauts(void)
 {
     config_machine_t m;
     memset(&m, 0xFF, sizeof(m));
-    TEST_ASSERT_EQUAL(ESP_OK, config_nvs_lire_machine(&m));
+    TEST_ASSERT_EQUAL(ESP_OK, config_nvs_charger_machine(&m));
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 2.0f,  m.t_vidange_s);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 1.0f,  m.facteur_correction);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 10.0f, m.fin_course_seuil_m);
@@ -40,7 +40,7 @@ static void test_lire_machine_blob_ancienne_version_retourne_defauts(void)
     nvs_close(h);
 
     config_machine_t m;
-    TEST_ASSERT_EQUAL(ESP_OK, config_nvs_lire_machine(&m));
+    TEST_ASSERT_EQUAL(ESP_OK, config_nvs_charger_machine(&m));
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 2.0f, m.t_vidange_s);   // défaut, pas le blob corrompu
 }
 

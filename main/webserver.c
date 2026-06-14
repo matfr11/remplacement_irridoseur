@@ -1,6 +1,7 @@
 #include "webserver.h"
 #include "webui.h"
 #include "ota.h"
+#include "version.h"
 #ifdef CONFIG_IRRI_TEST_MODE
   #include "simulator/simulator.h"
   #include "simulator/simulator_ws.h"
@@ -155,7 +156,9 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         "\"cfg_reprise_auto_on\":%s,"
         "\"coupure_detectee\":%s,"
         "\"vitesse_max_m_h\":%.1f,"
-        "\"dose_corrigee_mm\":%.1f"
+        "\"dose_corrigee_mm\":%.1f,"
+        "\"firmware_version\":\"%s\","
+        "\"firmware_prod\":%s"
         "}",
         etat_to_str(s->etat), (int)s->etat,
         prog_nom,
@@ -224,7 +227,13 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         s->cfg_reprise_auto_on  ? "true" : "false",
         s->coupure_detectee     ? "true" : "false",
         s->vitesse_max_m_h,
-        s->dose_corrigee_mm
+        s->dose_corrigee_mm,
+        IRRI_VERSION,
+#ifdef CONFIG_IRRI_PROD
+        "true"
+#else
+        "false"
+#endif
     );
 }
 
@@ -310,7 +319,7 @@ static void handle_ws_command(const char *data, size_t len)
 
     } else if (strcmp(cmd, "save_machine") == 0) {
         config_machine_t cfg;
-        config_nvs_lire_machine(&cfg);
+        config_nvs_charger_machine(&cfg);
         float f; int n; bool b;
         if (json_parse_float(data, "facteur_correction", &f)) cfg.facteur_correction = f;
         if (json_parse_float(data, "kp_regulation",      &f)) cfg.kp_regulation      = f;

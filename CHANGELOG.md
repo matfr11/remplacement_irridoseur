@@ -5,6 +5,40 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [feat/build-prod] — 2026-06-14
+
+### Added
+
+- **`main/version.h`** : source canonique de la version sémantique (`IRRI_VERSION`).
+  `CMakeLists.txt` lit ce fichier automatiquement — plus besoin de passer la version
+  en argument à `build.sh`.
+- **Mode production Kconfig** (`CONFIG_IRRI_PROD`) : profil machine et abaque
+  verrouillés à la compilation. Les paramètres de calibration terrain restent
+  configurables depuis la NVS / web UI.
+- **Nommage firmware automatique** : en mode PROD, le binaire est nommé
+  `irrifrance_{machine}_{canon}_v{version}.bin` (ex : `irrifrance_st1bis82330_sr100c_v1.2.11.bin`).
+  En mode DEV, le binaire reste `irrifrance_dev.bin`.
+- **Sélection machine/canon dans Kconfig** : `CONFIG_IRRI_MACHINE_ST1BIS_82_330`,
+  `CONFIG_IRRI_CANON_SR100C`, `CONFIG_IRRI_CANON_SR150C`.
+- **`sdkconfig.st1bis_sr100c` et `sdkconfig.st1bis_sr150c`** : fichiers prêts à
+  l'emploi pour les deux combinaisons disponibles.
+- **`firmware_version` et `firmware_prod`** dans le JSON WebSocket : la version et
+  le mode sont exposés à la web UI.
+- **PROD lock web UI** : quand `firmware_prod === true`, les sélecteurs machine et
+  abaque sont remplacés par un affichage lecture seule avec cadenas 🔒.
+- **GitHub Actions `release.yml`** : déclenché sur `git tag v*`, build matrix
+  ST1 Bis + SR100C et SR150C, release GitHub créée automatiquement avec les
+  binaires en pièces jointes.
+
+### Changed
+
+- `config_nvs_lire_machine()` renommée `config_nvs_charger_machine()` — en mode PROD
+  elle lit la NVS pour les paramètres terrain puis écrase `machine_active` / `abaque_idx`
+  avec les valeurs compilées.
+- `build.sh` simplifié : lit la version depuis `version.h` automatiquement.
+
+---
+
 ## [feat/protection-batterie] — 2026-06-14
 
 ### Added

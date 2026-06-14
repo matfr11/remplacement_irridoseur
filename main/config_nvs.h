@@ -74,7 +74,7 @@ typedef struct {
 // -----------------------------------------------------------------------------
 esp_err_t config_nvs_init(void);
 
-esp_err_t config_nvs_lire_machine(config_machine_t *cfg);
+esp_err_t config_nvs_charger_machine(config_machine_t *cfg);
 esp_err_t config_nvs_sauver_machine(const config_machine_t *cfg);
 
 esp_err_t config_nvs_lire_programme(int idx, config_programme_t *prog);

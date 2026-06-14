@@ -34,4 +34,41 @@ menu "Irrifrance ESP32"
             est redémarré automatiquement par le hardware.
             Désactiver si le composant n'est pas câblé.
 
+    config IRRI_PROD
+        bool "Mode production (profil machine hard-codé)"
+        default n
+        help
+            Profil machine et abaque compilés dans le firmware.
+            NVS ignorée pour machine_active et abaque_idx (verrouillés).
+            Les paramètres de calibration terrain restent modifiables en NVS.
+            Firmware nommé irrifrance_{machine}_{canon}_v{version}.bin.
+            Utiliser ce mode pour les firmwares de release.
+
+    choice IRRI_MACHINE_SELECT
+        prompt "Profil machine (mode PROD uniquement)"
+        depends on IRRI_PROD
+        default IRRI_MACHINE_ST1BIS_82_330
+
+        config IRRI_MACHINE_ST1BIS_82_330
+            bool "Structure 1 Bis — Ø82mm / 330m"
+
+        # Ajouter ici les nouvelles machines contribuées
+
+    endchoice
+
+    choice IRRI_CANON_SELECT
+        prompt "Abaque canon (mode PROD uniquement)"
+        depends on IRRI_PROD
+        default IRRI_CANON_SR100C
+
+        config IRRI_CANON_SR100C
+            bool "Irrifrance SR 100C"
+
+        config IRRI_CANON_SR150C
+            bool "Irrifrance SR 150C"
+
+        # Ajouter ici les nouveaux canons contribués
+
+    endchoice
+
 endmenu

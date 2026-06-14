@@ -209,7 +209,7 @@ details>summary::-webkit-details-marker{display:none}
       <button id="btn-resume" class="btn btn-orange" style="display:none" onclick="sendCmd({cmd:'resume'})">&#8617; REPRENDRE SESSION</button>
       <button id="btn-deroule" class="btn" style="display:none;background:var(--card2);border:1px solid var(--border)" onclick="sendCmd({cmd:'start_deroule'})">&#9654; Commencer le déroulement</button>
     </div>
-    <div style="text-align:center;font-size:11px;color:var(--muted);padding:10px 0 4px">v@PROJECT_VER@</div>
+    <div id="footer-version" style="text-align:center;font-size:11px;color:var(--muted);padding:10px 0 4px">v@PROJECT_VER@</div>
 
     <!-- TAB 2 : Stats -->
     <div id="tab-stats" class="tab">
@@ -293,12 +293,14 @@ details>summary::-webkit-details-marker{display:none}
       <details>
         <summary>Profil machine</summary>
         <div class="detail-body">
-          <div class="field"><label>Machine</label>
+          <div class="field prod-lock"><label>Machine</label>
             <select id="m-machine"><option value="0">ST1 Bis &#216;82-330m</option></select>
           </div>
-          <div class="field"><label>Abaque canon</label>
+          <div class="prod-badge" style="display:none;font-size:12px;color:var(--muted);margin-bottom:6px">Machine : <strong id="prod-machine-nom">--</strong> &#128274;</div>
+          <div class="field prod-lock"><label>Abaque canon</label>
             <select id="m-abaque"><option value="0">SR 150C</option><option value="1">SR 100C</option></select>
           </div>
+          <div class="prod-badge" style="display:none;font-size:12px;color:var(--muted);margin-bottom:6px">Canon : <strong id="prod-abaque-nom">--</strong> &#128274;</div>
           <div class="field"><label>T. vidange poumon (s) &#9888;</label><input id="m-tvidange" type="number" min="0" max="60" step="0.1"></div>
           <div class="field"><label>Stabilisation pression avant poumon (s) <span style="color:#90a4ae;font-size:11px">[5..60]</span></label><input id="m-touv-canon" type="number" min="5" max="60" step="1"></div>
           <div class="field"><label>Dénivelé (m)</label><input id="m-denivele" type="number" min="-50" max="50" step="0.5"></div>
@@ -691,6 +693,20 @@ function loadConfigFromStatus() {
   if (s.cfg_fin_course_seuil_m != null) setField('m-fc-seuil', s.cfg_fin_course_seuil_m);
   if (s.cfg_t_ouv_canon_s != null)  setField('m-touv-canon', s.cfg_t_ouv_canon_s);
   if (s.cfg_reprise_auto_on != null) setCheck('m-reprise-auto', s.cfg_reprise_auto_on);
+
+  // Mode PROD — verrouiller sélecteurs machine/canon
+  if (s.firmware_prod) {
+    document.querySelectorAll('.prod-lock').forEach(function(el){ el.style.display='none'; });
+    document.querySelectorAll('.prod-badge').forEach(function(el){ el.style.display='block'; });
+    var mn = document.getElementById('prod-machine-nom');
+    var an = document.getElementById('prod-abaque-nom');
+    if (mn) mn.textContent = s.machine_nom || '--';
+    if (an) an.textContent = s.abaque_nom  || '--';
+  }
+  if (s.firmware_version) {
+    var fv = document.getElementById('footer-version');
+    if (fv) fv.textContent = 'v' + s.firmware_version + (s.firmware_prod ? ' PROD' : '');
+  }
 
   // Champs programme actif depuis JSON statut (prog_* fields)
   if (s.prog_dose_mm != null)         setField('p-dose', s.prog_dose_mm || '');

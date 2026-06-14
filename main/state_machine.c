@@ -148,7 +148,7 @@ static void charger_config_interne(void)
 {
     int prog_idx = 0;
     config_nvs_lire_prog_actif(&prog_idx);
-    config_nvs_lire_machine(&s_cfg_machine);
+    config_nvs_charger_machine(&s_cfg_machine);
     config_nvs_lire_programme(prog_idx, &s_cfg_prog);
     s_profil = machine_get(s_cfg_machine.machine_active);
     s_abaque = abaque_get(s_cfg_machine.abaque_idx);

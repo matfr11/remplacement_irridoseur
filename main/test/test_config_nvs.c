@@ -96,7 +96,7 @@ static void test_machine_roundtrip(void)
     if (ret != ESP_OK) { FAIL("machine_roundtrip_save", "err=%d", ret); return; }
 
     config_machine_t cfg_in;
-    ret = config_nvs_lire_machine(&cfg_in);
+    ret = config_nvs_charger_machine(&cfg_in);
     if (ret != ESP_OK) { FAIL("machine_roundtrip_load", "err=%d", ret); return; }
 
     assert_near(1.23f,  cfg_in.facteur_correction, EPSILON, "machine_roundtrip_facteur");

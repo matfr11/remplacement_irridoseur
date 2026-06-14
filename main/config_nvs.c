@@ -1,4 +1,5 @@
 #include "config_nvs.h"
+#include "version.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "esp_log.h"
@@ -26,8 +27,8 @@ esp_err_t config_nvs_init(void)
     return ret;
 }
 
-// Lecture machine — retourne CFG_MACHINE_DEFAUT si clé absente
-esp_err_t config_nvs_lire_machine(config_machine_t *cfg)
+// Chargement machine — NVS pour calibration terrain, machine/abaque verrouillés en PROD
+esp_err_t config_nvs_charger_machine(config_machine_t *cfg)
 {
     config_machine_t defaut = CFG_MACHINE_DEFAUT;
     *cfg = defaut;
@@ -36,20 +37,36 @@ esp_err_t config_nvs_lire_machine(config_machine_t *cfg)
     esp_err_t ret = nvs_open(NS_MACHINE, NVS_READONLY, &h);
     if (ret != ESP_OK) {
         ESP_LOGW(TAG, "Namespace machine absent — valeurs par défaut");
-        return ESP_OK;
+    } else {
+        size_t sz = sizeof(config_machine_t);
+        ret = nvs_get_blob(h, "cfg", cfg, &sz);
+        nvs_close(h);
+        if (ret == ESP_ERR_NVS_NOT_FOUND || ret == ESP_ERR_NVS_INVALID_LENGTH) {
+            ESP_LOGW(TAG, "Config machine incompatible ou absente — valeurs par defaut");
+            *cfg = defaut;
+        }
     }
 
-    size_t sz = sizeof(config_machine_t);
-    ret = nvs_get_blob(h, "cfg", cfg, &sz);
-    nvs_close(h);
-
-    if (ret == ESP_ERR_NVS_NOT_FOUND || ret == ESP_ERR_NVS_INVALID_LENGTH) {
-        // Blob absent ou taille différente (migration firmware) → valeurs par défaut
-        ESP_LOGW(TAG, "Config machine incompatible ou absente — valeurs par defaut");
-        *cfg = defaut;
-        return ESP_OK;
-    }
-    return ret;
+#ifdef CONFIG_IRRI_PROD
+    // Verrouiller machine_active et abaque_idx sur les valeurs compilées
+    #if defined(CONFIG_IRRI_MACHINE_ST1BIS_82_330)
+        cfg->machine_active = 0;
+    #else
+        #error "IRRI_PROD activé mais aucun profil machine sélectionné"
+    #endif
+    #if defined(CONFIG_IRRI_CANON_SR100C)
+        cfg->abaque_idx = 1;
+    #elif defined(CONFIG_IRRI_CANON_SR150C)
+        cfg->abaque_idx = 0;
+    #else
+        #error "IRRI_PROD activé mais aucun abaque canon sélectionné"
+    #endif
+    ESP_LOGI(TAG, "Mode PROD — machine %d / abaque %d v%s",
+             cfg->machine_active, cfg->abaque_idx, IRRI_VERSION);
+#else
+    ESP_LOGI(TAG, "Mode DEV — profil machine depuis NVS (v%s)", IRRI_VERSION);
+#endif
+    return ESP_OK;
 }
 
 esp_err_t config_nvs_sauver_machine(const config_machine_t *cfg)

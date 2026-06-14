@@ -1,0 +1,61 @@
+name: Build release firmwares
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config:
+          - {sdkconfig: "st1bis_sr100c", label: "ST1 Bis + SR 100C"}
+          - {sdkconfig: "st1bis_sr150c", label: "ST1 Bis + SR 150C"}
+
+    name: ${{ matrix.config.label }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup ESP-IDF
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.2
+
+      - name: Build firmware
+        run: |
+          idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.${{ matrix.config.sdkconfig }}" \
+                 build
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.config.sdkconfig }}
+          path: build/irrifrance_*.bin
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - name: Créer la release GitHub
+        uses: softprops/action-gh-release@v1
+        with:
+          files: firmware-**/*.bin
+          body: |
+            ## Firmwares disponibles
+
+            | Fichier | Machine | Canon |
+            |---------|---------|-------|
+            | `irrifrance_st1bis82330_sr100c_*.bin` | ST1 Bis Ø82-330m | SR 100C |
+            | `irrifrance_st1bis82330_sr150c_*.bin` | ST1 Bis Ø82-330m | SR 150C |
+
+            ## Installation
+            Flasher via OTA depuis Config → Mise à jour firmware,
+            ou en ligne de commande : `idf.py -p PORT flash`

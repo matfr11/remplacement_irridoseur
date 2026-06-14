@@ -123,7 +123,7 @@ static void test_cmd_etalonner_sauve_facteur(void)
     // Longueur réelle 110 m → facteur 1.10 accepté et persisté
     state_machine_cmd_etalonner(110.0f);
     config_machine_t m;
-    TEST_ASSERT_EQUAL(ESP_OK, config_nvs_lire_machine(&m));
+    TEST_ASSERT_EQUAL(ESP_OK, config_nvs_charger_machine(&m));
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 1.10f, m.facteur_correction);
 }
 
@@ -135,14 +135,14 @@ static void test_cmd_etalonner_refus_garde_fous(void)
     // Impulsions insuffisantes (< 50) → refus, facteur défaut conservé
     state_machine_cmd_etalonner(110.0f);
     config_machine_t m;
-    config_nvs_lire_machine(&m);
+    config_nvs_charger_machine(&m);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 1.0f, m.facteur_correction);
 
     // Écart > 30 % (facteur 1.5) → refus aussi, même avec assez d'impulsions
     for (int i = 0; i < 60; i++)
         gpio_handler_test_injecter_pulse(esp_timer_get_time() + i * 1000);
     state_machine_cmd_etalonner(150.0f);
-    config_nvs_lire_machine(&m);
+    config_nvs_charger_machine(&m);
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 1.0f, m.facteur_correction);
 }
 
