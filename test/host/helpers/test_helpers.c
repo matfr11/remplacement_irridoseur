@@ -10,6 +10,7 @@ void config_set_programme_valide(void)
     config_machine_t m = CFG_MACHINE_DEFAUT;
     m.machine_active  = 0;
     m.t_vidange_s     = 5.0f;
+    m.t_rempl_fixe_s  = 0.0f;  // 0 = timeout 20s (indépendant du défaut NVS)
     m.kp_regulation   = 0.1f;
     m.n_cycles_calib  = 3;
     config_nvs_sauver_machine(&m);
