@@ -52,6 +52,9 @@ void gpio_reset_impulsions_cycle(void);
 // Appeler à l'init avec cycles_par_tour > 0.
 void gpio_handler_set_vitesse_depuis_cycles_poumon(bool actif);
 
+// Configure l'inversion de lecture des contacts secs (NC→NO ou NO→NC).
+void gpio_handler_set_contacts_inv(bool fc, bool spires, bool poumon, bool pressostat);
+
 // Vitesse enroulement calculée depuis les cycles poumon (fournie par state_machine chaque tick).
 // = dist_par_cycle × 3600 / t_cycle_s
 void gpio_handler_set_vitesse_estimee(float vitesse_m_h);

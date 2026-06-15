@@ -140,6 +140,10 @@ typedef struct {
     bool            cfg_heartbeat_rc_on;
     float           cfg_t_ouv_canon_s;
     bool            cfg_reprise_auto_on;
+    bool            cfg_fc_inv;
+    bool            cfg_spires_inv;
+    bool            cfg_poumon_inv;
+    bool            cfg_pressostat_inv;
 
 } machine_status_t;
 

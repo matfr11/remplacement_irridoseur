@@ -363,7 +363,31 @@ details>summary::-webkit-details-marker{display:none}
         </div>
       </details>
 
-      <!-- Section 5 : OTA -->
+      <!-- Section 5 : Câblage contacts (DEV uniquement) -->
+      <details class="prod-lock">
+        <summary>Câblage contacts</summary>
+        <div class="detail-body">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Cocher si le contact est de type NO (normalement ouvert). Défaut : NC.</p>
+          <div class="toggle-row">
+            <label>Fin de course — contact NO</label>
+            <label class="tgl"><input type="checkbox" id="m-fc-inv" onchange="saveMachine()"><span class="tgl-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <label>Sécurité spires — contact NO</label>
+            <label class="tgl"><input type="checkbox" id="m-spires-inv" onchange="saveMachine()"><span class="tgl-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <label>Contact poumon — contact NO</label>
+            <label class="tgl"><input type="checkbox" id="m-poumon-inv" onchange="saveMachine()"><span class="tgl-slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <label>Pressostat — contact NC (défaut NO)</label>
+            <label class="tgl"><input type="checkbox" id="m-pressostat-inv" onchange="saveMachine()"><span class="tgl-slider"></span></label>
+          </div>
+        </div>
+      </details>
+
+      <!-- Section 6 : OTA -->
       <details>
         <summary>Mise a jour firmware</summary>
         <div class="detail-body">
@@ -711,6 +735,10 @@ function loadConfigFromStatus() {
   if (s.cfg_fin_course_seuil_m != null) setField('m-fc-seuil', s.cfg_fin_course_seuil_m);
   if (s.cfg_t_ouv_canon_s != null)  setField('m-touv-canon', s.cfg_t_ouv_canon_s);
   if (s.cfg_reprise_auto_on != null) setCheck('m-reprise-auto', s.cfg_reprise_auto_on);
+  if (s.cfg_fc_inv         != null) setCheck('m-fc-inv',         s.cfg_fc_inv);
+  if (s.cfg_spires_inv     != null) setCheck('m-spires-inv',     s.cfg_spires_inv);
+  if (s.cfg_poumon_inv     != null) setCheck('m-poumon-inv',     s.cfg_poumon_inv);
+  if (s.cfg_pressostat_inv != null) setCheck('m-pressostat-inv', s.cfg_pressostat_inv);
 
   // Mode PROD — noms machine/canon en lecture seule
   if (s.firmware_prod) {
@@ -836,7 +864,11 @@ function saveMachine() {
     heartbeat_rc_on: document.getElementById('m-heartbeat').checked,
     fin_course_seuil_m: parseFloat(document.getElementById('m-fc-seuil').value) || 10,
     t_ouv_canon_s: parseFloat(document.getElementById('m-touv-canon').value) || 20,
-    reprise_auto_on: document.getElementById('m-reprise-auto').checked
+    reprise_auto_on: document.getElementById('m-reprise-auto').checked,
+    fc_inv:          document.getElementById('m-fc-inv').checked,
+    spires_inv:      document.getElementById('m-spires-inv').checked,
+    poumon_inv:      document.getElementById('m-poumon-inv').checked,
+    pressostat_inv:  document.getElementById('m-pressostat-inv').checked
   });
   configDirty = false;
   showToast('Paramètres sauvegardés');

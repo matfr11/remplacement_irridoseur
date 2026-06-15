@@ -158,7 +158,11 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         "\"vitesse_max_m_h\":%.1f,"
         "\"dose_corrigee_mm\":%.1f,"
         "\"firmware_version\":\"%s\","
-        "\"firmware_prod\":%s"
+        "\"firmware_prod\":%s,"
+        "\"cfg_fc_inv\":%s,"
+        "\"cfg_spires_inv\":%s,"
+        "\"cfg_poumon_inv\":%s,"
+        "\"cfg_pressostat_inv\":%s"
         "}",
         etat_to_str(s->etat), (int)s->etat,
         prog_nom,
@@ -230,10 +234,14 @@ static int status_to_json(const machine_status_t *s, char *buf, size_t len)
         s->dose_corrigee_mm,
         IRRI_VERSION,
 #ifdef CONFIG_IRRI_PROD
-        "true"
+        "true",
 #else
-        "false"
+        "false",
 #endif
+        s->cfg_fc_inv         ? "true" : "false",
+        s->cfg_spires_inv     ? "true" : "false",
+        s->cfg_poumon_inv     ? "true" : "false",
+        s->cfg_pressostat_inv ? "true" : "false"
     );
 }
 
@@ -340,6 +348,10 @@ static void handle_ws_command(const char *data, size_t len)
             cfg.t_ouv_canon_s = f;
         }
         if (json_parse_bool (data, "reprise_auto_on",    &b)) cfg.reprise_auto_on      = b;
+        if (json_parse_bool (data, "fc_inv",             &b)) cfg.fc_inv               = b;
+        if (json_parse_bool (data, "spires_inv",         &b)) cfg.spires_inv           = b;
+        if (json_parse_bool (data, "poumon_inv",         &b)) cfg.poumon_inv           = b;
+        if (json_parse_bool (data, "pressostat_inv",     &b)) cfg.pressostat_inv       = b;
         config_nvs_sauver_machine(&cfg);
         {
             float w = 11.5f, c = 11.0f;

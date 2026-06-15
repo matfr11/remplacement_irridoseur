@@ -34,6 +34,12 @@ static float s_vitesse_estimee_mh = 0.0f;
 static bool s_ev_canon_ouverte  = false;
 static bool s_ev_poumon_ouverte = false;
 
+// Inversion contacts secs — configurable depuis NVS via gpio_handler_set_contacts_inv()
+static bool s_fc_inv         = false;
+static bool s_spires_inv     = false;
+static bool s_poumon_inv     = false;
+static bool s_pressostat_inv = false;
+
 // =============================================================================
 // ISR
 // =============================================================================
@@ -113,10 +119,14 @@ void gpio_handler_init(void)
 
 void gpio_handler_lire_entrees(entrees_t *entrees)
 {
-    entrees->fin_course   = READ_GPIO(PIN_FIN_COURSE)   != 0;
-    entrees->secu_spires  = READ_GPIO(PIN_SECU_SPIRES)  != 0;
-    entrees->poumon_plein = READ_GPIO(PIN_POUMON_PLEIN) != 0;
-    entrees->pression_ok  = READ_GPIO(PIN_PRESSOSTAT)   == 0;
+    bool fc_raw = READ_GPIO(PIN_FIN_COURSE)   != 0;
+    bool sp_raw = READ_GPIO(PIN_SECU_SPIRES)  != 0;
+    bool pp_raw = READ_GPIO(PIN_POUMON_PLEIN) != 0;
+    bool ps_raw = READ_GPIO(PIN_PRESSOSTAT)   == 0;  // LOW=actif par défaut (NO)
+    entrees->fin_course   = s_fc_inv         ? !fc_raw : fc_raw;
+    entrees->secu_spires  = s_spires_inv     ? !sp_raw : sp_raw;
+    entrees->poumon_plein = s_poumon_inv     ? !pp_raw : pp_raw;
+    entrees->pression_ok  = s_pressostat_inv ? !ps_raw : ps_raw;
 }
 
 // =============================================================================
@@ -175,6 +185,14 @@ void gpio_handler_set_vitesse_depuis_cycles_poumon(bool actif)
     portENTER_CRITICAL(&s_mux);
     s_vitesse_depuis_cycles_poumon = actif;
     portEXIT_CRITICAL(&s_mux);
+}
+
+void gpio_handler_set_contacts_inv(bool fc, bool spires, bool poumon, bool pressostat)
+{
+    s_fc_inv         = fc;
+    s_spires_inv     = spires;
+    s_poumon_inv     = poumon;
+    s_pressostat_inv = pressostat;
 }
 
 void gpio_handler_set_vitesse_estimee(float vitesse_m_h)

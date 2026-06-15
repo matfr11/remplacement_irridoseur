@@ -174,6 +174,8 @@ static void charger_config_interne(void)
     s_status.prog_tempo_arrivee_on= s_cfg_prog.tempo_arrivee_on;
     s_status.prog_tempo_arrivee_s = s_cfg_prog.tempo_arrivee_s;
     gpio_handler_set_vitesse_depuis_cycles_poumon(s_cfg_machine.cycles_par_tour > 0.0f);
+    gpio_handler_set_contacts_inv(s_cfg_machine.fc_inv, s_cfg_machine.spires_inv,
+                                  s_cfg_machine.poumon_inv, s_cfg_machine.pressostat_inv);
     s_status.mode_degrade_poumon  = s_cfg_machine.mode_deg_poumon;
     s_status.mode_degrade_spires  = s_cfg_machine.mode_deg_spires;
     securites_set_bypass_spires(s_cfg_machine.mode_deg_spires);
@@ -916,6 +918,10 @@ void tick_state_machine(void)
     s_status.cfg_fin_course_seuil_m = s_cfg_machine.fin_course_seuil_m;
     s_status.cfg_t_ouv_canon_s      = s_cfg_machine.t_ouv_canon_s;
     s_status.cfg_reprise_auto_on    = s_cfg_machine.reprise_auto_on;
+    s_status.cfg_fc_inv             = s_cfg_machine.fc_inv;
+    s_status.cfg_spires_inv         = s_cfg_machine.spires_inv;
+    s_status.cfg_poumon_inv         = s_cfg_machine.poumon_inv;
+    s_status.cfg_pressostat_inv     = s_cfg_machine.pressostat_inv;
     s_status.coupure_detectee       = s_coupure_detectee;
     s_status.vitesse_max_m_h        = s_vitesse_max_m_h;
     s_status.dose_corrigee_mm       = s_dose_corrigee_mm;

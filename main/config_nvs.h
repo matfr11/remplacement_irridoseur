@@ -32,6 +32,10 @@ typedef struct {
     int     abaque_idx;             // Index abaque canon actif (0=SR150C, 1=SR100C)
     float   t_ouv_canon_s;          // Timer stabilisation pression OUVERTURE_CANON avant poumon (défaut 20s, plage 5..60)
     bool    reprise_auto_on;        // Reprise automatique après plantage watchdog (défaut OFF)
+    bool    fc_inv;                 // Inverse contact fin de course (défaut NC : HIGH=actif)
+    bool    spires_inv;             // Inverse contact sécurité spires (défaut NC : HIGH=actif)
+    bool    poumon_inv;             // Inverse contact poumon plein (défaut NC : HIGH=actif)
+    bool    pressostat_inv;         // Inverse pressostat (défaut NO : LOW=pression OK)
 } config_machine_t;
 
 // -----------------------------------------------------------------------------
@@ -67,6 +71,10 @@ typedef struct {
     .abaque_idx         = 1,     \
     .t_ouv_canon_s      = 20.0f, \
     .reprise_auto_on    = false, \
+    .fc_inv             = false, \
+    .spires_inv         = false, \
+    .poumon_inv         = false, \
+    .pressostat_inv     = false, \
 }
 
 // -----------------------------------------------------------------------------
