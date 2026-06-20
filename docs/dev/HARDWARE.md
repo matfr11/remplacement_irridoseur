@@ -63,6 +63,33 @@ détaillé : [SCHEMA_CABLAGE.md](SCHEMA_CABLAGE.md#bornier-12-voies--affectation
 > Le fil commun des bobines EV (côté −) est également ramené sur la borne 2.
 > Tension batterie mesurée par INA3221 CH3 (I2C).
 
+### Diodes roue libre — obligatoires sur bornes 3/4/5/6
+
+Les bobines EV bistables sont des charges inductives. À l'arrêt de l'impulsion MOSFET,
+la back-EMF peut atteindre plusieurs dizaines de volts et détruire les transistors.
+
+**4 diodes à souder sur le bornier** (une par borne EV) :
+
+| Diode | Cathode (barre) | Anode | Protège |
+|---|---|---|---|
+| D1 | Borne 3 (EV_CANON OUV) | Borne 2 (GND) | MOSFET IN1 (GPIO 18) |
+| D2 | Borne 4 (EV_CANON FERM) | Borne 2 (GND) | MOSFET IN3 (GPIO 14) |
+| D3 | Borne 5 (EV_POUMON OUV) | Borne 2 (GND) | MOSFET IN2 (GPIO 19) |
+| D4 | Borne 6 (EV_POUMON FERM) | Borne 2 (GND) | MOSFET IN4 (GPIO 4) |
+
+**Composant** : 1N4007 (1A/1000V, disponible, robuste) ou 1N5819 (Schottky 1A/40V,
+temps de récupération plus rapide — préférable si disponible).
+
+```
+Borne EV (+) ───┬──────────────── fils EV ─── bobine ─── GND borne 2
+                │
+               [D] cathode en haut (vers borne), anode en bas (vers GND)
+                │
+               GND borne 2
+```
+
+Les diodes se soudent directement entre les vis du bornier — pattes courtes, pas de fil.
+
 ---
 
 ## Logique des signaux

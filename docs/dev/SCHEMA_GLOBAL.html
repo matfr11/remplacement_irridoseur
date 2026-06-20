@@ -326,7 +326,7 @@ svg { display:block; }
 <div id="mosfet" class="panel">
 <h2>Module MOSFET 4CH — câblage détaillé</h2>
 <p class="sub">SKU01357 · MOSFET 7PD434 · optocoupleur · commande GPIO 3.3V · charge 6V / 800mA par canal</p>
-<svg viewBox="0 0 1050 460" style="width:100%;max-width:1050px" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 1260 490" style="width:100%;max-width:1260px" xmlns="http://www.w3.org/2000/svg">
 <defs>
   <marker id="ma_r" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ff6b6b"/></marker>
   <marker id="ma_b" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#4dabf7"/></marker>
@@ -438,16 +438,88 @@ svg { display:block; }
 <!-- Note OUT- retour -->
 <rect x="656" y="312" width="270" height="20" fill="#161b22" rx="3"/>
 <text x="660" y="326" fill="#6e7681" font-size="11" font-family="Courier New">OUT1−..4−  →  GND borne 2 (retour)</text>
+
+<!-- ══════════════════════════════════════════════════════════
+     DIODES ROUE LIBRE — à souder sur bornier
+     cathode → borne EV (3/4/5/6)  ·  anode → borne 2 (GND)
+     ══════════════════════════════════════════════════════════ -->
+<rect x="920" y="48" width="330" height="365" rx="6" fill="#1c1800" stroke="#f59f00" stroke-width="1.5"/>
+<text x="1085" y="72"  fill="#f59f00" font-size="13" font-weight="bold" text-anchor="middle" font-family="Courier New">Diodes roue libre</text>
+<text x="1085" y="89"  fill="#6e7681" font-size="11" text-anchor="middle" font-family="Courier New">à souder sur bornier · 1N4007 ou 1N5819</text>
+<text x="1085" y="105" fill="#adb5bd" font-size="10" text-anchor="middle" font-family="Courier New">cathode (barre) → borne EV · anode → borne 2 GND</text>
+
+<!-- Bus GND vertical droit (x=1215) -->
+<line x1="1215" y1="120" x2="1215" y2="360" stroke="#868e96" stroke-width="2.5"/>
+<text x="1215" y="390" fill="#868e96" font-size="12" text-anchor="middle" font-family="Courier New">GND</text>
+<text x="1215" y="406" fill="#868e96" font-size="11" text-anchor="middle" font-family="Courier New">(borne 2)</text>
+
+<!-- Jonctions GND bus -->
+<circle cx="1215" cy="133" r="4" fill="#868e96"/>
+<circle cx="1215" cy="186" r="4" fill="#868e96"/>
+<circle cx="1215" cy="239" r="4" fill="#868e96"/>
+<circle cx="1215" cy="292" r="4" fill="#868e96"/>
+
+<!-- ── D1 : OUT1 / borne 3 / EV_CANON_OUV ── -->
+<!-- Tiret depuis la ligne OUT1 existante -->
+<line x1="870" y1="133" x2="930" y2="133" stroke="#f59f00" stroke-width="1.5" stroke-dasharray="5,3"/>
+<!-- Jonction nœud -->
+<circle cx="930" cy="133" r="4" fill="#f59f00"/>
+<!-- Fil vers cathode -->
+<line x1="930" y1="133" x2="990" y2="133" stroke="#f59f00" stroke-width="1.5"/>
+<!-- Cathode bar -->
+<line x1="990" y1="120" x2="990" y2="146" stroke="#f59f00" stroke-width="2.5"/>
+<!-- Triangle pointe vers gauche (cathode gauche, anode droite = GND) -->
+<polygon points="1015,120 1015,146 990,133" fill="#f59f00"/>
+<!-- Fil anode → GND bus -->
+<line x1="1015" y1="133" x2="1215" y2="133" stroke="#f59f00" stroke-width="1.5"/>
+<text x="1003" y="115" fill="#f59f00" font-size="12" font-weight="bold" text-anchor="middle" font-family="Courier New">D1</text>
+<text x="934"  y="123" fill="#6e7681" font-size="10" font-family="Courier New">B3</text>
+
+<!-- ── D2 : OUT2 / borne 5 / EV_POUMON_OUV ── -->
+<line x1="890" y1="186" x2="930" y2="186" stroke="#f59f00" stroke-width="1.5" stroke-dasharray="5,3"/>
+<circle cx="930" cy="186" r="4" fill="#f59f00"/>
+<line x1="930" y1="186" x2="990" y2="186" stroke="#f59f00" stroke-width="1.5"/>
+<line x1="990" y1="173" x2="990" y2="199" stroke="#f59f00" stroke-width="2.5"/>
+<polygon points="1015,173 1015,199 990,186" fill="#f59f00"/>
+<line x1="1015" y1="186" x2="1215" y2="186" stroke="#f59f00" stroke-width="1.5"/>
+<text x="1003" y="168" fill="#f59f00" font-size="12" font-weight="bold" text-anchor="middle" font-family="Courier New">D2</text>
+<text x="934"  y="176" fill="#6e7681" font-size="10" font-family="Courier New">B5</text>
+
+<!-- ── D3 : OUT3 / borne 4 / EV_CANON_FERM ── -->
+<line x1="880" y1="239" x2="930" y2="239" stroke="#f59f00" stroke-width="1.5" stroke-dasharray="5,3"/>
+<circle cx="930" cy="239" r="4" fill="#f59f00"/>
+<line x1="930" y1="239" x2="990" y2="239" stroke="#f59f00" stroke-width="1.5"/>
+<line x1="990" y1="226" x2="990" y2="252" stroke="#f59f00" stroke-width="2.5"/>
+<polygon points="1015,226 1015,252 990,239" fill="#f59f00"/>
+<line x1="1015" y1="239" x2="1215" y2="239" stroke="#f59f00" stroke-width="1.5"/>
+<text x="1003" y="221" fill="#f59f00" font-size="12" font-weight="bold" text-anchor="middle" font-family="Courier New">D3</text>
+<text x="934"  y="229" fill="#6e7681" font-size="10" font-family="Courier New">B4</text>
+
+<!-- ── D4 : OUT4 / borne 6 / EV_POUMON_FERM ── -->
+<line x1="898" y1="292" x2="930" y2="292" stroke="#f59f00" stroke-width="1.5" stroke-dasharray="5,3"/>
+<circle cx="930" cy="292" r="4" fill="#f59f00"/>
+<line x1="930" y1="292" x2="990" y2="292" stroke="#f59f00" stroke-width="1.5"/>
+<line x1="990" y1="279" x2="990" y2="305" stroke="#f59f00" stroke-width="2.5"/>
+<polygon points="1015,279 1015,305 990,292" fill="#f59f00"/>
+<line x1="1015" y1="292" x2="1215" y2="292" stroke="#f59f00" stroke-width="1.5"/>
+<text x="1003" y="274" fill="#f59f00" font-size="12" font-weight="bold" text-anchor="middle" font-family="Courier New">D4</text>
+<text x="934"  y="282" fill="#6e7681" font-size="10" font-family="Courier New">B6</text>
 </svg>
 
-<table style="margin-top:20px;max-width:700px">
+<table style="margin-top:20px;max-width:800px">
 <tr><th>Canal</th><th>GPIO commande</th><th>Signal</th><th>Borne bornier</th><th>EV Bürkert</th></tr>
 <tr><td class="cr">IN1/OUT1</td><td class="cr">GPIO 18</td><td>EV_CANON OUVRIR</td><td class="cr">3</td><td>Bobine OUVRIR canon</td></tr>
 <tr><td class="cr">IN2/OUT2</td><td class="cr">GPIO 19</td><td>EV_POUMON OUVRIR</td><td class="cr">5</td><td>Bobine OUVRIR poumon</td></tr>
 <tr><td class="cr">IN3/OUT3</td><td class="cr">GPIO 14</td><td>EV_CANON FERMER</td><td class="cr">4</td><td>Bobine FERMER canon</td></tr>
 <tr><td class="cr">IN4/OUT4</td><td class="cr">GPIO  4</td><td>EV_POUMON FERMER</td><td class="cr">6</td><td>Bobine FERMER poumon</td></tr>
 <tr><td class="cb">DC+</td><td colspan="2" class="cb">LM2596 OUT+ (6V)</td><td class="cgr">—</td><td>Alimentation bobines</td></tr>
-<tr><td class="cgr">DC−/OUT-</td><td colspan="2" class="cgr">GND commun</td><td class="cgr">2</td><td>Retour bobines</td></tr>
+<tr><td class="cgr">DC−/OUT−</td><td colspan="2" class="cgr">GND commun</td><td class="cgr">2</td><td>Retour bobines</td></tr>
+<tr style="border-top:2px solid #f59f00">
+  <td style="color:#f59f00">D1..D4</td>
+  <td style="color:#f59f00" colspan="2">Diodes roue libre — <strong>1N4007</strong> ou 1N5819</td>
+  <td style="color:#f59f00">3/4/5/6 ↔ 2</td>
+  <td style="color:#f59f00">Cathode sur borne EV · Anode sur borne 2 (GND) · à souder sur bornier · protège le MOSFET contre la back-EMF des bobines</td>
+</tr>
 </table>
 </div>
 
