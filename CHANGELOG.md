@@ -5,6 +5,67 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [v2.1.5] — 2026-06-20
+
+### Changed
+
+- **Changement de carte** (`main/gpio_config.h`, `docs/dev/HARDWARE.md`) : migration de la
+  carte ESP32 Quad MOS Switch Module vers **eletechsup ES30G29** (ESP32-WROOM + borniers à vis)
+  avec module 4 MOSFET externe. Réaffectation complète des GPIO EV :
+  - EV_CANON OUVRIR : GPIO 16 → **18**
+  - EV_CANON FERMER : GPIO 26 → **14**
+  - EV_POUMON OUVRIR : GPIO 17 → **19**
+  - EV_POUMON FERMER : GPIO 27 → **4**
+  - TPL5010 DONE : GPIO 13 → **23** (libère JTAG TCK)
+  - Heartbeat : GPIO 23 → **2** (LED bleue intégrée DevKit)
+  - UART2 (16/17) libéré pour télémétrie LoRa/GSM V3
+  - GPIO 34/35/32/33/25 (capteurs) et I2C 21/22 inchangés
+- **Script `build.sh`** : sourcing automatique ESP-IDF (`~/esp/esp-idf/export.sh`),
+  détection DEV/PROD depuis sdkconfig, deux passes automatiques pour le nommage PROD.
+
+---
+
+## [v2.1.4] — 2026-06-13
+
+### Added
+
+- **Inversion NC/NO contacts secs** (`main/gpio_handler.c`, `main/config_nvs.h`) : 4 champs
+  `fc_inv`, `spires_inv`, `poumon_inv`, `pressostat_inv` dans `config_machine_t`. Permette de
+  configurer le type de contact (NC ou NO) de chaque entrée sans modifier le câblage.
+  La logique d'inversion est appliquée dans `gpio_handler_lire_entrees()`.
+- **Section "Câblage contacts" en UI DEV** (`main/webui/index.html.in`) : 4 checkboxes
+  masqués en PROD (`.prod-lock`). Fonctionnalité temporaire — sera supprimée après validation
+  du câblage terrain.
+
+### Fixed
+
+- **`t_rempl_fixe_s` défaut à 4 s** (`main/config_nvs.h`) : valeur initiale du champ
+  `t_rempl_fixe_s` dans `CFG_MACHINE_DEFAUT` portée de `0.0f` à `4.0f` — cohérent avec
+  l'usage mode dégradé poumon (timeout 20 s était trop long en conditions terrain).
+- **Test `config_set_programme_valide()`** : surcharge explicite `t_rempl_fixe_s = 0.0f`
+  pour maintenir le timeout 20 s dans les tests et éviter toute dépendance au défaut NVS.
+
+---
+
+## [v2.1.3] — 2026-06-13
+
+### Fixed
+
+- **Mode dégradé poumon configurable en PROD** (`main/webui/index.html.in`) : suppression
+  du guard `if (window._prodLockApplied) return;` dans `saveMachine()` qui bloquait
+  silencieusement toutes les sauvegardes en mode PROD, y compris le mode dégradé.
+  Les sélecteurs machine/abaque restent cachés via `.prod-lock` CSS.
+- **Double déclenchement saveMachine()** : `toggleModeB()` appelait `saveMachine()` en interne,
+  et l'`onchange` de `m-mdp` l'appelait aussi → sauvegarde prématurée avec `t_rempl=0` puis
+  `configDirty=false`, permettant au WS de récraser l'UI. Suppression de l'appel interne.
+
+### Added
+
+- **Toast de confirmation** : notification visuelle "Sauvegardé" 2 s après chaque appel
+  à `saveMachine()` réussi.
+
+---
+
 ## [fix/review-build-prod] — 2026-06-14
 
 ### Fixed

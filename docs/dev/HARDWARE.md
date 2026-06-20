@@ -6,27 +6,27 @@
 
 ---
 
-## Carte : ESP32 Quad MOS Switch Module
+## Carte : eletechsup ES30G29 + module 4 MOSFET externe
 
-Carte de développement AliExpress avec ESP32-D0WD-V3 (ESP32-32E) et 4 canaux MOSFET 12V intégrés.
+ESP32-WROOM sur shield eletechsup ES30G29 (borniers à vis) avec module 4 MOSFET externe
+pour la commande des électrovannes bistables.
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│            ESP32 Quad MOS Switch Module              │
+│         eletechsup ES30G29 (ESP32-WROOM)            │
 │                                                     │
-│  [USB-C]  ←── programmation + alimentation          │
+│  [USB]    ←── programmation + alimentation          │
 │  [12V IN] ←── alimentation terrain (batterie 12V)  │
 │                                                     │
-│  OUT1 (GPIO 16) → EV_CANON  OUVRIR  (via LM2596 6V)│
-│  OUT2 (GPIO 17) → EV_POUMON OUVRIR  (via LM2596 6V)│
-│  OUT3 (GPIO 26) → EV_CANON  FERMER  (via LM2596 6V)│
-│  OUT4 (GPIO 27) → EV_POUMON FERMER  (via LM2596 6V)│
+│  GPIO 18  ──► Module MOSFET → EV_CANON  OUVRIR     │
+│  GPIO 19  ──► Module MOSFET → EV_POUMON OUVRIR     │
+│  GPIO 14  ──► Module MOSFET → EV_CANON  FERMER     │
+│  GPIO  4  ──► Module MOSFET → EV_POUMON FERMER     │
 │                                                     │
-│  GPIO  0 ←── Bouton physique carte                 │
 │  GPIO 21  ──► I2C SDA (INA3221)                    │
 │  GPIO 22  ──► I2C SCL (INA3221)                    │
-│  GPIO 13  ──► TPL5010 DONE (watchdog HW)            │
-│  GPIO 23  ──► LED carte (heartbeat RC 1Hz)         │
+│  GPIO 23  ──► TPL5010 DONE (watchdog HW)            │
+│  GPIO  2  ──► LED intégrée DevKit (heartbeat 1Hz)  │
 │  GPIO 25 ←── Pressostat (NC, pull-up 10kΩ)         │
 │  GPIO 32 ←── Sécurité spires (NC, pull-up 10kΩ)    │
 │  GPIO 33 ←── Contact poumon plein (NC, pull-up 10kΩ)│
@@ -47,10 +47,10 @@ détaillé : [SCHEMA_CABLAGE.md](SCHEMA_CABLAGE.md#bornier-12-voies--affectation
 |---|---|---|---|---|
 | 1 | 12V+ batterie | IN | Rouge | → VIN carte, repiquage alim capteur vitesse → borne 7 |
 | 2 | GND batterie | — | Noir | Masse commune + retour commun des 4 contacts |
-| 3 | EV_CANON OUVRIR | OUT | — | ← LM2596 6V via QMOS OUT1 (GPIO 16) |
-| 4 | EV_CANON FERMER | OUT | — | ← LM2596 6V via QMOS OUT3 (GPIO 26) |
-| 5 | EV_POUMON OUVRIR | OUT | — | ← LM2596 6V via QMOS OUT2 (GPIO 17) |
-| 6 | EV_POUMON FERMER | OUT | — | ← LM2596 6V via QMOS OUT4 (GPIO 27) |
+| 3 | EV_CANON OUVRIR | OUT | — | ← LM2596 6V via module MOSFET (GPIO 18) |
+| 4 | EV_CANON FERMER | OUT | — | ← LM2596 6V via module MOSFET (GPIO 14) |
+| 5 | EV_POUMON OUVRIR | OUT | — | ← LM2596 6V via module MOSFET (GPIO 19) |
+| 6 | EV_POUMON FERMER | OUT | — | ← LM2596 6V via module MOSFET (GPIO  4) |
 | 7 | Capteur vitesse alim | OUT | — | 12V repiqué de la borne 1 |
 | 8 | Capteur vitesse signal | IN | — | Diviseur 10 kΩ/5,6 kΩ → GPIO 34 |
 | 9 | Fin de course | IN | — | Pull-up 10 kΩ vers 3,3V → GPIO 35 |
@@ -154,7 +154,7 @@ Résolution bus voltage : 8 mV/LSB.
 
 ---
 
-## Watchdog matériel TPL5010DDCR (GPIO 13)
+## Watchdog matériel TPL5010DDCR (GPIO 23)
 
 Le **TPL5010DDCR** est un watchdog hardware indépendant du logiciel. Si l'ESP32 se bloque
 (deadlock RTOS, exception, corruption mémoire), le TPL5010 active sa sortie RESET et redémarre
@@ -167,7 +167,7 @@ l'ESP32 via la broche EN, sans intervention humaine.
 ```
 ESP32                     TPL5010DDCR (SOT-23-6)
 ─────                     ──────────────────────
-GPIO 13   ──────────────► DONE   (pin 2)   impulsion ~100ms toutes les 2s
+GPIO 23   ──────────────► DONE   (pin 2)   impulsion ~100ms toutes les 2s
 3.3V      ──────────────► VDD    (pin 6)   alimentation
 GND       ──────────────► GND    (pin 4)   masse
 GND       ── 3,3 MΩ ────► REXT   (pin 5)   fixe le timeout (~5.3s)
@@ -202,22 +202,22 @@ t = 1,35 × 3,3×10⁶ × 1,1×10⁻⁹ ≈ 5,3 s
 | Méthode | Comment |
 |---|---|
 | Log série | `idf.py monitor --print-filter="tpl5010:D"` → affiche `"DONE pulse envoyé"` toutes les ~2s |
-| LED de test | LED + résistance 330Ω entre GPIO 13 et GND → clignote 100ms ON / 2s OFF |
+| LED de test | LED + résistance 330Ω entre GPIO 23 et GND → clignote 100ms ON / 2s OFF |
 | Test négatif | Commenter `tpl5010_done_pulse()`, flasher → l'ESP32 doit rebooter après ~5,3s (visible dans le monitor par la répétition du log de boot) |
 
 ---
 
-## Circuit RC fail-safe (heartbeat GPIO 23)
+## Circuit RC fail-safe (heartbeat GPIO 2)
 
-La carte génère un signal **toggle 1Hz sur GPIO 23** (LED verte carte) si l'option
+La carte génère un signal **toggle 1Hz sur GPIO 2** (LED bleue intégrée DevKit) si l'option
 `heartbeat_rc_on` est activée dans Config → Machine. Ce signal peut alimenter un circuit RC
-externe qui coupe les EV si l'ESP32 plante (watchdog HW).
+externe qui coupe les EV si l'ESP32 plante.
 
-Concept : condensateur chargé régulièrement par le toggle GPIO 23 ; si le signal cesse
+Concept : condensateur chargé régulièrement par le toggle GPIO 2 ; si le signal cesse
 (plantage ESP32), le condensateur se décharge et un transistor coupe les EV.
 
-GPIO 23 = `PIN_HEARTBEAT` = `PIN_LED_CARTE` (même broche — le clignotement 1Hz est visible
-sur la LED verte de la carte). Désactivé par défaut (`heartbeat_rc_on = false`).
+GPIO 2 = `PIN_HEARTBEAT` (LED bleue intégrée — le clignotement 1Hz est visible sans câblage
+supplémentaire). Désactivé par défaut (`heartbeat_rc_on = false`).
 
 ---
 
@@ -231,7 +231,7 @@ sur la LED verte de la carte). Désactivé par défaut (`heartbeat_rc_on = false
 | Signal GPIO 34 (vitesse) | Oscilloscope ou multimètre (pastille face capteur) | ~2,87 V HIGH / ~0,72 V LOW |
 | Impulsion EV_CANON | Oscilloscope sur OUT1 ou OUT3 pendant commande | 6V / 100ms |
 | Claquement EV bistable | Auditif lors d'un arrosage court | Claquement à l'ouverture et à la fermeture |
-| TPL5010 DONE (GPIO 13) | LED 330Ω sur GPIO 13 ou log serie filtre tpl5010:D | 100ms HIGH toutes les ~2s |
+| TPL5010 DONE (GPIO 23) | LED 330Ω sur GPIO 23 ou log serie filtre tpl5010:D | 100ms HIGH toutes les ~2s |
 | TPL5010 reboot | Commenter `tpl5010_done_pulse()` + flash + observer monitor | Reboot après ~5.3s |
 | Continuité contacts NC | Mode continuité bornes 9-12 ↔ borne 2, capteurs branchés | Fermé (LOW) au repos |
 | t_vidange | Chronomètre : temps entre EV_POUMON=OFF et cliquet retracté | 0.5..3s selon machine |

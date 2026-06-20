@@ -3,93 +3,114 @@
 // =============================================================================
 // gpio_config.h — Affectation GPIO Irrifrance ESP32
 //
-// Carte : ESP32 Quad MOS Switch Module
-//   QMOS outputs : GPIO 16 (OUT1), 17 (OUT2), 26 (OUT3), 27 (OUT4)
-//   LED carte    : GPIO 23
-//   Bouton carte : GPIO 0
+// Carte : eletechsup ES30G29 (ESP32-WROOM + borniers à vis) + module 4 MOSFET externe
+//
+// Choix des GPIO optimisés :
+//   - EV sur GPIO 18/19/14/4 → UART2 (16/17) libéré pour LoRa/GSM V3
+//   - TPL5010 DONE sur GPIO 23 → évite JTAG TCK (GPIO 13)
+//   - ADC1 uniquement pour les capteurs analogiques (compatible WiFi)
+//   - UART2 (16/17) réservé télémétrie V3
+//   - ADC1 CH0 (36) et CH3 (39) réservés capteur pression V3
 // =============================================================================
 
 // -----------------------------------------------------------------------------
-// SORTIES — Électrovannes bistables (canaux MOSFET carte Quad MOS)
-// Commande par impulsion : pulse HIGH pendant DUREE_IMPULSION_EV_MS puis LOW
-// OUT1/OUT2 = impulsion OUVRIR, OUT3/OUT4 = impulsion FERMER
+// SORTIES — Électrovannes bistables Bürkert S78722
+// Alimentées en 6V via LM2596 externe
+// Impulsion 100-200ms pour changer d'état (configurable NVS)
 // -----------------------------------------------------------------------------
 
-#define PIN_EV_CANON_OUVRIR    16      // QMOS OUT1 — impulsion OUVRIR canon
-#define PIN_EV_POUMON_OUVRIR   17      // QMOS OUT2 — impulsion OUVRIR poumon
-#define PIN_EV_CANON_FERMER    26      // QMOS OUT3 — impulsion FERMER canon
-#define PIN_EV_POUMON_FERMER   27      // QMOS OUT4 — impulsion FERMER poumon
+#define PIN_EV_CANON_OUVRIR     18      // MOSFET module externe — impulsion OUVRIR canon
+#define PIN_EV_CANON_FERMER     14      // MOSFET module externe — impulsion FERMER canon
+#define PIN_EV_POUMON_OUVRIR    19      // MOSFET module externe — impulsion OUVRIR poumon
+#define PIN_EV_POUMON_FERMER     4      // MOSFET module externe — impulsion FERMER poumon
 
-// Durée de l'impulsion de commande EV bistable (ms)
-// Valeur terrain à valider — ajustable avant hardcode définitif
 #define DUREE_IMPULSION_EV_MS      100
 #define DUREE_IMPULSION_EV_MS_MIN   20
 #define DUREE_IMPULSION_EV_MS_MAX  500
 
 // -----------------------------------------------------------------------------
 // ENTRÉES — Capteurs et contacts
-// Contacts NC (Normalement Fermés) — logique : LOW = normal, HIGH = danger/actif
+// Pull-up externe 10 kΩ vers 3,3V (bornier Voltage Out carte)
+// Logique contacts NC : LOW = normal, HIGH = actif/danger
 // -----------------------------------------------------------------------------
 
-// Capteur vitesse bobine — diviseur 10kΩ/5.6kΩ (8V → ~2.87V)
-// Capteur 2 fils : 2V sans pastille, 8V avec pastille devant le capteur
-// Pas de pull-up interne — GPIO input-only
+// Capteur vitesse bobine — diviseur 10kΩ/5,6kΩ (signal 8V → 2,87V)
+// Hors pastille : 1,9V → 0,68V LOW | Sur pastille : 8,0V → 2,87V HIGH
+// ADC1 CH6 — compatible WiFi ✅ — input only
 #define PIN_CAPTEUR_VITESSE     34
 
 // Fin de course canon — pull-up externe 10kΩ, contact NC
 // LOW = canon déroulé (normal) | HIGH = canon rentré (SEC-1)
+// ADC1 CH7 — input only
 #define PIN_FIN_COURSE          35
 
 // Sécurité spires (débordement bobine) — pull-up externe 10kΩ, contact NC
 // LOW = normal | HIGH = débordement (SEC-2, priorité absolue)
+// ADC1 CH4
 #define PIN_SECU_SPIRES         32
 
 // Contact poumon plein — pull-up externe 10kΩ, contact NC
-// LOW = poumon en cours | HIGH = poumon plein (fin remplissage)
+// LOW = poumon vide (normal) | HIGH = poumon plein (fin remplissage)
+// ADC1 CH5
 #define PIN_POUMON_PLEIN        33
 
 // Pressostat — pull-up externe 10kΩ, contact NC
-// LOW = pression présente (normal) | HIGH = pression absente (pause/attente)
+// LOW = pression présente (normal) | HIGH = pression absente (pause)
+// Type NC/NO à confirmer terrain via feature inversion contacts
+// ADC2 CH8 — utilisé en digital uniquement (pas en ADC) ✅
 #define PIN_PRESSOSTAT          25
 
 // -----------------------------------------------------------------------------
 // Capteur vitesse — paramètres ISR
 // -----------------------------------------------------------------------------
 
-// Nombre de pastilles métalliques sur la couronne de la bobine
 #define NB_PASTILLES            10
-
-// Anti-rebond temporel ISR — ignorer tout front < 50ms
 #define DEBOUNCE_VITESSE_MS     50
 
 // -----------------------------------------------------------------------------
-// LED et bouton intégrés à la carte Quad MOS
-// -----------------------------------------------------------------------------
-#define PIN_LED_CARTE            23     // LED verte de la carte
-#define PIN_BOUTON_CARTE          0     // Bouton physique de la carte
-
-// -----------------------------------------------------------------------------
-// Heartbeat circuit RC fail-safe (optionnel — activé via Config → Machine)
-// Toggle 1Hz → LED carte GPIO 23 + signal circuit RC
-// Inactif par défaut (heartbeat_rc_on = false dans config_machine_t)
-// -----------------------------------------------------------------------------
-#define PIN_HEARTBEAT            23
-
-// -----------------------------------------------------------------------------
-// INA3221 — module I2C 3 canaux (tension + courant)
-// CH3 = Batterie 12V (seul canal actif — EVs bistables sans surveillance courant)
+// I2C — INA3221 (surveillance batterie CH3)
+// Adresse : 0x40 (pin A0 sur GND)
+// Bornier dédié ES30G29 : 21 SDA / 22 SCL / VCC / GND
 // -----------------------------------------------------------------------------
 #define I2C_SDA_PIN             21
 #define I2C_SCL_PIN             22
-#define INA3221_I2C_ADDR        0x40   // A0 → GND
-
+#define INA3221_I2C_ADDR        0x40
 #define INA3221_CH_BATTERIE     3
 
+// Seuils surveillance batterie (configurables NVS)
+#define SEUIL_BATT_ALERTE_V     11.5f
+#define SEUIL_BATT_CRITIQUE_V   11.0f
+
 // -----------------------------------------------------------------------------
-// Watchdog matériel TPL5010DDCR (optionnel — CONFIG_IRRI_TPL5010)
-// DONE → impulsion toutes les 2s depuis state_machine_task()
-// RESET → EN ESP32 : reboot si timeout (Rext=3.3MΩ → ~5.3s)
-// Note : après reboot, EVs bistables restent dans leur dernier état mécanique
-// jusqu'aux impulsions FERMER envoyées par gpio_handler_init() (~2s après boot)
+// Heartbeat — LED bleue intégrée DevKit ESP32
+// Toggle 1Hz (activé via Config → Machine → heartbeat_rc_on)
 // -----------------------------------------------------------------------------
-#define PIN_TPL5010_DONE        13
+#define PIN_HEARTBEAT            2
+
+// -----------------------------------------------------------------------------
+// TPL5010DDCR — Watchdog matériel externe
+// DONE → impulsion périodique depuis state_machine_task()
+// RESET → broche EN ESP32 : reboot si timeout (Rext=3,3MΩ → ~35s)
+// GPIO 23 choisi : évite JTAG TCK (GPIO 13), libère UART2 (16/17)
+// -----------------------------------------------------------------------------
+#define PIN_TPL5010_DONE        23
+
+// -----------------------------------------------------------------------------
+// GPIO RÉSERVÉS — NE PAS UTILISER
+// -----------------------------------------------------------------------------
+// GPIO 6–11   → Flash SPI interne ❌
+// GPIO 16, 17 → UART2 réservé télémétrie LoRa/GSM V3
+// GPIO 36, 39 → ADC1 réservé capteur pression analogique V3
+
+// -----------------------------------------------------------------------------
+// GPIO LIBRES — disponibles pour évolutions futures
+// -----------------------------------------------------------------------------
+// GPIO 36 (ADC1 CH0)  → capteur pression analogique V3 ✅
+// GPIO 39 (ADC1 CH3)  → libre ✅
+// GPIO 16 (UART2 RX)  → LoRa/GSM RX V3 ✅
+// GPIO 17 (UART2 TX)  → LoRa/GSM TX V3 ✅
+// GPIO 26             → libre ✅
+// GPIO 27             → libre ✅
+// GPIO 13             → libre (JTAG TCK si debug) ✅
+// GPIO 5  ⚠️ strapping pin (SDIO timing au boot) — vérifier compatibilité avant usage
+// GPIO 15 ⚠️ strapping pin (MTDO, désactive UART0 boot messages si LOW) — vérifier avant usage

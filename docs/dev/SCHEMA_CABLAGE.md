@@ -67,14 +67,15 @@ impédance.
 | 9 | Fin de course | → pull-up 10k → GPIO 35 | 1 fil du contact NC |
 | 10 | Sécurité spires | → pull-up 10k → GPIO 32 | 1 fil du contact NC |
 | 11 | Contact poumon plein | → pull-up 10k → GPIO 33 | 1 fil du contact NC |
-| 12 | Pressostat | → pull-up 10k → GPIO 25 | 1 fil du contact NC |
+| 12 | Pressostat | → pull-up 10k → GPIO 25 | 1 fil du contact **NO** |
 
 > **Retour des EV** : le fil commun (GND) des deux EVs (bornes 3-6, côté bobine −)
 > rentre sur la **borne 2** (GND commun). Chaque EV a donc 2 fils actifs (OUVRIR et
 > FERMER) + 1 fil retour commun.
 >
-> **Retour des contacts** : le 2ᵉ fil de chacun des 4 contacts NC (bornes 9-12) est
-> **chaîné en un seul fil de retour** côté machine, qui rentre sur la **borne 2**.
+> **Retour des contacts** : le 2ᵉ fil de chacun des contacts NC (bornes 9-11) et du
+> pressostat NO (borne 12) est **chaîné en un seul fil de retour** côté machine, qui
+> rentre sur la **borne 2**.
 > Les courants sont de l'ordre de 0,3 mA par contact (3,3 V / 10 kΩ) — aucun
 > problème de chute de tension sur un retour commun.
 > Le GND du capteur vitesse rentre aussi sur la borne 2.
@@ -114,6 +115,8 @@ Cheminement : faire courir les fils résistance→GPIO du côté signaux du boî
 
 **Logique résultante (fail-safe)** :
 
+Contacts NC — bornes 9, 10, 11 (fin de course, spires, poumon) :
+
 | Situation | Circuit | GPIO | Interprétation firmware |
 |---|---|---|---|
 | Normal (contact NC fermé) | tiré à GND | **LOW** | repos / OK |
@@ -121,8 +124,18 @@ Cheminement : faire courir les fils résistance→GPIO du côté signaux du boî
 | **Fil coupé / capteur débranché** | pull-up seul | **HIGH** | danger / actif ✅ |
 | Pull-up absente | broche flottante | aléatoire | ❌ indéterminé — INTERDIT |
 
-C'est la 4ᵉ ligne qui fait du « fil coupé » l'équivalent exact d'une sécurité
-déclenchée — et la 5ᵉ qui rend la résistance obligatoire.
+Pressostat NO — borne 12 (GPIO 25) :
+
+| Situation | Circuit | GPIO | Interprétation firmware |
+|---|---|---|---|
+| Normal (pression présente, contact NO fermé) | tiré à GND | **LOW** | pression OK |
+| Pression absente (contact ouvert) | pull-up seul | **HIGH** | pas de pression |
+| **Fil coupé / capteur débranché** | pull-up seul | **HIGH** | pas de pression ✅ |
+| Pull-up absente | broche flottante | aléatoire | ❌ indéterminé — INTERDIT |
+
+Dans les deux cas, un fil coupé équivaut à la sécurité déclenchée — la pull-up 10 kΩ
+est obligatoire. Le câblage interne (répartiteur → résistance → GPIO + borne) est
+identique pour les 4 entrées ; seul le comportement physique du contact diffère.
 
 ---
 
@@ -258,7 +271,8 @@ RC fail-safe (désactivé par défaut, Config → Machine).
 | 3 | Diviseur vitesse | Ohmmètre GPIO 34 ↔ GND | ≈ 5,6 kΩ |
 | 4 | LM2596 réglé à 6V | Multimètre V_out LM2596 (12V branché) | 5,8 V – 6,2 V |
 | 5 | Adresse INA | Visuel A0 | A0 → GND (0x40) |
-| 6 | Contacts NC au repos | Continuité bornes 9-12 ↔ borne 2, capteurs branchés | fermé (LOW au boot) |
+| 6a | Contacts NC au repos | Continuité bornes 9-11 ↔ borne 2, capteurs branchés | fermé (LOW au boot) |
+| 6b | Pressostat NO (borne 12) | Continuité borne 12 ↔ borne 2, pression présente | fermé (LOW) ; ouvert (HIGH) sans pression |
 | 7 | Test fil coupé | Débrancher un contact, lire l'UI | sécurité/alarme correspondante déclenchée |
 | 8 | Test impulsion EV | Lancer un arrosage court, écouter les EVs | claquement mécanique à l'ouverture et à la fermeture |
 
