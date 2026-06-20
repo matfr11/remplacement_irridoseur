@@ -7,6 +7,13 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ## [v2.1.5] — 2026-06-20
 
+### Added
+
+- **Schéma câblage global** (`docs/dev/SCHEMA_GLOBAL.html`) : diagramme SVG complet
+  représentant tous les composants (ES30G29, module MOSFET 4CH SKU01357, INA3221, TPL5010DDCR,
+  LM2596, batterie 12V, bornier 12 voies, réseau pull-ups). Entrées commande PWM1..4 + GND
+  par canal (header), alimentation DC+/DC− côté borniers, sorties OUT1+..OUT4+ vers EVs.
+
 ### Changed
 
 - **Changement de carte** (`main/gpio_config.h`, `docs/dev/HARDWARE.md`) : migration de la

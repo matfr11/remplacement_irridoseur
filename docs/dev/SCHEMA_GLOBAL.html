@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Schéma câblage global — Irrifrance ESP32</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; display: flex; justify-content: center;
+         align-items: flex-start; min-height: 100vh; padding: 20px; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 1400 960" width="1400" height="960" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <marker id="arr_r"  markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#ff6b6b"/></marker>
+  <marker id="arr_y"  markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#ffd43b"/></marker>
+  <marker id="arr_p"  markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#cc5de8"/></marker>
+  <marker id="arr_g"  markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#69db7c"/></marker>
+  <marker id="arr_o"  markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#ff9f43"/></marker>
+  <marker id="arr_c"  markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#74c0fc"/></marker>
+  <marker id="arr_gr" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#868e96"/></marker>
+  <marker id="arr_b"  markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#4dabf7"/></marker>
+</defs>
+
+<!-- Fond -->
+<rect width="1400" height="960" fill="#1a1a2e"/>
+
+<!-- Titre -->
+<text x="700" y="28" fill="#ffffff" font-size="15" font-weight="bold" text-anchor="middle" font-family="Courier New">Schéma câblage global — Irrifrance ESP32</text>
+<text x="700" y="44" fill="#adb5bd" font-size="9" text-anchor="middle" font-family="Courier New">ES30G29 · Module MOSFET 4CH · INA3221 · TPL5010DDCR · LM2596 12V→6V · Bornier 12 voies</text>
+
+<!-- ================================================================
+     COMPOSANTS — blocs rectangulaires avec broches
+     ================================================================ -->
+
+<!-- ── ES30G29 (centre) ── -->
+<rect x="480" y="60" width="250" height="760" rx="8" fill="#1a472a" stroke="#2d6a4f" stroke-width="2"/>
+<text x="605" y="84"  fill="#e0e0e0" font-size="13" font-weight="bold" text-anchor="middle" font-family="Courier New">eletechsup ES30G29</text>
+<text x="605" y="100" fill="#6c757d" font-size="9"  text-anchor="middle" font-family="Courier New">ESP32-WROOM</text>
+
+<!-- Broches gauche (x=480) -->
+<circle cx="480" cy="185" r="4" fill="#ffd43b"/><text x="474" y="189" fill="#ffd43b" font-size="9" text-anchor="end" font-family="Courier New">21 SDA</text>
+<circle cx="480" cy="212" r="4" fill="#ffd43b"/><text x="474" y="216" fill="#ffd43b" font-size="9" text-anchor="end" font-family="Courier New">22 SCL</text>
+<circle cx="480" cy="242" r="4" fill="#cc5de8"/><text x="474" y="246" fill="#cc5de8" font-size="9" text-anchor="end" font-family="Courier New">23 TPL DONE</text>
+<circle cx="480" cy="269" r="4" fill="#cc5de8"/><text x="474" y="273" fill="#cc5de8" font-size="9" text-anchor="end" font-family="Courier New">EN ← TPL RST</text>
+<circle cx="480" cy="330" r="3" fill="#495057"/><text x="474" y="334" fill="#495057" font-size="8" text-anchor="end" font-family="Courier New">36 rés. V3</text>
+<circle cx="480" cy="353" r="3" fill="#495057"/><text x="474" y="357" fill="#495057" font-size="8" text-anchor="end" font-family="Courier New">39 rés. V3</text>
+<circle cx="480" cy="380" r="4" fill="#69db7c"/><text x="474" y="384" fill="#69db7c" font-size="9" text-anchor="end" font-family="Courier New">34 vitesse</text>
+<circle cx="480" cy="407" r="4" fill="#69db7c"/><text x="474" y="411" fill="#69db7c" font-size="9" text-anchor="end" font-family="Courier New">35 fin cse</text>
+<circle cx="480" cy="434" r="4" fill="#69db7c"/><text x="474" y="438" fill="#69db7c" font-size="9" text-anchor="end" font-family="Courier New">32 spires</text>
+<circle cx="480" cy="461" r="4" fill="#69db7c"/><text x="474" y="465" fill="#69db7c" font-size="9" text-anchor="end" font-family="Courier New">33 poumon</text>
+<circle cx="480" cy="488" r="4" fill="#69db7c"/><text x="474" y="492" fill="#69db7c" font-size="9" text-anchor="end" font-family="Courier New">25 pressat</text>
+<circle cx="480" cy="545" r="3" fill="#495057"/><text x="474" y="549" fill="#495057" font-size="8" text-anchor="end" font-family="Courier New">26 libre</text>
+<circle cx="480" cy="568" r="3" fill="#495057"/><text x="474" y="572" fill="#495057" font-size="8" text-anchor="end" font-family="Courier New">27 libre</text>
+<circle cx="480" cy="598" r="4" fill="#ff6b6b"/><text x="474" y="602" fill="#ff6b6b" font-size="9" text-anchor="end" font-family="Courier New">14 EV_CF</text>
+<circle cx="480" cy="625" r="3" fill="#495057"/><text x="474" y="629" fill="#495057" font-size="8" text-anchor="end" font-family="Courier New">12 libre</text>
+<circle cx="480" cy="648" r="3" fill="#495057"/><text x="474" y="652" fill="#495057" font-size="8" text-anchor="end" font-family="Courier New">13 libre</text>
+<circle cx="480" cy="678" r="4" fill="#868e96"/><text x="474" y="682" fill="#868e96" font-size="9" text-anchor="end" font-family="Courier New">GND</text>
+
+<!-- Broches droite (x=730) -->
+<circle cx="730" cy="155" r="4" fill="#ff6b6b"/><text x="736" y="159" fill="#ff6b6b" font-size="9" font-family="Courier New">18 EV_CO</text>
+<circle cx="730" cy="182" r="4" fill="#ff6b6b"/><text x="736" y="186" fill="#ff6b6b" font-size="9" font-family="Courier New">19 EV_PO</text>
+<circle cx="730" cy="209" r="3" fill="#495057"/><text x="736" y="213" fill="#495057" font-size="8" font-family="Courier New">5 libre</text>
+<circle cx="730" cy="236" r="3" fill="#74c0fc"/><text x="736" y="240" fill="#74c0fc" font-size="8" font-family="Courier New">17 LoRa TX V3</text>
+<circle cx="730" cy="263" r="3" fill="#74c0fc"/><text x="736" y="267" fill="#74c0fc" font-size="8" font-family="Courier New">16 LoRa RX V3</text>
+<circle cx="730" cy="290" r="4" fill="#ff6b6b"/><text x="736" y="294" fill="#ff6b6b" font-size="9" font-family="Courier New">4  EV_PF</text>
+<circle cx="730" cy="317" r="4" fill="#69db7c"/><text x="736" y="321" fill="#69db7c" font-size="9" font-family="Courier New">2  heartbeat LED</text>
+<circle cx="730" cy="344" r="3" fill="#495057"/><text x="736" y="348" fill="#495057" font-size="8" font-family="Courier New">15 libre</text>
+<circle cx="730" cy="595" r="4" fill="#ff9f43"/><text x="736" y="599" fill="#ff9f43" font-size="9" font-family="Courier New">VIN 12V</text>
+<circle cx="730" cy="628" r="4" fill="#74c0fc"/><text x="736" y="632" fill="#74c0fc" font-size="9" font-family="Courier New">3.3V out</text>
+<circle cx="730" cy="655" r="4" fill="#868e96"/><text x="736" y="659" fill="#868e96" font-size="9" font-family="Courier New">GND</text>
+
+<!-- ── TPL5010 (haut gauche) ── -->
+<rect x="65" y="68" width="185" height="175" rx="6" fill="#0d1b2a" stroke="#cc5de8" stroke-width="1.5"/>
+<text x="157" y="90"  fill="#cc5de8" font-size="11" font-weight="bold" text-anchor="middle" font-family="Courier New">TPL5010DDCR</text>
+<text x="157" y="105" fill="#6c757d" font-size="8"  text-anchor="middle" font-family="Courier New">SOT-23-6 sur adaptateur</text>
+<!-- broches gauche -->
+<circle cx="65" cy="148" r="4" fill="#868e96"/><text x="59" y="152" fill="#868e96" font-size="9" text-anchor="end" font-family="Courier New">GND (5)</text>
+<circle cx="65" cy="175" r="4" fill="#495057"/><text x="59" y="179" fill="#495057" font-size="8" text-anchor="end" font-family="Courier New">REXT (4)</text>
+<!-- broches droite -->
+<circle cx="250" cy="125" r="4" fill="#74c0fc"/><text x="256" y="129" fill="#74c0fc" font-size="9" font-family="Courier New">VDD (6)</text>
+<circle cx="250" cy="150" r="4" fill="#cc5de8"/><text x="256" y="154" fill="#cc5de8" font-size="9" font-family="Courier New">DONE (2)</text>
+<circle cx="250" cy="175" r="4" fill="#cc5de8"/><text x="256" y="179" fill="#cc5de8" font-size="9" font-family="Courier New">RESET (1)</text>
+<circle cx="250" cy="200" r="3" fill="#495057"/><text x="256" y="204" fill="#495057" font-size="8" font-family="Courier New">NC (3)</text>
+<!-- annotation REXT -->
+<text x="157" y="222" fill="#adb5bd" font-size="8" text-anchor="middle" font-family="Courier New">REXT—3.3MΩ—GND  (timeout ≈5.3s)</text>
+
+<!-- ── INA3221 (gauche milieu) ── -->
+<rect x="50" y="295" width="210" height="215" rx="6" fill="#0d1b2a" stroke="#ffd43b" stroke-width="1.5"/>
+<text x="155" y="317" fill="#ffd43b" font-size="11" font-weight="bold" text-anchor="middle" font-family="Courier New">INA3221</text>
+<text x="155" y="332" fill="#6c757d" font-size="8"  text-anchor="middle" font-family="Courier New">MCU-3221 · A0→GND · addr 0x40</text>
+<!-- broches droite -->
+<circle cx="260" cy="358" r="4" fill="#74c0fc"/><text x="266" y="362" fill="#74c0fc" font-size="9" font-family="Courier New">VS  → 3.3V</text>
+<circle cx="260" cy="382" r="4" fill="#868e96"/><text x="266" y="386" fill="#868e96" font-size="9" font-family="Courier New">GND</text>
+<circle cx="260" cy="406" r="4" fill="#ffd43b"/><text x="266" y="410" fill="#ffd43b" font-size="9" font-family="Courier New">SCL → GPIO 22</text>
+<circle cx="260" cy="430" r="4" fill="#ffd43b"/><text x="266" y="434" fill="#ffd43b" font-size="9" font-family="Courier New">SDA → GPIO 21</text>
+<!-- broches bas VIN3 -->
+<circle cx="95"  cy="510" r="4" fill="#ff9f43"/><text x="95"  y="525" fill="#ff9f43" font-size="8" text-anchor="middle" font-family="Courier New">VIN3+</text>
+<circle cx="155" cy="510" r="4" fill="#868e96"/><text x="155" y="525" fill="#868e96" font-size="8" text-anchor="middle" font-family="Courier New">VIN3-</text>
+<circle cx="215" cy="510" r="3" fill="#495057"/><text x="215" y="525" fill="#495057" font-size="7" text-anchor="middle" font-family="Courier New">VIN1,2 NC</text>
+
+<!-- ── Batterie 12V (bas gauche) ── -->
+<rect x="55" y="570" width="145" height="80" rx="6" fill="#0d1b2a" stroke="#ff9f43" stroke-width="2"/>
+<text x="127" y="596" fill="#ff9f43" font-size="12" font-weight="bold" text-anchor="middle" font-family="Courier New">Batterie 12V</text>
+<text x="127" y="613" fill="#6c757d" font-size="8"  text-anchor="middle" font-family="Courier New">panneau solaire</text>
+<circle cx="88"  cy="636" r="5" fill="#ff9f43"/>
+<circle cx="162" cy="636" r="5" fill="#868e96"/>
+<text x="88"  y="651" fill="#ff9f43" font-size="9" text-anchor="middle" font-family="Courier New">12V+</text>
+<text x="162" y="651" fill="#868e96" font-size="9" text-anchor="middle" font-family="Courier New">GND</text>
+
+<!-- ── Module MOSFET 4CH (haut droite) ── -->
+<rect x="880" y="68" width="220" height="300" rx="6" fill="#0d1b2a" stroke="#ff6b6b" stroke-width="1.5"/>
+<text x="990" y="90"  fill="#ff6b6b" font-size="11" font-weight="bold" text-anchor="middle" font-family="Courier New">Module MOSFET 4CH</text>
+<text x="990" y="105" fill="#6c757d" font-size="7.5"  text-anchor="middle" font-family="Courier New">SKU01357 · 7PD434 · optocoupleur</text>
+<!-- entrées gauche (x=880) — commande GPIO (header PWM+GND par canal) -->
+<circle cx="880" cy="135" r="4" fill="#ff6b6b"/><text x="874" y="139" fill="#ff6b6b" font-size="9" text-anchor="end" font-family="Courier New">IN1/PWM1 ← GPIO 18</text>
+<circle cx="880" cy="162" r="4" fill="#ff6b6b"/><text x="874" y="166" fill="#ff6b6b" font-size="9" text-anchor="end" font-family="Courier New">IN2/PWM2 ← GPIO 19</text>
+<circle cx="880" cy="189" r="4" fill="#ff6b6b"/><text x="874" y="193" fill="#ff6b6b" font-size="9" text-anchor="end" font-family="Courier New">IN3/PWM3 ← GPIO 14</text>
+<circle cx="880" cy="216" r="4" fill="#ff6b6b"/><text x="874" y="220" fill="#ff6b6b" font-size="9" text-anchor="end" font-family="Courier New">IN4/PWM4 ← GPIO  4</text>
+<circle cx="880" cy="248" r="4" fill="#868e96"/><text x="874" y="252" fill="#868e96" font-size="9" text-anchor="end" font-family="Courier New">GND1..4 cmd</text>
+<!-- sorties droite (x=1100) — drain MOSFET → EVs -->
+<circle cx="1100" cy="135" r="4" fill="#ff6b6b"/><text x="1106" y="139" fill="#ff6b6b" font-size="9" font-family="Courier New">OUT1+ → borne 3 (EV CANON OUV)</text>
+<circle cx="1100" cy="162" r="4" fill="#ff6b6b"/><text x="1106" y="166" fill="#ff6b6b" font-size="9" font-family="Courier New">OUT2+ → borne 5 (EV POUMON OUV)</text>
+<circle cx="1100" cy="189" r="4" fill="#ff6b6b"/><text x="1106" y="193" fill="#ff6b6b" font-size="9" font-family="Courier New">OUT3+ → borne 4 (EV CANON FERM)</text>
+<circle cx="1100" cy="216" r="4" fill="#ff6b6b"/><text x="1106" y="220" fill="#ff6b6b" font-size="9" font-family="Courier New">OUT4+ → borne 6 (EV POUMON FERM)</text>
+<text x="990" y="248" fill="#6c757d" font-size="8" text-anchor="middle" font-family="Courier New">OUT1−..4− → GND borne 2 (retour commun)</text>
+<!-- alimentation droite (x=1100) — borniers DC+/DC− -->
+<circle cx="1100" cy="283" r="4" fill="#4dabf7"/><text x="1106" y="287" fill="#4dabf7" font-size="9" font-family="Courier New">DC+ ← 6V (LM2596 OUT+)</text>
+<circle cx="1100" cy="308" r="4" fill="#868e96"/><text x="1106" y="312" fill="#868e96" font-size="9" font-family="Courier New">DC− ← GND</text>
+
+<!-- ── LM2596 (droite milieu) ── -->
+<rect x="880" y="365" width="195" height="110" rx="6" fill="#0d2b4e" stroke="#4dabf7" stroke-width="1.5"/>
+<text x="977" y="388" fill="#4dabf7" font-size="11" font-weight="bold" text-anchor="middle" font-family="Courier New">LM2596 DC-DC</text>
+<text x="977" y="403" fill="#6c757d" font-size="8"  text-anchor="middle" font-family="Courier New">12V → 6V  (régler potentiomètre)</text>
+<!-- broches gauche -->
+<circle cx="880" cy="428" r="4" fill="#ff9f43"/><text x="874" y="432" fill="#ff9f43" font-size="9" text-anchor="end" font-family="Courier New">IN+  12V</text>
+<circle cx="880" cy="452" r="4" fill="#868e96"/><text x="874" y="456" fill="#868e96" font-size="9" text-anchor="end" font-family="Courier New">IN−  GND</text>
+<!-- broches droite -->
+<circle cx="1075" cy="428" r="4" fill="#4dabf7"/><text x="1081" y="432" fill="#4dabf7" font-size="9" font-family="Courier New">OUT+ 6V</text>
+<circle cx="1075" cy="452" r="4" fill="#868e96"/><text x="1081" y="456" fill="#868e96" font-size="9" font-family="Courier New">OUT− GND</text>
+
+<!-- ── Bornier 12 voies (bas centre) ── -->
+<rect x="330" y="830" width="680" height="100" rx="6" fill="#0d1b2a" stroke="#adb5bd" stroke-width="1.5"/>
+<text x="670" y="850" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle" font-family="Courier New">Bornier 12 voies — DIN Rail</text>
+<!-- Puissance 1-6 -->
+<rect x="343" y="856" width="44" height="58" rx="3" fill="#1a1a2e" stroke="#ff9f43"/>
+<text x="365" y="873" fill="#ff9f43"  font-size="9"  text-anchor="middle" font-family="Courier New">1</text>
+<text x="365" y="886" fill="#ff9f43"  font-size="7"  text-anchor="middle" font-family="Courier New">12V+</text>
+
+<rect x="391" y="856" width="44" height="58" rx="3" fill="#1a1a2e" stroke="#868e96"/>
+<text x="413" y="873" fill="#868e96" font-size="9"  text-anchor="middle" font-family="Courier New">2</text>
+<text x="413" y="886" fill="#868e96" font-size="7"  text-anchor="middle" font-family="Courier New">GND</text>
+
+<rect x="439" y="856" width="44" height="58" rx="3" fill="#1a1a2e" stroke="#ff6b6b"/>
+<text x="461" y="873" fill="#ff6b6b" font-size="9"  text-anchor="middle" font-family="Courier New">3</text>
+<text x="461" y="883" fill="#ff6b6b" font-size="7"  text-anchor="middle" font-family="Courier New">CANON</text>
+<text x="461" y="894" fill="#ff6b6b" font-size="7"  text-anchor="middle" font-family="Courier New">OUV</text>
+
+<rect x="487" y="856" width="44" height="58" rx="3" fill="#1a1a2e" stroke="#ff6b6b"/>
+<text x="509" y="873" fill="#ff6b6b" font-size="9"  text-anchor="middle" font-family="Courier New">4</text>
+<text x="509" y="883" fill="#ff6b6b" font-size="7"  text-anchor="middle" font-family="Courier New">CANON</text>
+<text x="509" y="894" fill="#ff6b6b" font-size="7"  text-anchor="middle" font-family="Courier New">FERM</text>
+
+<rect x="535" y="856" width="44" height="58" rx="3" fill="#1a1a2e" stroke="#ff6b6b"/>
+<text x="557" y="873" fill="#ff6b6b" font-size="9"  text-anchor="middle" font-family="Courier New">5</text>
+<text x="557" y="883" fill="#ff6b6b" font-size="7"  text-anchor="middle" font-family="Courier New">POUMON</text>
+<text x="557" y="894" fill="#ff6b6b" font-size="7"  text-anchor="middle" font-family="Courier New">OUV</text>
+
+<rect x="583" y="856" width="44" height="58" rx="3" fill="#1a1a2e" stroke="#ff6b6b"/>
+<text x="605" y="873" fill="#ff6b6b" font-size="9"  text-anchor="middle" font-family="Courier New">6</text>
+<text x="605" y="883" fill="#ff6b6b" font-size="7"  text-anchor="middle" font-family="Courier New">POUMON</text>
+<text x="605" y="894" fill="#ff6b6b" font-size="7"  text-anchor="middle" font-family="Courier New">FERM</text>
+
+<!-- séparateur puissance / signaux -->
+<line x1="633" y1="858" x2="633" y2="928" stroke="#495057" stroke-width="1" stroke-dasharray="3,2"/>
+<text x="638" y="825" fill="#6c757d" font-size="7" font-family="Courier New">signaux →</text>
+
+<!-- Signaux 7-12 -->
+<rect x="638" y="856" width="44" height="58" rx="3" fill="#1a1a2e" stroke="#ff9f43"/>
+<text x="660" y="873" fill="#ff9f43" font-size="9"  text-anchor="middle" font-family="Courier New">7</text>
+<text x="660" y="883" fill="#ff9f43" font-size="7"  text-anchor="middle" font-family="Courier New">VIT</text>
+<text x="660" y="894" fill="#ff9f43" font-size="7"  text-anchor="middle" font-family="Courier New">12V</text>
+
+<rect x="686" y="856" width="44" height="58" rx="3" fill="#1a1a2e" stroke="#69db7c"/>
+<text x="708" y="873" fill="#69db7c" font-size="9"  text-anchor="middle" font-family="Courier New">8</text>
+<text x="708" y="883" fill="#69db7c" font-size="7"  text-anchor="middle" font-family="Courier New">VIT</text>
+<text x="708" y="894" fill="#69db7c" font-size="7"  text-anchor="middle" font-family="Courier New">signal</text>
+
+<rect x="734" y="856" width="44" height="58" rx="3" fill="#1a1a2e" stroke="#69db7c"/>
+<text x="756" y="873" fill="#69db7c" font-size="9"  text-anchor="middle" font-family="Courier New">9</text>
+<text x="756" y="883" fill="#69db7c" font-size="7"  text-anchor="middle" font-family="Courier New">fin de</text>
+<text x="756" y="894" fill="#69db7c" font-size="7"  text-anchor="middle" font-family="Courier New">course</text>
+
+<rect x="782" y="856" width="44" height="58" rx="3" fill="#1a1a2e" stroke="#69db7c"/>
+<text x="804" y="873" fill="#69db7c" font-size="9"  text-anchor="middle" font-family="Courier New">10</text>
+<text x="804" y="886" fill="#69db7c" font-size="7"  text-anchor="middle" font-family="Courier New">spires</text>
+
+<rect x="830" y="856" width="44" height="58" rx="3" fill="#1a1a2e" stroke="#69db7c"/>
+<text x="852" y="873" fill="#69db7c" font-size="9"  text-anchor="middle" font-family="Courier New">11</text>
+<text x="852" y="886" fill="#69db7c" font-size="7"  text-anchor="middle" font-family="Courier New">poumon</text>
+
+<rect x="878" y="856" width="44" height="58" rx="3" fill="#1a1a2e" stroke="#69db7c"/>
+<text x="900" y="873" fill="#69db7c" font-size="9"  text-anchor="middle" font-family="Courier New">12</text>
+<text x="900" y="883" fill="#69db7c" font-size="7"  text-anchor="middle" font-family="Courier New">presso</text>
+<text x="900" y="894" fill="#69db7c" font-size="7"  text-anchor="middle" font-family="Courier New">stat</text>
+
+<!-- ================================================================
+     BUS DE PUISSANCE
+     ================================================================ -->
+
+<!-- Bus 12V (orange, y=760) -->
+<line x1="88" y1="760" x2="880" y2="760" stroke="#ff9f43" stroke-width="2.5"/>
+<text x="92" y="756" fill="#ff9f43" font-size="8" font-weight="bold" font-family="Courier New">BUS 12V</text>
+
+<!-- Bus GND (gris, y=785) -->
+<line x1="65" y1="785" x2="900" y2="785" stroke="#868e96" stroke-width="2"/>
+<text x="92" y="781" fill="#868e96" font-size="8" font-weight="bold" font-family="Courier New">GND</text>
+
+<!-- Bus 3.3V (cyan, y=735) -->
+<line x1="250" y1="735" x2="480" y2="735" stroke="#74c0fc" stroke-width="1.5" stroke-dasharray="6,3"/>
+<text x="345" y="731" fill="#74c0fc" font-size="8" font-family="Courier New">3.3V</text>
+
+<!-- Bus 6V (bleu, LM2596 OUT+→MOSFET DC+) -->
+<line x1="1075" y1="428" x2="1135" y2="428" stroke="#4dabf7" stroke-width="2"/>
+<line x1="1135" y1="428" x2="1135" y2="283" stroke="#4dabf7" stroke-width="2"/>
+<line x1="1135" y1="283" x2="1100" y2="283" stroke="#4dabf7" stroke-width="2" marker-end="url(#arr_b)"/>
+<text x="1139" y="360" fill="#4dabf7" font-size="8" font-family="Courier New">6V</text>
+
+<!-- ================================================================
+     CONNEXIONS ALIMENTATION
+     ================================================================ -->
+
+<!-- Batterie + → bus 12V -->
+<line x1="88" y1="636" x2="88" y2="760" stroke="#ff9f43" stroke-width="1.5"/>
+
+<!-- Batterie - → bus GND -->
+<line x1="162" y1="636" x2="162" y2="785" stroke="#868e96" stroke-width="1.5"/>
+
+<!-- Bus 12V → ES30G29 VIN -->
+<path d="M730,760 L730,655" stroke="#ff9f43" stroke-width="1.5" fill="none" marker-end="url(#arr_o)"/>
+
+<!-- Bus 12V → LM2596 IN+ -->
+<path d="M880,760 L880,452" stroke="#868e96" stroke-width="1.5" fill="none"/>
+<path d="M860,760 L860,428 L880,428" stroke="#ff9f43" stroke-width="1.5" fill="none" marker-end="url(#arr_o)"/>
+
+<!-- Bus 12V → INA3221 VIN3+ (borne 1 branchée directement) -->
+<path d="M365,760 L365,510 L95,510" stroke="#ff9f43" stroke-width="1.5" fill="none" marker-end="url(#arr_o)"/>
+
+<!-- Bus GND → INA3221 VIN3- -->
+<path d="M380,785 L380,530 L155,530 L155,510" stroke="#868e96" stroke-width="1.5" fill="none" marker-end="url(#arr_gr)"/>
+
+<!-- ES30G29 3.3V → bus 3.3V -->
+<path d="M730,628 L730,735 L480,735" stroke="#74c0fc" stroke-width="1.5" fill="none"/>
+
+<!-- Bus 3.3V → TPL5010 VDD -->
+<path d="M340,735 L340,125 L250,125" stroke="#74c0fc" stroke-width="1.5" fill="none" marker-end="url(#arr_c)"/>
+
+<!-- Bus 3.3V → INA3221 VS -->
+<path d="M350,735 L350,358 L260,358" stroke="#74c0fc" stroke-width="1.5" fill="none" marker-end="url(#arr_c)"/>
+
+<!-- Bus GND → LM2596 IN- -->
+<path d="M880,785 L880,452" stroke="#868e96" stroke-width="1.5" fill="none" marker-end="url(#arr_gr)"/>
+
+<!-- LM2596 OUT- → GND bus -->
+<path d="M1075,452 L1120,452 L1120,785" stroke="#868e96" stroke-width="1.5" fill="none"/>
+
+<!-- Bus GND → MOSFET DC− (alimentation, côté droit) -->
+<path d="M1120,785 L1120,308 L1100,308" stroke="#868e96" stroke-width="1.5" fill="none" marker-end="url(#arr_gr)"/>
+<!-- Bus GND → MOSFET GND1..4 cmd (côté gauche) -->
+<path d="M838,785 L838,248 L880,248" stroke="#868e96" stroke-width="1.5" fill="none" marker-end="url(#arr_gr)"/>
+
+<!-- ================================================================
+     CONNEXIONS SIGNAUX — TPL5010
+     ================================================================ -->
+
+<!-- GPIO 23 → TPL5010 DONE (2) -->
+<path d="M480,242 L395,242 L395,150 L250,150" stroke="#cc5de8" stroke-width="1.5" fill="none" marker-end="url(#arr_p)"/>
+
+<!-- TPL5010 RESET (1) → EN ESP32 (flèche vers EN) -->
+<path d="M250,175 L400,175 L400,269 L480,269" stroke="#cc5de8" stroke-width="1.5" fill="none" marker-end="url(#arr_p)"/>
+
+<!-- REXT → GND (interne TPL5010, flèche vers bas) -->
+<path d="M65,175 L50,175 L50,785" stroke="#495057" stroke-width="1" stroke-dasharray="3,2" fill="none"/>
+<text x="32" y="480" fill="#adb5bd" font-size="8" text-anchor="middle" font-family="Courier New" transform="rotate(-90,32,480)">3.3MΩ → GND</text>
+
+<!-- ================================================================
+     CONNEXIONS SIGNAUX — I2C INA3221
+     ================================================================ -->
+
+<!-- INA3221 SCL → GPIO 22 -->
+<path d="M260,406 L415,406 L415,212 L480,212" stroke="#ffd43b" stroke-width="1.5" fill="none" marker-end="url(#arr_y)"/>
+
+<!-- INA3221 SDA → GPIO 21 -->
+<path d="M260,430 L420,430 L420,185 L480,185" stroke="#ffd43b" stroke-width="1.5" fill="none" marker-end="url(#arr_y)"/>
+
+<!-- ================================================================
+     CONNEXIONS SIGNAUX — EV (GPIO → MOSFET)
+     ================================================================ -->
+
+<!-- GPIO 18 → MOSFET IN1 -->
+<path d="M730,155 L810,155 L810,135 L880,135" stroke="#ff6b6b" stroke-width="1.5" fill="none" marker-end="url(#arr_r)"/>
+
+<!-- GPIO 19 → MOSFET IN2 -->
+<path d="M730,182 L815,182 L815,162 L880,162" stroke="#ff6b6b" stroke-width="1.5" fill="none" marker-end="url(#arr_r)"/>
+
+<!-- GPIO 4 → MOSFET IN4 -->
+<path d="M730,290 L820,290 L820,216 L880,216" stroke="#ff6b6b" stroke-width="1.5" fill="none" marker-end="url(#arr_r)"/>
+
+<!-- GPIO 14 → MOSFET IN3 (passe sous le shield via bus bas) -->
+<path d="M480,598 L440,598 L440,800 L845,800 L845,189 L880,189" stroke="#ff6b6b" stroke-width="1.5" fill="none" marker-end="url(#arr_r)"/>
+
+<!-- ================================================================
+     CONNEXIONS SIGNAUX — CAPTEURS → BORNIER
+     ================================================================ -->
+
+<!-- GPIO 34 (vitesse) → borne 8 via diviseur -->
+<path d="M480,380 L460,380 L460,808 L708,808 L708,856" stroke="#69db7c" stroke-width="1.2" fill="none" stroke-dasharray="5,3" marker-end="url(#arr_g)"/>
+
+<!-- GPIO 35 (fin de course) → borne 9 -->
+<path d="M480,407 L455,407 L455,812 L756,812 L756,856" stroke="#69db7c" stroke-width="1.2" fill="none" stroke-dasharray="5,3" marker-end="url(#arr_g)"/>
+
+<!-- GPIO 32 (spires) → borne 10 -->
+<path d="M480,434 L450,434 L450,816 L804,816 L804,856" stroke="#69db7c" stroke-width="1.2" fill="none" stroke-dasharray="5,3" marker-end="url(#arr_g)"/>
+
+<!-- GPIO 33 (poumon) → borne 11 -->
+<path d="M480,461 L445,461 L445,820 L852,820 L852,856" stroke="#69db7c" stroke-width="1.2" fill="none" stroke-dasharray="5,3" marker-end="url(#arr_g)"/>
+
+<!-- GPIO 25 (pressostat) → borne 12 -->
+<path d="M480,488 L435,488 L435,824 L900,824 L900,856" stroke="#69db7c" stroke-width="1.2" fill="none" stroke-dasharray="5,3" marker-end="url(#arr_g)"/>
+
+<!-- Bus 12V → borne 1 (alimentation capteur vitesse) -->
+<path d="M365,760 L365,856" stroke="#ff9f43" stroke-width="1.5" fill="none" marker-end="url(#arr_o)"/>
+
+<!-- GND bus → borne 2 -->
+<path d="M413,785 L413,856" stroke="#868e96" stroke-width="1.5" fill="none" marker-end="url(#arr_gr)"/>
+
+<!-- ================================================================
+     NOTE PULL-UPS
+     ================================================================ -->
+<rect x="55" y="685" width="195" height="105" rx="5" fill="#0d1b2a" stroke="#69db7c" stroke-width="1"/>
+<text x="152" y="704" fill="#69db7c" font-size="9" font-weight="bold" text-anchor="middle" font-family="Courier New">Réseau pull-ups</text>
+<text x="152" y="718" fill="#adb5bd" font-size="8" text-anchor="middle" font-family="Courier New">3.3V—[10kΩ]—┬— GPIO (35/32/33/25)</text>
+<text x="152" y="731" fill="#adb5bd" font-size="8" text-anchor="middle" font-family="Courier New">             └— borne (9/10/11/12)</text>
+<text x="152" y="745" fill="#adb5bd" font-size="8" text-anchor="middle" font-family="Courier New">GPIO 34 : div. 10kΩ/5.6kΩ</text>
+<text x="152" y="759" fill="#adb5bd" font-size="8" text-anchor="middle" font-family="Courier New">Retour GND commun → borne 2</text>
+<text x="152" y="773" fill="#6c757d" font-size="7" text-anchor="middle" font-family="Courier New">soudés sur fil · gaine thermo</text>
+
+<!-- ================================================================
+     LÉGENDE
+     ================================================================ -->
+<rect x="935" y="510" width="440" height="190" rx="6" fill="#0d1b2a" stroke="#415a77" stroke-width="1"/>
+<text x="1155" y="532" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle" font-family="Courier New">LÉGENDE</text>
+
+<line x1="950" y1="548" x2="985" y2="548" stroke="#ff6b6b"  stroke-width="2" marker-end="url(#arr_r)"/>
+<text x="993" y="552" fill="#ff6b6b"  font-size="9" font-family="Courier New">EV bistables (GPIO→MOSFET→borne→EV)</text>
+
+<line x1="950" y1="568" x2="985" y2="568" stroke="#ffd43b"  stroke-width="2" marker-end="url(#arr_y)"/>
+<text x="993" y="572" fill="#ffd43b"  font-size="9" font-family="Courier New">I2C INA3221 (SDA/SCL)</text>
+
+<line x1="950" y1="588" x2="985" y2="588" stroke="#cc5de8"  stroke-width="2" marker-end="url(#arr_p)"/>
+<text x="993" y="592" fill="#cc5de8"  font-size="9" font-family="Courier New">TPL5010 watchdog (DONE/RESET)</text>
+
+<line x1="950" y1="608" x2="985" y2="608" stroke="#69db7c"  stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr_g)"/>
+<text x="993" y="612" fill="#69db7c"  font-size="9" font-family="Courier New">Capteurs / contacts (via pull-ups)</text>
+
+<line x1="950" y1="628" x2="985" y2="628" stroke="#ff9f43"  stroke-width="2" marker-end="url(#arr_o)"/>
+<text x="993" y="632" fill="#ff9f43"  font-size="9" font-family="Courier New">Alimentation 12V (batterie)</text>
+
+<line x1="950" y1="648" x2="985" y2="648" stroke="#4dabf7"  stroke-width="2" marker-end="url(#arr_b)"/>
+<text x="993" y="652" fill="#4dabf7"  font-size="9" font-family="Courier New">6V LM2596 → MOSFET DC+</text>
+
+<line x1="950" y1="668" x2="985" y2="668" stroke="#74c0fc"  stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arr_c)"/>
+<text x="993" y="672" fill="#74c0fc"  font-size="9" font-family="Courier New">3.3V (bus interne → INA, TPL)</text>
+
+<line x1="950" y1="688" x2="985" y2="688" stroke="#868e96"  stroke-width="2" marker-end="url(#arr_gr)"/>
+<text x="993" y="692" fill="#868e96"  font-size="9" font-family="Courier New">GND commun</text>
+
+</svg>
+</body>
+</html>
