@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Câblage ES30G29 — Irrifrance ESP32</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; display: flex; justify-content: center;
+         align-items: center; min-height: 100vh; padding: 20px; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 1100 860" width="1100" height="860" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ae" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#ff6b6b"/></marker>
+    <marker id="ac" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#69db7c"/></marker>
+    <marker id="ai" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#ffd43b"/></marker>
+    <marker id="aa" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#ff9f43"/></marker>
+    <marker id="at" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#cc5de8"/></marker>
+    <marker id="ag" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#868e96"/></marker>
+    <marker id="ar" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#74c0fc"/></marker>
+  </defs>
+
+  <rect width="1100" height="860" fill="#1a1a2e"/>
+
+  <!-- Titre -->
+  <text x="550" y="24" fill="#ffffff" font-size="15" font-weight="bold" text-anchor="middle" font-family="Courier New">Câblage ES30G29 — Irrifrance ESP32</text>
+  <text x="550" y="40" fill="#adb5bd" font-size="10" text-anchor="middle" font-family="Courier New">EV bistables Bürkert S78722 6V | INA3221 CH3 batterie | TPL5010DDCR | LM2596 12V→6V EV</text>
+
+  <!-- ═══ PCB ═══ -->
+  <rect x="320" y="55" width="360" height="750" rx="8" fill="#1a472a" stroke="#2d6a4f" stroke-width="2"/>
+  <rect x="332" y="67" width="336" height="730" rx="4" fill="#1e5631"/>
+
+  <!-- ESP32 module -->
+  <rect x="365" y="100" width="220" height="180" rx="4" fill="#0d1b2a" stroke="#415a77" stroke-width="1.5"/>
+  <text x="475" y="175" fill="#e0e0e0" font-size="13" font-weight="bold" text-anchor="middle" font-family="Courier New">eletechsup</text>
+  <text x="475" y="195" fill="#e0e0e0" font-size="13" font-weight="bold" text-anchor="middle" font-family="Courier New">ES30G29</text>
+  <text x="475" y="215" fill="#6c757d" font-size="10" text-anchor="middle" font-family="Courier New">ESP32-WROOM</text>
+
+  <!-- Buck zone -->
+  <rect x="345" y="640" width="210" height="55" rx="4" fill="#0d2b0d" stroke="#2d6a4f" stroke-width="1"/>
+  <text x="450" y="663" fill="#6c757d" font-size="9" text-anchor="middle" font-family="Courier New">Buck converter intégré</text>
+  <text x="450" y="678" fill="#6c757d" font-size="9" text-anchor="middle" font-family="Courier New">DC 6-28V → 5V / 3.3V</text>
+
+  <!-- ═══ BORNIER GAUCHE ═══ -->
+  <!-- Ordre ES30G29 : 19,21,3,1,22,23,EN,36,39,34,35,32,33,25,26,27,14,12,13,GND -->
+  <!-- y start=85, step=28 -->
+  <rect x="323" y="68" width="20" height="728" rx="2" fill="#1565c0" stroke="#0d47a1"/>
+
+  <!-- Définition des pins gauche -->
+  <!-- idx: y = 85 + idx*28 -->
+  <!-- 0=19, 1=21, 2=3, 3=1, 4=22, 5=23, 6=EN, 7=36, 8=39, 9=34, 10=35, 11=32, 12=33, 13=25, 14=26, 15=27, 16=14, 17=12, 18=13, 19=GND -->
+
+  <circle cx="333" cy="85"  r="5" fill="#90caf9"/><text x="318" y="89"  fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">19 MISO</text>
+  <circle cx="333" cy="113" r="5" fill="#90caf9"/><text x="318" y="117" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">21 SDA</text>
+  <circle cx="333" cy="141" r="5" fill="#90caf9"/><text x="318" y="145" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">3 RX0</text>
+  <circle cx="333" cy="169" r="5" fill="#90caf9"/><text x="318" y="173" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">1 TX0</text>
+  <circle cx="333" cy="197" r="5" fill="#90caf9"/><text x="318" y="201" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">22 SCL</text>
+  <circle cx="333" cy="225" r="5" fill="#90caf9"/><text x="318" y="229" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">23 MOSI</text>
+  <circle cx="333" cy="253" r="5" fill="#90caf9"/><text x="318" y="257" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">EN</text>
+  <circle cx="333" cy="281" r="5" fill="#90caf9"/><text x="318" y="285" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">36 ADC1</text>
+  <circle cx="333" cy="309" r="5" fill="#90caf9"/><text x="318" y="313" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">39 ADC1</text>
+  <circle cx="333" cy="337" r="5" fill="#90caf9"/><text x="318" y="341" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">34 ADC1</text>
+  <circle cx="333" cy="365" r="5" fill="#90caf9"/><text x="318" y="369" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">35 ADC1</text>
+  <circle cx="333" cy="393" r="5" fill="#90caf9"/><text x="318" y="397" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">32 ADC1</text>
+  <circle cx="333" cy="421" r="5" fill="#90caf9"/><text x="318" y="425" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">33 ADC1</text>
+  <circle cx="333" cy="449" r="5" fill="#90caf9"/><text x="318" y="453" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">25 ADC2</text>
+  <circle cx="333" cy="477" r="5" fill="#90caf9"/><text x="318" y="481" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">26 ADC2</text>
+  <circle cx="333" cy="505" r="5" fill="#90caf9"/><text x="318" y="509" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">27 ADC2</text>
+  <circle cx="333" cy="533" r="5" fill="#90caf9"/><text x="318" y="537" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">14 ADC2</text>
+  <circle cx="333" cy="561" r="5" fill="#90caf9"/><text x="318" y="565" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">12 ADC2</text>
+  <circle cx="333" cy="589" r="5" fill="#90caf9"/><text x="318" y="593" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">13 ADC2</text>
+  <circle cx="333" cy="617" r="5" fill="#90caf9"/><text x="318" y="621" fill="#b0bec5" font-size="9" text-anchor="end" font-family="Courier New">GND</text>
+
+  <!-- ═══ BORNIER DROIT ═══ -->
+  <!-- Ordre ES30G29 droite : 18,5,17,16,4,2,15, puis Power -->
+  <rect x="657" y="68" width="20" height="728" rx="2" fill="#1565c0" stroke="#0d47a1"/>
+
+  <circle cx="667" cy="85"  r="5" fill="#90caf9"/><text x="682" y="89"  fill="#b0bec5" font-size="9" font-family="Courier New">18 CLK</text>
+  <circle cx="667" cy="113" r="5" fill="#90caf9"/><text x="682" y="117" fill="#b0bec5" font-size="9" font-family="Courier New">5 CS0</text>
+  <circle cx="667" cy="141" r="5" fill="#90caf9"/><text x="682" y="145" fill="#b0bec5" font-size="9" font-family="Courier New">17 UART2_TX</text>
+  <circle cx="667" cy="169" r="5" fill="#90caf9"/><text x="682" y="173" fill="#b0bec5" font-size="9" font-family="Courier New">16 UART2_RX</text>
+  <circle cx="667" cy="197" r="5" fill="#90caf9"/><text x="682" y="201" fill="#b0bec5" font-size="9" font-family="Courier New">4 ADC2</text>
+  <circle cx="667" cy="225" r="5" fill="#90caf9"/><text x="682" y="229" fill="#b0bec5" font-size="9" font-family="Courier New">2 ADC2</text>
+  <circle cx="667" cy="253" r="5" fill="#90caf9"/><text x="682" y="257" fill="#b0bec5" font-size="9" text-anchor="start" font-family="Courier New">15 ADC2</text>
+
+  <!-- Power 1 DC 6-28V -->
+  <rect x="660" y="635" width="80" height="45" rx="3" fill="#0d1b2a" stroke="#ff9f43" stroke-width="1"/>
+  <text x="700" y="652" fill="#ff9f43" font-size="8" text-anchor="middle" font-family="Courier New">Power 1</text>
+  <text x="700" y="664" fill="#ff9f43" font-size="8" text-anchor="middle" font-family="Courier New">DC 6-28V</text>
+  <circle cx="667" cy="673" r="4" fill="#90caf9"/>
+  <text x="682" y="677" fill="#b0bec5" font-size="8" font-family="Courier New">GND / VIN</text>
+
+  <!-- Power 2 DC 5V -->
+  <rect x="660" y="688" width="80" height="35" rx="3" fill="#0d1b2a" stroke="#ff9f43" stroke-width="1"/>
+  <text x="700" y="703" fill="#ff9f43" font-size="8" text-anchor="middle" font-family="Courier New">Power 2</text>
+  <text x="700" y="715" fill="#ff9f43" font-size="8" text-anchor="middle" font-family="Courier New">DC 5V</text>
+
+  <!-- Voltage Out 3.3V -->
+  <rect x="660" y="730" width="80" height="30" rx="3" fill="#0d1b2a" stroke="#ffd43b" stroke-width="1"/>
+  <text x="700" y="750" fill="#ffd43b" font-size="8" text-anchor="middle" font-family="Courier New">3.3V out</text>
+
+  <!-- ════════════════════════════════════════
+       ANNOTATIONS GAUCHE
+  ════════════════════════════════════════ -->
+
+  <!-- 21 SDA → INA3221 SDA -->
+  <text x="190" y="110" fill="#ffd43b" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">SDA INA3221</text>
+  <path d="M192,113 Q262,113 333,113" stroke="#ffd43b" stroke-width="1.5" fill="none" marker-end="url(#ai)"/>
+
+  <!-- 22 SCL → INA3221 SCL -->
+  <text x="190" y="194" fill="#ffd43b" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">SCL INA3221</text>
+  <path d="M192,197 Q262,197 333,197" stroke="#ffd43b" stroke-width="1.5" fill="none" marker-end="url(#ai)"/>
+
+  <!-- 23 → TPL5010 DONE (nouveau!) -->
+  <text x="160" y="221" fill="#cc5de8" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">TPL5010 DONE</text>
+  <path d="M162,225 Q248,225 333,225" stroke="#cc5de8" stroke-width="1.5" fill="none" marker-end="url(#at)"/>
+
+  <!-- EN → TPL5010 RESET -->
+  <text x="145" y="249" fill="#cc5de8" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">TPL5010 RESET</text>
+  <path d="M147,253 Q240,253 333,253" stroke="#cc5de8" stroke-width="1.5" fill="none" marker-end="url(#at)"/>
+
+  <!-- 36 → réservé pression V3 -->
+  <text x="165" y="277" fill="#74c0fc" font-size="10" text-anchor="end" font-family="Courier New">réservé pression V3</text>
+  <path d="M167,281 Q250,281 333,281" stroke="#74c0fc" stroke-width="1" stroke-dasharray="4,3" fill="none" marker-end="url(#ar)"/>
+
+  <!-- 39 → libre -->
+  <text x="185" y="305" fill="#74c0fc" font-size="10" text-anchor="end" font-family="Courier New">réservé V3</text>
+  <path d="M187,309 Q260,309 333,309" stroke="#74c0fc" stroke-width="1" stroke-dasharray="4,3" fill="none" marker-end="url(#ar)"/>
+
+  <!-- 34 → Capteur vitesse -->
+  <text x="155" y="333" fill="#69db7c" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">capteur vitesse</text>
+  <path d="M157,337 Q245,337 333,337" stroke="#69db7c" stroke-width="1.5" fill="none" marker-end="url(#ac)"/>
+
+  <!-- 35 → Fin de course -->
+  <text x="160" y="361" fill="#69db7c" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">fin de course</text>
+  <path d="M162,365 Q247,365 333,365" stroke="#69db7c" stroke-width="1.5" fill="none" marker-end="url(#ac)"/>
+
+  <!-- 32 → Sécurité spires -->
+  <text x="152" y="389" fill="#69db7c" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">sécurité spires</text>
+  <path d="M154,393 Q243,393 333,393" stroke="#69db7c" stroke-width="1.5" fill="none" marker-end="url(#ac)"/>
+
+  <!-- 33 → Poumon plein -->
+  <text x="162" y="417" fill="#69db7c" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">poumon plein</text>
+  <path d="M164,421 Q248,421 333,421" stroke="#69db7c" stroke-width="1.5" fill="none" marker-end="url(#ac)"/>
+
+  <!-- 25 → Pressostat -->
+  <text x="175" y="445" fill="#69db7c" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">pressostat</text>
+  <path d="M177,449 Q255,449 333,449" stroke="#69db7c" stroke-width="1.5" fill="none" marker-end="url(#ac)"/>
+
+  <!-- 26 libre -->
+  <text x="185" y="473" fill="#495057" font-size="10" text-anchor="end" font-family="Courier New">libre</text>
+
+  <!-- 27 libre -->
+  <text x="185" y="501" fill="#495057" font-size="10" text-anchor="end" font-family="Courier New">libre</text>
+
+  <!-- 14 → EV CANON FERMER (nouveau GPIO) -->
+  <text x="150" y="527" fill="#ff6b6b" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">EV CANON</text>
+  <text x="150" y="540" fill="#ff6b6b" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">FERMER</text>
+  <path d="M152,533 Q242,533 333,533" stroke="#ff6b6b" stroke-width="1.5" fill="none" marker-end="url(#ae)"/>
+
+  <!-- 12 libre -->
+  <text x="185" y="557" fill="#495057" font-size="10" text-anchor="end" font-family="Courier New">libre</text>
+
+  <!-- 13 libre (était TPL5010 DONE) -->
+  <text x="175" y="585" fill="#495057" font-size="10" text-anchor="end" font-family="Courier New">libre (ex-TPL)</text>
+
+  <!-- GND → GND commun -->
+  <text x="180" y="613" fill="#868e96" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">GND commun</text>
+  <path d="M182,617 Q257,617 333,617" stroke="#868e96" stroke-width="1.5" fill="none" marker-end="url(#ag)"/>
+
+  <!-- ════════════════════════════════════════
+       ANNOTATIONS DROITE
+  ════════════════════════════════════════ -->
+
+  <!-- 18 → EV CANON OUVRIR (nouveau GPIO) -->
+  <text x="760" y="82" fill="#ff6b6b" font-size="11" font-weight="bold" font-family="Courier New">EV CANON</text>
+  <text x="760" y="95" fill="#ff6b6b" font-size="11" font-weight="bold" font-family="Courier New">OUVRIR</text>
+  <path d="M758,85 Q712,85 677,85" stroke="#ff6b6b" stroke-width="1.5" fill="none" marker-end="url(#ae)"/>
+
+  <!-- 5 libre -->
+  <text x="760" y="117" fill="#495057" font-size="10" font-family="Courier New">libre</text>
+
+  <!-- 17 réservé LoRa TX V3 -->
+  <text x="760" y="138" fill="#74c0fc" font-size="10" font-family="Courier New">réservé LoRa TX V3</text>
+  <path d="M758,141 Q712,141 677,141" stroke="#74c0fc" stroke-width="1" stroke-dasharray="4,3" fill="none" marker-end="url(#ar)"/>
+
+  <!-- 16 réservé LoRa RX V3 -->
+  <text x="760" y="166" fill="#74c0fc" font-size="10" font-family="Courier New">réservé LoRa RX V3</text>
+  <path d="M758,169 Q712,169 677,169" stroke="#74c0fc" stroke-width="1" stroke-dasharray="4,3" fill="none" marker-end="url(#ar)"/>
+
+  <!-- 4 → EV POUMON FERMER (nouveau GPIO) -->
+  <text x="760" y="193" fill="#ff6b6b" font-size="11" font-weight="bold" font-family="Courier New">EV POUMON</text>
+  <text x="760" y="206" fill="#ff6b6b" font-size="11" font-weight="bold" font-family="Courier New">FERMER</text>
+  <path d="M758,197 Q712,197 677,197" stroke="#ff6b6b" stroke-width="1.5" fill="none" marker-end="url(#ae)"/>
+
+  <!-- 2 → LED heartbeat -->
+  <text x="760" y="222" fill="#69db7c" font-size="11" font-weight="bold" font-family="Courier New">LED heartbeat</text>
+  <path d="M758,225 Q712,225 677,225" stroke="#69db7c" stroke-width="1.5" fill="none" marker-end="url(#ac)"/>
+
+  <!-- 15 libre -->
+  <text x="760" y="257" fill="#495057" font-size="10" font-family="Courier New">libre</text>
+
+  <!-- 19 → EV POUMON OUVRIR (nouveau GPIO, hors bornier visible) -->
+  <!-- Note: GPIO19 est sur VSPI MISO côté gauche -->
+
+  <!-- Power 1 VIN → 12V batterie -->
+  <text x="760" y="660" fill="#ff9f43" font-size="11" font-weight="bold" font-family="Courier New">12V batterie</text>
+  <path d="M758,665 Q745,673 740,673" stroke="#ff9f43" stroke-width="1.5" fill="none" marker-end="url(#aa)"/>
+
+  <!-- 3.3V → alim pull-up / INA / TPL -->
+  <text x="760" y="745" fill="#ff9f43" font-size="11" font-weight="bold" font-family="Courier New">alim pull-up</text>
+  <text x="760" y="758" fill="#ff9f43" font-size="11" font-weight="bold" font-family="Courier New">INA / TPL</text>
+
+  <!-- Note GPIO 19 EV_POUMON_OUVRIR (sur bornier gauche pin 19 MISO) -->
+  <text x="190" y="82" fill="#ff6b6b" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">EV POUMON</text>
+  <text x="190" y="95" fill="#ff6b6b" font-size="11" font-weight="bold" text-anchor="end" font-family="Courier New">OUVRIR</text>
+  <path d="M192,85 Q262,85 333,85" stroke="#ff6b6b" stroke-width="1.5" fill="none" marker-end="url(#ae)"/>
+
+  <!-- ════════════════════════════════════════
+       NOTE BAS DE CARTE
+  ════════════════════════════════════════ -->
+  <rect x="332" y="710" width="336" height="44" rx="4" fill="#0d1b2a" stroke="#ffd43b" stroke-width="1"/>
+  <text x="500" y="727" fill="#ffd43b" font-size="9" text-anchor="middle" font-family="Courier New">⚠️ Pull-up capteurs / INA3221 / TPL5010 → 3.3V Voltage Out</text>
+  <text x="500" y="742" fill="#ffd43b" font-size="9" text-anchor="middle" font-family="Courier New">LM2596 12V→6V EXTERNE → alimentation MOSFETs EV uniquement</text>
+
+  <!-- ════════════════════════════════════════
+       LÉGENDE
+  ════════════════════════════════════════ -->
+  <rect x="20" y="650" width="285" height="185" rx="6" fill="#0d1b2a" stroke="#415a77" stroke-width="1"/>
+  <text x="162" y="670" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle" font-family="Courier New">LÉGENDE</text>
+
+  <line x1="35" y1="685" x2="70" y2="685" stroke="#ff6b6b" stroke-width="2" marker-end="url(#ae)"/>
+  <text x="78" y="689" fill="#ff6b6b" font-size="10" font-family="Courier New">EV bistables (19/18 OUVRIR, 14/4 FERMER)</text>
+
+  <line x1="35" y1="705" x2="70" y2="705" stroke="#69db7c" stroke-width="2" marker-end="url(#ac)"/>
+  <text x="78" y="709" fill="#69db7c" font-size="10" font-family="Courier New">Capteurs / Contacts (25/32/33/34/35)</text>
+
+  <line x1="35" y1="725" x2="70" y2="725" stroke="#ffd43b" stroke-width="2" marker-end="url(#ai)"/>
+  <text x="78" y="729" fill="#ffd43b" font-size="10" font-family="Courier New">I2C INA3221 (21 SDA / 22 SCL)</text>
+
+  <line x1="35" y1="745" x2="70" y2="745" stroke="#cc5de8" stroke-width="2" marker-end="url(#at)"/>
+  <text x="78" y="749" fill="#cc5de8" font-size="10" font-family="Courier New">TPL5010 (23 DONE / EN RESET)</text>
+
+  <line x1="35" y1="765" x2="70" y2="765" stroke="#ff9f43" stroke-width="2" marker-end="url(#aa)"/>
+  <text x="78" y="769" fill="#ff9f43" font-size="10" font-family="Courier New">Alimentation (VIN 12V / 3.3V out)</text>
+
+  <line x1="35" y1="785" x2="70" y2="785" stroke="#868e96" stroke-width="2" marker-end="url(#ag)"/>
+  <text x="78" y="789" fill="#868e96" font-size="10" font-family="Courier New">GND commun</text>
+
+  <line x1="35" y1="805" x2="70" y2="805" stroke="#74c0fc" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ar)"/>
+  <text x="78" y="809" fill="#74c0fc" font-size="10" font-family="Courier New">Réservé V3 (16/17 LoRa, 36/39 pression)</text>
+
+  <!-- Tableau récap GPIO -->
+  <rect x="750" y="295" width="330" height="290" rx="6" fill="#0d1b2a" stroke="#415a77" stroke-width="1"/>
+  <text x="915" y="315" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle" font-family="Courier New">AFFECTATION GPIO</text>
+
+  <text x="760" y="335" fill="#ff6b6b" font-size="10" font-family="Courier New">19 → EV_POUMON_OUVRIR</text>
+  <text x="760" y="352" fill="#ff6b6b" font-size="10" font-family="Courier New">18 → EV_CANON_OUVRIR</text>
+  <text x="760" y="369" fill="#ff6b6b" font-size="10" font-family="Courier New">14 → EV_CANON_FERMER</text>
+  <text x="760" y="386" fill="#ff6b6b" font-size="10" font-family="Courier New"> 4 → EV_POUMON_FERMER</text>
+
+  <text x="760" y="408" fill="#69db7c" font-size="10" font-family="Courier New">34 → capteur vitesse</text>
+  <text x="760" y="425" fill="#69db7c" font-size="10" font-family="Courier New">35 → fin de course</text>
+  <text x="760" y="442" fill="#69db7c" font-size="10" font-family="Courier New">32 → sécurité spires</text>
+  <text x="760" y="459" fill="#69db7c" font-size="10" font-family="Courier New">33 → poumon plein</text>
+  <text x="760" y="476" fill="#69db7c" font-size="10" font-family="Courier New">25 → pressostat</text>
+  <text x="760" y="493" fill="#69db7c" font-size="10" font-family="Courier New"> 2 → LED heartbeat</text>
+
+  <text x="760" y="515" fill="#ffd43b" font-size="10" font-family="Courier New">21 → I2C SDA INA3221</text>
+  <text x="760" y="532" fill="#ffd43b" font-size="10" font-family="Courier New">22 → I2C SCL INA3221</text>
+
+  <text x="760" y="554" fill="#cc5de8" font-size="10" font-family="Courier New">23 → TPL5010 DONE</text>
+  <text x="760" y="571" fill="#cc5de8" font-size="10" font-family="Courier New">EN → TPL5010 RESET</text>
+
+</svg>
+</body>
+</html>
