@@ -5,38 +5,101 @@
 <title>Câblage Irrifrance ESP32</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#0d1117; font-family:'Courier New',monospace; color:#e6edf3; }
+
+/* ── Variables thème sombre (défaut) ── */
+:root {
+  --bg:      #0d1117;
+  --bg2:     #161b22;
+  --bg3:     #21262d;
+  --bg4:     #1c2129;
+  --border:  #30363d;
+  --text:    #e6edf3;
+  --text2:   #8b949e;
+  --text3:   #6e7681;
+  --tab-act: #0d1117;
+  --tab-col: #58a6ff;
+  --tab-bd:  #58a6ff;
+}
+
+/* ── Variables thème clair ── */
+body.light {
+  --bg:      #ffffff;
+  --bg2:     #f6f8fa;
+  --bg3:     #eaeef2;
+  --bg4:     #f0f2f5;
+  --border:  #d0d7de;
+  --text:    #1f2328;
+  --text2:   #656d76;
+  --text3:   #9198a1;
+  --tab-act: #ffffff;
+  --tab-col: #0969da;
+  --tab-bd:  #0969da;
+}
+
+body { background:var(--bg); font-family:'Courier New',monospace; color:var(--text); }
 
 .tabbar {
-  display:flex; flex-wrap:wrap; gap:3px;
-  padding:14px 16px 0; background:#161b22;
-  border-bottom:2px solid #30363d; position:sticky; top:0; z-index:10;
+  display:flex; flex-wrap:wrap; gap:3px; align-items:flex-end;
+  padding:14px 16px 0; background:var(--bg2);
+  border-bottom:2px solid var(--border); position:sticky; top:0; z-index:10;
 }
 .tab {
-  padding:8px 18px; background:#21262d; color:#8b949e;
-  border:1px solid #30363d; border-bottom:none; border-radius:6px 6px 0 0;
+  padding:8px 18px; background:var(--bg3); color:var(--text2);
+  border:1px solid var(--border); border-bottom:none; border-radius:6px 6px 0 0;
   cursor:pointer; font-family:'Courier New',monospace; font-size:13px; transition:all .15s;
 }
-.tab:hover { background:#2d333b; color:#e6edf3; }
-.tab.active { background:#0d1117; color:#58a6ff; border-color:#58a6ff; border-bottom:2px solid #0d1117; }
+.tab:hover { background:var(--bg4); color:var(--text); }
+.tab.active { background:var(--tab-act); color:var(--tab-col); border-color:var(--tab-bd); border-bottom:2px solid var(--tab-act); }
+
+/* Bouton mode clair/sombre */
+.theme-toggle {
+  margin-left:auto; margin-bottom:4px;
+  padding:6px 14px; background:var(--bg3); color:var(--text2);
+  border:1px solid var(--border); border-radius:20px;
+  cursor:pointer; font-size:13px; font-family:'Courier New',monospace;
+  transition:all .15s; white-space:nowrap;
+}
+.theme-toggle:hover { background:var(--bg4); color:var(--text); }
 
 .panel { display:none; padding:16px 20px 40px; }
 .panel.active { display:block; }
 
-h2 { font-size:17px; color:#e6edf3; margin-bottom:4px; }
-.sub { color:#8b949e; font-size:12px; margin-bottom:16px; }
+h2 { font-size:17px; color:var(--text); margin-bottom:4px; }
+.sub { color:var(--text2); font-size:12px; margin-bottom:16px; }
 
 table { border-collapse:collapse; margin-top:12px; }
-th { background:#161b22; color:#8b949e; padding:7px 14px; text-align:left;
-     border:1px solid #30363d; font-size:12px; white-space:nowrap; }
-td { padding:7px 14px; border:1px solid #30363d; font-size:13px; vertical-align:top; }
-tr:nth-child(even) td { background:#0d1117; }
-tr:hover td { background:#1c2129; }
+th { background:var(--bg2); color:var(--text2); padding:7px 14px; text-align:left;
+     border:1px solid var(--border); font-size:12px; white-space:nowrap; }
+td { padding:7px 14px; border:1px solid var(--border); font-size:13px; vertical-align:top; }
+tr:nth-child(even) td { background:var(--bg); }
+tr:hover td { background:var(--bg4); }
 
+/* Couleurs sémantiques — mode sombre */
 .cr { color:#ff6b6b; } .cg { color:#69db7c; } .cy { color:#ffd43b; }
 .cb { color:#4dabf7; } .cc { color:#74c0fc; } .cp { color:#cc5de8; }
 .co { color:#ff9f43; } .cgr{ color:#868e96; } .cd { color:#6e7681; }
-.cw { color:#e6edf3; }
+.cw { color:var(--text); }
+
+/* Couleurs sémantiques — mode clair (variantes plus contrastées) */
+body.light .cr  { color:#cf222e; }
+body.light .cg  { color:#1a7f37; }
+body.light .cy  { color:#7d4e00; }
+body.light .cb  { color:#0969da; }
+body.light .cc  { color:#0550ae; }
+body.light .cp  { color:#6e40c9; }
+body.light .co  { color:#953800; }
+body.light .cgr { color:#57606a; }
+body.light .cd  { color:#9198a1; }
+
+/* Cartes bornier en mode clair */
+body.light .borne-card { background:var(--bg2) !important; }
+
+/* SVG en mode clair — inversion luminosité, hue-rotate conserve les teintes */
+body.light .panel svg { filter: invert(1) hue-rotate(180deg); }
+
+/* Note de bas de page */
+.note { color:var(--text3); font-size:12px; margin-top:12px; }
+.note strong { color:var(--text2); }
 
 svg { display:block; }
 </style>
@@ -52,6 +115,7 @@ svg { display:block; }
   <button class="tab" onclick="showTab(this,'lm2596')">LM2596</button>
   <button class="tab" onclick="showTab(this,'pullups')">Pull-ups &amp; capteurs</button>
   <button class="tab" onclick="showTab(this,'bornier')">Bornier 12 voies</button>
+  <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()">☀ Mode clair</button>
 </div>
 
 <!-- ═══════════════════════════════════════════════════ VUE GLOBALE -->
@@ -755,63 +819,63 @@ svg { display:block; }
 
 <!-- Représentation bornier -->
 <div style="display:flex;gap:3px;margin:8px 0 20px;flex-wrap:wrap">
-<div style="width:72px;text-align:center;border:2px solid #ff9f43;border-radius:4px;padding:8px 4px;background:#12181e">
+<div class="borne-card" style="width:72px;text-align:center;border:2px solid #ff9f43;border-radius:4px;padding:8px 4px;background:#12181e">
   <div style="color:#ff9f43;font-size:18px;font-weight:bold">1</div>
   <div style="color:#ff9f43;font-size:11px;margin-top:4px">12V+</div>
   <div style="color:#6e7681;font-size:10px">rouge</div>
 </div>
-<div style="width:72px;text-align:center;border:2px solid #868e96;border-radius:4px;padding:8px 4px;background:#12181e">
+<div class="borne-card" style="width:72px;text-align:center;border:2px solid #868e96;border-radius:4px;padding:8px 4px;background:#12181e">
   <div style="color:#868e96;font-size:18px;font-weight:bold">2</div>
   <div style="color:#868e96;font-size:11px;margin-top:4px">GND</div>
   <div style="color:#6e7681;font-size:10px">noir</div>
 </div>
-<div style="width:72px;text-align:center;border:2px solid #ff6b6b;border-radius:4px;padding:8px 4px;background:#12181e">
+<div class="borne-card" style="width:72px;text-align:center;border:2px solid #ff6b6b;border-radius:4px;padding:8px 4px;background:#12181e">
   <div style="color:#ff6b6b;font-size:18px;font-weight:bold">3</div>
   <div style="color:#ff6b6b;font-size:11px;margin-top:4px">CANON OUV</div>
   <div style="color:#6e7681;font-size:10px">OUT1+</div>
 </div>
-<div style="width:72px;text-align:center;border:2px solid #ff6b6b;border-radius:4px;padding:8px 4px;background:#12181e">
+<div class="borne-card" style="width:72px;text-align:center;border:2px solid #ff6b6b;border-radius:4px;padding:8px 4px;background:#12181e">
   <div style="color:#ff6b6b;font-size:18px;font-weight:bold">4</div>
   <div style="color:#ff6b6b;font-size:11px;margin-top:4px">CANON FERM</div>
   <div style="color:#6e7681;font-size:10px">OUT3+</div>
 </div>
-<div style="width:72px;text-align:center;border:2px solid #ff6b6b;border-radius:4px;padding:8px 4px;background:#12181e">
+<div class="borne-card" style="width:72px;text-align:center;border:2px solid #ff6b6b;border-radius:4px;padding:8px 4px;background:#12181e">
   <div style="color:#ff6b6b;font-size:18px;font-weight:bold">5</div>
   <div style="color:#ff6b6b;font-size:11px;margin-top:4px">POUMON OUV</div>
   <div style="color:#6e7681;font-size:10px">OUT2+</div>
 </div>
-<div style="width:72px;text-align:center;border:2px solid #ff6b6b;border-radius:4px;padding:8px 4px;background:#12181e">
+<div class="borne-card" style="width:72px;text-align:center;border:2px solid #ff6b6b;border-radius:4px;padding:8px 4px;background:#12181e">
   <div style="color:#ff6b6b;font-size:18px;font-weight:bold">6</div>
   <div style="color:#ff6b6b;font-size:11px;margin-top:4px">POUMON FERM</div>
   <div style="color:#6e7681;font-size:10px">OUT4+</div>
 </div>
 <div style="width:3px;background:#30363d;border-radius:2px;margin:0 4px"></div>
-<div style="width:72px;text-align:center;border:2px solid #ff9f43;border-radius:4px;padding:8px 4px;background:#12181e">
+<div class="borne-card" style="width:72px;text-align:center;border:2px solid #ff9f43;border-radius:4px;padding:8px 4px;background:#12181e">
   <div style="color:#ff9f43;font-size:18px;font-weight:bold">7</div>
   <div style="color:#ff9f43;font-size:11px;margin-top:4px">Vitesse alim</div>
   <div style="color:#6e7681;font-size:10px">12V repiqué</div>
 </div>
-<div style="width:72px;text-align:center;border:2px solid #69db7c;border-radius:4px;padding:8px 4px;background:#12181e">
+<div class="borne-card" style="width:72px;text-align:center;border:2px solid #69db7c;border-radius:4px;padding:8px 4px;background:#12181e">
   <div style="color:#69db7c;font-size:18px;font-weight:bold">8</div>
   <div style="color:#69db7c;font-size:11px;margin-top:4px">Vitesse signal</div>
   <div style="color:#6e7681;font-size:10px">GPIO 34</div>
 </div>
-<div style="width:72px;text-align:center;border:2px solid #69db7c;border-radius:4px;padding:8px 4px;background:#12181e">
+<div class="borne-card" style="width:72px;text-align:center;border:2px solid #69db7c;border-radius:4px;padding:8px 4px;background:#12181e">
   <div style="color:#69db7c;font-size:18px;font-weight:bold">9</div>
   <div style="color:#69db7c;font-size:11px;margin-top:4px">Fin de course</div>
   <div style="color:#6e7681;font-size:10px">GPIO 35</div>
 </div>
-<div style="width:72px;text-align:center;border:2px solid #69db7c;border-radius:4px;padding:8px 4px;background:#12181e">
+<div class="borne-card" style="width:72px;text-align:center;border:2px solid #69db7c;border-radius:4px;padding:8px 4px;background:#12181e">
   <div style="color:#69db7c;font-size:18px;font-weight:bold">10</div>
   <div style="color:#69db7c;font-size:11px;margin-top:4px">Sécu spires</div>
   <div style="color:#6e7681;font-size:10px">GPIO 32</div>
 </div>
-<div style="width:72px;text-align:center;border:2px solid #69db7c;border-radius:4px;padding:8px 4px;background:#12181e">
+<div class="borne-card" style="width:72px;text-align:center;border:2px solid #69db7c;border-radius:4px;padding:8px 4px;background:#12181e">
   <div style="color:#69db7c;font-size:18px;font-weight:bold">11</div>
   <div style="color:#69db7c;font-size:11px;margin-top:4px">Poumon plein</div>
   <div style="color:#6e7681;font-size:10px">GPIO 33</div>
 </div>
-<div style="width:72px;text-align:center;border:2px solid #69db7c;border-radius:4px;padding:8px 4px;background:#12181e">
+<div class="borne-card" style="width:72px;text-align:center;border:2px solid #69db7c;border-radius:4px;padding:8px 4px;background:#12181e">
   <div style="color:#69db7c;font-size:18px;font-weight:bold">12</div>
   <div style="color:#69db7c;font-size:11px;margin-top:4px">Pressostat</div>
   <div style="color:#6e7681;font-size:10px">GPIO 25</div>
@@ -847,6 +911,21 @@ function showTab(btn, id) {
   btn.classList.add('active');
   document.getElementById(id).classList.add('active');
 }
+
+function toggleTheme() {
+  const light = document.body.classList.toggle('light');
+  const btn = document.getElementById('themeBtn');
+  btn.textContent = light ? '☾ Mode sombre' : '☀ Mode clair';
+  localStorage.setItem('theme', light ? 'light' : 'dark');
+}
+
+// Restaurer le thème au chargement
+(function() {
+  if (localStorage.getItem('theme') === 'light') {
+    document.body.classList.add('light');
+    document.getElementById('themeBtn').textContent = '☾ Mode sombre';
+  }
+})();
 </script>
 </body>
 </html>
