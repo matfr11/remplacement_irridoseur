@@ -10,8 +10,8 @@ updated: 2026-05-31
 Remplacement de la régulation électronique d'un enrouleur d'irrigation Irrifrance Structure 1 Bis
 (tuyau PE Ø82mm, 330m) dont l'Irridoseur 3 d'origine est en panne irréparable. L'ESP32 recrée la
 logique de régulation hydraulique par poumon TPI : ouverture canon → remplissage poumon → cliquet
-bobine → avance tuyau → vitesse d'enroulement contrôlée. Le firmware tourne sur un ESP32 Quad MOS
-Switch Module (4 canaux MOSFET 12V intégrés). L'interface opérateur est un WebSocket/HTML embarqué
+bobine → avance tuyau → vitesse d'enroulement contrôlée. Le firmware tourne sur un ESP32-D DevKit
++ shield breakout Heemol 38p, avec module MOSFET externe 4CH (SKU01357). L'interface opérateur est un WebSocket/HTML embarqué
 accessible en WiFi AP depuis un smartphone. La régulation est feedforward + correction Kp sur la
 vitesse mesurée par pastilles. La machine d'états compte 10 états. La persistance (urgences,
 longueurs, config) est en NVS flash. Un simulateur WebSocket intégré permet de tester sans matériel.
@@ -28,12 +28,12 @@ longueurs, config) est en NVS flash. Un simulateur WebSocket intégré permet de
 - **OTA** : POST /ota/update (httpd_handle_t)
 - **WiFi** : AP "IRRIDOSEUR-XXXX" (4 derniers octets MAC), pas de STA
 
-## Carte : ESP32 Quad MOS Switch Module
+## Carte : ESP32-D DevKit + shield Heemol 38p + module MOSFET SKU01357
 
-- 4 canaux MOSFET DC 5-60V intégrés (OUT1..OUT4)
-- Buck 12V intégré, alimentation USB-C ou 12V direct
-- **⚠️ PIN_EV_CANON=25, PIN_EV_POUMON=26 sont provisoires** — à identifier sur schéma Quad MOS
-  (`#warning` présent dans gpio_config.h)
+- Shield passif (borniers à vis des deux côtés), alimentation 5V via LM2596 #1 externe
+- Module MOSFET 4CH externe (SKU01357) alimenté 6V via LM2596 #2
+- GPIO EV : 18 (CANON OUV), 19 (POUMON OUV), **26** (CANON FERM), **27** (POUMON FERM)
+- JTAG complet disponible : GPIO 12/13/14/15
 
 ## État d'avancement par PR
 
@@ -78,7 +78,7 @@ longueurs, config) est en NVS flash. Un simulateur WebSocket intégré permet de
 
 ## Pièges connus et erreurs à ne pas reproduire
 
-1. **PIN_EV_CANON/POUMON** : valeurs provisoires GPIO 25/26 — `#warning` à résoudre avant prod.
+1. **GPIO EV définitifs** : CANON OUV=18, POUMON OUV=19, CANON FERM=26, POUMON FERM=27. GPIO 25 = pressostat (entrée). Plus de `#warning` — pinout final depuis migration Heemol 38p (v2.3.0).
 2. **t_vidange_s = 0.0** : non mesurée terrain — T_attente sera sous-estimé si > 0 réel.
 3. **cycles_par_tour** : mesuré physiquement = 40 sur cet enrouleur. Si 0 → mode dégradé A inactif.
 4. **spires_par_etage** : abaque prédit 289m tuyau mais physique = 330m → possible 5ème étage à confirmer terrain.

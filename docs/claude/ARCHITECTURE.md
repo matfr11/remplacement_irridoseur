@@ -9,7 +9,7 @@ updated: 2026-05-31
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                        ESP32 Quad MOS Switch Module                         │
+│                    ESP-32D DevKit + shield Heemol 38p                       │
 │                                                                             │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
 │  │                         app_main()                                   │   │
@@ -144,13 +144,13 @@ main.c
 
 | GPIO | Direction | Signal | Logique | Conditionnement |
 |---|---|---|---|---|
-| **0** | ENTRÉE | Bouton physique carte | — | Bouton intégré Quad MOS |
-| **16** | SORTIE | EV_CANON | HIGH = ouvert | Canal MOSFET Quad MOS OUT1 |
-| **17** | SORTIE | EV_POUMON | HIGH = ouvert | Canal MOSFET Quad MOS OUT2 |
-| **23** | SORTIE | LED carte / Heartbeat RC | toggle 1Hz si `heartbeat_rc_on=true` | LED verte carte — défaut OFF |
+| **2**  | SORTIE | LED bleue / Heartbeat RC | toggle 1Hz si `heartbeat_rc_on=true` | LED bleue DevKit — défaut OFF |
+| **18** | SORTIE | EV_CANON OUVRIR | impulsion 100ms → ouverture mécanique | Module MOSFET IN1 via LM2596 #2 6V |
+| **19** | SORTIE | EV_POUMON OUVRIR | impulsion 100ms → ouverture mécanique | Module MOSFET IN2 via LM2596 #2 6V |
+| **23** | SORTIE | TPL5010 DONE | impulsion 100ms toutes les ~2s | Watchdog hardware |
 | **25** | ENTRÉE | Pressostat | LOW = pression OK, HIGH = absent | Pull-up 10kΩ externe, NC |
-| **26** | SORTIE | EV_CANON FERMER | impulsion 100ms HIGH → fermeture mécanique | QMOS OUT3 via LM2596 6V |
-| **27** | SORTIE | EV_POUMON FERMER | impulsion 100ms HIGH → fermeture mécanique | QMOS OUT4 via LM2596 6V |
+| **26** | SORTIE | EV_CANON FERMER | impulsion 100ms → fermeture mécanique | Module MOSFET IN3 via LM2596 #2 6V |
+| **27** | SORTIE | EV_POUMON FERMER | impulsion 100ms → fermeture mécanique | Module MOSFET IN4 via LM2596 #2 6V |
 | **32** | ENTRÉE | Sécurité spires (débordement) | LOW = normal, HIGH = SEC-2 | Pull-up 10kΩ externe, NC |
 | **33** | ENTRÉE | Contact poumon plein | LOW = en cours, HIGH = plein | Pull-up 10kΩ externe, NC |
 | **34** | ENTRÉE | Capteur vitesse (impulsions) | flancs montants ISR | Diviseur 10kΩ/5,6kΩ (8V→2,87V) |
@@ -180,7 +180,7 @@ Fil coupé → HIGH → sécurité active → fail-safe.
 | `cycles_tour` | float | 0.0 | Cycles poumon par tour de bobine |
 | `batt_warn_v` | float | 11.5 | Seuil alerte batterie (V) |
 | `batt_crit_v` | float | 11.0 | Seuil critique batterie (V) |
-| `hb_rc` | u8 (bool) | 0 | Heartbeat GPIO 23 (LED carte) pour circuit RC (défaut OFF) |
+| `hb_rc` | u8 (bool) | 0 | Heartbeat GPIO 2 (LED bleue DevKit) pour circuit RC (défaut OFF) |
 | `t_rempl_min` | float | 5.0 | Temps remplissage min historique (s) — V_max theorique ; mis a jour uniquement si nouvelle valeur < courante ; remis a 5.0 sur cmd_reset |
 
 ### Namespace `irri_prog0` .. `irri_prog4`

@@ -39,7 +39,7 @@ points de test), voir [HARDWARE.md](HARDWARE.md).
  │  │  GPIO25 ◄─[pull-up]── borne 12  ◄── Pressostat (NC)                    │
  │  └────────────────────────────┘                                            │
  │                                                                            │
- │   Bornier DIN 12 voies : [1][2][3][4][5][6] │ [7][8][9][10][11][12]       │
+ │   Bornier DIN 20 voies : [1][2][3][4][5][6] │ [7][8][9][10][11][12] [13-20] │
  │                            PUISSANCE        │       SIGNAUX                │
  └────────────────────────────────────────────────────────────────────────────┘
         │    │                                       │
@@ -49,7 +49,7 @@ points de test), voir [HARDWARE.md](HARDWARE.md).
 
 ---
 
-## Bornier 12 voies — affectation
+## Bornier 20 voies — affectation
 
 Principe : **puissance à gauche (1-6), signaux à droite (7-12), réserve (13-20)** — les transitoires
 de commutation des EV (≈ 830 mA sur 100 ms) ne longent pas les entrées 3,3 V haute
@@ -250,7 +250,7 @@ RC fail-safe (désactivé par défaut, Config → Machine).
 
 ## Ordre de montage conseillé
 
-1. **Rail DIN** fixé dans le boîtier ; bornier 12 voies + carte ES30G29 + Module MOSFET +
+1. **Rail DIN** fixé dans le boîtier ; bornier 20 voies + shield Heemol + Module MOSFET +
    INA3221 + module LM2596.
 2. **Réglages avant câblage** : ajuster le LM2596 à 6 V (multimètre, potentiomètre) ;
    vérifier A0 de l'INA à GND.

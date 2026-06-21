@@ -81,7 +81,7 @@ static bool              s_demarrage_autorise = true;  // false uniquement aprè
 // Coupure de courant détectée au boot (session_active=1 sans urgence au redémarrage)
 static bool              s_coupure_detectee   = false;
 
-// Heartbeat circuit RC (PIN_HEARTBEAT, GPIO 23) — conditionnel sur cfg.heartbeat_rc_on
+// Heartbeat circuit RC (PIN_HEARTBEAT, GPIO 2) — conditionnel sur cfg.heartbeat_rc_on
 static bool              s_heartbeat_level    = false;
 static int64_t           s_heartbeat_ms       = 0;
 
@@ -926,7 +926,7 @@ void tick_state_machine(void)
     s_status.vitesse_max_m_h        = s_vitesse_max_m_h;
     s_status.dose_corrigee_mm       = s_dose_corrigee_mm;
 
-    // Heartbeat PIN_HEARTBEAT (GPIO 23) pour circuit RC fail-safe (conditionnel)
+    // Heartbeat PIN_HEARTBEAT (GPIO 2) pour circuit RC fail-safe (conditionnel)
     if (s_cfg_machine.heartbeat_rc_on) {
         if (now_ms() - s_heartbeat_ms >= 500) {
             s_heartbeat_level = !s_heartbeat_level;

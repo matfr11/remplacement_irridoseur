@@ -27,7 +27,7 @@ typedef struct {
     float   t_rempl_fixe_s;         // Durée remplissage fixe (mode dégradé B)
     float   denivele_m;             // Dénivelé terrain (0 = plat)
     float   cycles_par_tour;        // Nb cycles poumon par tour de bobine (0 = non renseigné)
-    bool    heartbeat_rc_on;        // Heartbeat PIN_HEARTBEAT (GPIO 23) pour circuit RC fail-safe (défaut OFF)
+    bool    heartbeat_rc_on;        // Heartbeat PIN_HEARTBEAT (GPIO 2) pour circuit RC fail-safe (défaut OFF)
     float   fin_course_seuil_m;     // Longueur restante en dessous de laquelle fin_course = fin normale (défaut 10m)
     int     abaque_idx;             // Index abaque canon actif (0=SR150C, 1=SR100C)
     float   t_ouv_canon_s;          // Timer stabilisation pression OUVERTURE_CANON avant poumon (défaut 20s, plage 5..60)

@@ -197,8 +197,8 @@ svg { display:block; }
 <text x="990" y="105" fill="#6c757d" font-size="7.5"  text-anchor="middle" font-family="Courier New">SKU01357 · 7PD434 · optocoupleur</text>
 <circle cx="880" cy="135" r="4" fill="#ff6b6b"/><text x="874" y="139" fill="#ff6b6b" font-size="9" text-anchor="end" font-family="Courier New">IN1/PWM1 ← GPIO 18</text>
 <circle cx="880" cy="162" r="4" fill="#ff6b6b"/><text x="874" y="166" fill="#ff6b6b" font-size="9" text-anchor="end" font-family="Courier New">IN2/PWM2 ← GPIO 19</text>
-<circle cx="880" cy="189" r="4" fill="#ff6b6b"/><text x="874" y="193" fill="#ff6b6b" font-size="9" text-anchor="end" font-family="Courier New">IN3/PWM3 ← GPIO 14</text>
-<circle cx="880" cy="216" r="4" fill="#ff6b6b"/><text x="874" y="220" fill="#ff6b6b" font-size="9" text-anchor="end" font-family="Courier New">IN4/PWM4 ← GPIO  4</text>
+<circle cx="880" cy="189" r="4" fill="#ff6b6b"/><text x="874" y="193" fill="#ff6b6b" font-size="9" text-anchor="end" font-family="Courier New">IN3/PWM3 ← GPIO 26</text>
+<circle cx="880" cy="216" r="4" fill="#ff6b6b"/><text x="874" y="220" fill="#ff6b6b" font-size="9" text-anchor="end" font-family="Courier New">IN4/PWM4 ← GPIO 27</text>
 <circle cx="880" cy="248" r="4" fill="#868e96"/><text x="874" y="252" fill="#868e96" font-size="9" text-anchor="end" font-family="Courier New">GND1..4 cmd</text>
 <circle cx="1100" cy="135" r="4" fill="#ff6b6b"/><text x="1106" y="139" fill="#ff6b6b" font-size="9" font-family="Courier New">OUT1+ → borne 3 (EV CANON OUV)</text>
 <circle cx="1100" cy="162" r="4" fill="#ff6b6b"/><text x="1106" y="166" fill="#ff6b6b" font-size="9" font-family="Courier New">OUT2+ → borne 5 (EV POUMON OUV)</text>
@@ -393,15 +393,15 @@ svg { display:block; }
 <rect x="10" y="174" width="210" height="20" fill="#161b22" rx="3"/>
 <text x="14" y="188" fill="#ff6b6b" font-size="13" font-family="Courier New">GPIO 19 — EV_POUMON OUV</text>
 
-<!-- GPIO 14 → IN3 -->
+<!-- GPIO 26 → IN3 -->
 <line x1="160" y1="239" x2="330" y2="239" stroke="#ff6b6b" stroke-width="2.5" marker-end="url(#ma_r)"/>
 <rect x="10" y="227" width="207" height="20" fill="#161b22" rx="3"/>
-<text x="14" y="241" fill="#ff6b6b" font-size="13" font-family="Courier New">GPIO 14 — EV_CANON FERM</text>
+<text x="14" y="241" fill="#ff6b6b" font-size="13" font-family="Courier New">GPIO 26 — EV_CANON FERM</text>
 
-<!-- GPIO 4 → IN4 -->
+<!-- GPIO 27 → IN4 -->
 <line x1="160" y1="292" x2="330" y2="292" stroke="#ff6b6b" stroke-width="2.5" marker-end="url(#ma_r)"/>
 <rect x="10" y="280" width="215" height="20" fill="#161b22" rx="3"/>
-<text x="14" y="294" fill="#ff6b6b" font-size="13" font-family="Courier New">GPIO  4 — EV_POUMON FERM</text>
+<text x="14" y="294" fill="#ff6b6b" font-size="13" font-family="Courier New">GPIO 27 — EV_POUMON FERM</text>
 
 <!-- GND → GND1..4 cmd -->
 <line x1="100" y1="430" x2="330" y2="430" stroke="#868e96" stroke-width="2"/>
@@ -522,7 +522,7 @@ svg { display:block; }
 <tr><th>Canal</th><th>GPIO commande</th><th>Signal</th><th>Borne bornier</th><th>EV Bürkert</th></tr>
 <tr><td class="cr">IN1/OUT1</td><td class="cr">GPIO 18</td><td>EV_CANON OUVRIR</td><td class="cr">3</td><td>Bobine OUVRIR canon</td></tr>
 <tr><td class="cr">IN2/OUT2</td><td class="cr">GPIO 19</td><td>EV_POUMON OUVRIR</td><td class="cr">5</td><td>Bobine OUVRIR poumon</td></tr>
-<tr><td class="cr">IN3/OUT3</td><td class="cr">GPIO 14</td><td>EV_CANON FERMER</td><td class="cr">4</td><td>Bobine FERMER canon</td></tr>
+<tr><td class="cr">IN3/OUT3</td><td class="cr">GPIO 26</td><td>EV_CANON FERMER</td><td class="cr">4</td><td>Bobine FERMER canon</td></tr>
 <tr><td class="cr">IN4/OUT4</td><td class="cr">GPIO  4</td><td>EV_POUMON FERMER</td><td class="cr">6</td><td>Bobine FERMER poumon</td></tr>
 <tr><td class="cb">DC+</td><td colspan="2" class="cb">LM2596 OUT+ (6V)</td><td class="cgr">—</td><td>Alimentation bobines</td></tr>
 <tr><td class="cgr">DC−/OUT−</td><td colspan="2" class="cgr">GND commun</td><td class="cgr">2</td><td>Retour bobines</td></tr>
@@ -979,9 +979,9 @@ svg { display:block; }
 <tr><td class="co">1</td><td class="co">12V+ batterie</td><td>IN</td><td>Batterie / panneau solaire</td><td>→ VIN carte · repiquage borne 7</td><td>Câble rouge · <strong style="color:#ffd43b">F1 3A ATO</strong> sur ce fil</td></tr>
 <tr><td class="cgr">2</td><td class="cgr">GND commun</td><td>—</td><td>Batterie GND</td><td>Retour commun tous fils signal</td><td>Câble noir · point étoile unique</td></tr>
 <tr><td class="cr">3</td><td class="cr">EV CANON OUVRIR</td><td>OUT</td><td>← MOSFET OUT1+</td><td>6V via LM2596 · impulsion 100ms</td><td>GPIO 18</td></tr>
-<tr><td class="cr">4</td><td class="cr">EV CANON FERMER</td><td>OUT</td><td>← MOSFET OUT3+</td><td>6V via LM2596 · impulsion 100ms</td><td>GPIO 14</td></tr>
-<tr><td class="cr">5</td><td class="cr">EV POUMON OUVRIR</td><td>OUT</td><td>← MOSFET OUT2+</td><td>6V via LM2596 · impulsion 100ms</td><td>GPIO 19</td></tr>
-<tr><td class="cr">6</td><td class="cr">EV POUMON FERMER</td><td>OUT</td><td>← MOSFET OUT4+</td><td>6V via LM2596 · impulsion 100ms</td><td>GPIO 4</td></tr>
+<tr><td class="cr">4</td><td class="cr">EV CANON FERMER</td><td>OUT</td><td>← MOSFET OUT3+</td><td>6V via LM2596 #2 · impulsion 100ms</td><td>GPIO 26</td></tr>
+<tr><td class="cr">5</td><td class="cr">EV POUMON OUVRIR</td><td>OUT</td><td>← MOSFET OUT2+</td><td>6V via LM2596 #2 · impulsion 100ms</td><td>GPIO 19</td></tr>
+<tr><td class="cr">6</td><td class="cr">EV POUMON FERMER</td><td>OUT</td><td>← MOSFET OUT4+</td><td>6V via LM2596 #2 · impulsion 100ms</td><td>GPIO 27</td></tr>
 <tr><td class="co">7</td><td class="co">Vitesse alim 12V</td><td>OUT</td><td>Repiquage borne 1</td><td>12V directement</td><td>Alim capteur vitesse 2 fils</td></tr>
 <tr><td class="cg">8</td><td class="cg">Vitesse signal</td><td>IN</td><td>→ GPIO 34</td><td>Diviseur 10kΩ/5.6kΩ (8V→2.87V)</td><td>Input-only · pas de pull-up</td></tr>
 <tr><td class="cg">9</td><td class="cg">Fin de course</td><td>IN</td><td>→ GPIO 35</td><td>Pull-up 10kΩ vers 3.3V · contact NC</td><td>LOW=canon déroulé · HIGH=rentré</td></tr>
