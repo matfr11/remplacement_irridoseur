@@ -63,6 +63,25 @@ détaillé : [SCHEMA_CABLAGE.md](SCHEMA_CABLAGE.md#bornier-12-voies--affectation
 > Le fil commun des bobines EV (côté −) est également ramené sur la borne 2.
 > Tension batterie mesurée par INA3221 CH3 (I2C).
 
+### Fusibles — protection câblage et circuit EV
+
+| Réf | Position | Valeur | Type | Protège |
+|---|---|---|---|---|
+| **F1** | Câble 12V+ entre batterie et borne 1 | **3A ATO** | Lame ATO mini ou standard | Court-circuit câblage batterie, ensemble du système |
+| **F2** | Fil 6V entre LM2596 OUT+ et MOSFET DC+ | **2A ATO** | Lame ATO mini ou standard | Court-circuit câblage EV, MOSFET claqué |
+
+**Base de calcul** : bobine EV Bürkert Type 305 — **6V impuls 5W** → I = 5/6 = **0,83 A** par bobine.
+
+```
+F1 — courant normal ≈ 0,7A  (ESP32+capteurs 0,2A + LM2596 ~0,5A)  → marge ×4
+F2 — courant normal ≈ 0,83A (1 bobine, 100ms) · max 1,67A (2 bobines) → marge ×2,4 / ×1,2
+```
+
+Porte-fusibles inline à câbler sur le fil (porte-fusible lame ATO avec câble).
+
+> En cas de déclenchement F2 : couper le 12V, vérifier les fils EV (bornes 3-6)
+> et les diodes roue libre D1–D4 avant de remplacer le fusible.
+
 ### Diodes roue libre — obligatoires sur bornes 3/4/5/6
 
 Les bobines EV bistables sont des charges inductives. À l'arrêt de l'impulsion MOSFET,

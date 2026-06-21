@@ -19,17 +19,17 @@ points de test), voir [HARDWARE.md](HARDWARE.md).
  ┌────────────────────────────────────────────────────────────────────────────┐
  │                                                                            │
  │  ┌────────────────────────────┐         ┌─────────────────┐                │
- │  │  ESP32 Quad MOS Switch     │   I2C   │  INA3221 0x40   │                │
+ │  │  eletechsup ES30G29        │   I2C   │  INA3221 0x40   │                │
  │  │                            ├─SDA 21──┤  CH3 Batterie   │                │
- │  │  12V IN ◄── borne 1/2      ├─SCL 22──┤                 │                │
+ │  │  12V IN ◄─[F1]─ borne 1/2 ├─SCL 22──┤                 │                │
  │  │                            │         └─────────────────┘                │
- │  │  OUT1 GPIO16 ──────────────┤                                            │
- │  │  OUT2 GPIO17 ──────────────┤──► LM2596 (12V→6V) ──► bobines EV         │
- │  │  OUT3 GPIO26 ──────────────┤    (OUVRIR/FERMER canon et poumon)         │
- │  │  OUT4 GPIO27 ──────────────┘                                            │
- │  │  GPIO13 ─► TPL5010 DONE    ├─────────┐                                 │
+ │  │  GPIO 18 ──────────────────┐                                            │
+ │  │  GPIO 19 ──────────────────┤──► Module MOSFET 4CH ──► bornes 3-6       │
+ │  │  GPIO 14 ──────────────────┤    DC+ ◄─[F2]─ LM2596 6V                  │
+ │  │  GPIO  4 ──────────────────┘    (bobines EV OUVRIR/FERMER)              │
+ │  │  GPIO23 ─► TPL5010 DONE    ├─────────┐                                 │
  │  │  EN     ◄─ TPL5010 RESET   │  ┌──────┴──────────┐                      │
- │  │  GPIO23 ─► LED heartbeat   │  │ TPL5010 watchdog│                      │
+ │  │  GPIO 2 ─► LED heartbeat   │  │ TPL5010 watchdog│                      │
  │  │                            │  │ Rext 3,3MΩ→GND  │                      │
  │  │  GPIO34 ◄─[diviseur]─ borne 8   ◄── Capteur vitesse (signal 2V/8V)     │
  │  │  GPIO35 ◄─[pull-up]── borne 9   ◄── Fin de course (NC)                 │
@@ -56,12 +56,12 @@ impédance.
 
 | Borne | Signal | Câblage côté boîtier | Câblage côté terrain |
 |---|---|---|---|
-| 1 | 12V+ batterie | → VIN carte QMOS, → VIN LM2596, repiquage → borne 7 | Câble rouge batterie |
+| 1 | 12V+ batterie | → VIN ES30G29, → VIN LM2596 (après F1), repiquage → borne 7 | Câble rouge batterie · **F1 3A ATO** sur ce fil |
 | 2 | GND batterie | → GND carte, GND LM2596, retour EV et contacts | Câble noir batterie + fil retour commun |
-| 3 | EV_CANON OUVRIR | ← LM2596 6V via QMOS OUT1 (GPIO 16) | Fil bobine ouverture EV canon |
-| 4 | EV_CANON FERMER | ← LM2596 6V via QMOS OUT3 (GPIO 26) | Fil bobine fermeture EV canon |
-| 5 | EV_POUMON OUVRIR | ← LM2596 6V via QMOS OUT2 (GPIO 17) | Fil bobine ouverture EV poumon |
-| 6 | EV_POUMON FERMER | ← LM2596 6V via QMOS OUT4 (GPIO 27) | Fil bobine fermeture EV poumon |
+| 3 | EV_CANON OUVRIR | ← 6V via Module MOSFET OUT1 (GPIO 18) | Fil bobine ouverture EV canon · diode D1 sur borne |
+| 4 | EV_CANON FERMER | ← 6V via Module MOSFET OUT3 (GPIO 14) | Fil bobine fermeture EV canon · diode D3 sur borne |
+| 5 | EV_POUMON OUVRIR | ← 6V via Module MOSFET OUT2 (GPIO 19) | Fil bobine ouverture EV poumon · diode D2 sur borne |
+| 6 | EV_POUMON FERMER | ← 6V via Module MOSFET OUT4 (GPIO 4) | Fil bobine fermeture EV poumon · diode D4 sur borne |
 | 7 | Capteur vitesse alim | ← repiquage 12V borne 1 | Fil alimentation capteur |
 | 8 | Capteur vitesse signal | → diviseur 10k/5,6k → GPIO 34 | Fil signal capteur (2V/8V) |
 | 9 | Fin de course | → pull-up 10k → GPIO 35 | 1 fil du contact NC |
@@ -179,14 +179,15 @@ pour alimenter les 4 sorties MOSFET (courant de crête ≈ 830 mA × 100 ms par
 impulsion).
 
 ```
- Batterie 12V ──► LM2596 (réglé 6V) ──► VCC QMOS (commune aux 4 sorties)
+ Batterie 12V ──[F1 3A]──► borne 1 ──► LM2596 ──[F2 2A]──► DC+ Module MOSFET (6V)
 
- QMOS OUT1 (GPIO 16) ──► borne 3 ──► bobine OUVRIR  EV_CANON
- QMOS OUT3 (GPIO 26) ──► borne 4 ──► bobine FERMER  EV_CANON
- QMOS OUT2 (GPIO 17) ──► borne 5 ──► bobine OUVRIR  EV_POUMON
- QMOS OUT4 (GPIO 27) ──► borne 6 ──► bobine FERMER  EV_POUMON
+ MOSFET OUT1 (GPIO 18) ──► borne 3 ──► bobine OUVRIR  EV_CANON
+ MOSFET OUT3 (GPIO 14) ──► borne 4 ──► bobine FERMER  EV_CANON
+ MOSFET OUT2 (GPIO 19) ──► borne 5 ──► bobine OUVRIR  EV_POUMON
+ MOSFET OUT4 (GPIO  4) ──► borne 6 ──► bobine FERMER  EV_POUMON
 
  Retour commun bobines ──► borne 2 (GND)
+ Diodes D1..D4 (1N4007) : cathode sur bornes 3-6, anode sur borne 2
 ```
 
 **Fonctionnement firmware** :
@@ -230,34 +231,37 @@ déjà ses pull-ups I2C.
 ## Watchdog TPL5010 + heartbeat
 
 Câblage compact (détails, formule de timeout et procédures de test :
-[HARDWARE.md](HARDWARE.md#watchdog-matériel-tpl5010ddcr-gpio-13)) :
+[HARDWARE.md](HARDWARE.md#watchdog-matériel-tpl5010ddcr-gpio-23)) :
 
 ```
- GPIO 13 ──────► DONE     TPL5010 (SOT-23-6 sur adaptateur)
+ GPIO 23 ──────► DONE     TPL5010 (SOT-23-6 sur adaptateur)
  3,3V    ──────► VDD
  GND     ──────► GND
  GND ─[3,3 MΩ]─► REXT     (timeout ≈ 5,3 s)
  EN ESP32 ◄───── RESET
 ```
 
-GPIO 23 (LED verte carte) sert de heartbeat 1 Hz optionnel pour un futur circuit
+GPIO 2 (LED bleue carte) sert de heartbeat 1 Hz optionnel pour un futur circuit
 RC fail-safe (désactivé par défaut, Config → Machine).
 
 ---
 
 ## Ordre de montage conseillé
 
-1. **Rail DIN** fixé dans le boîtier ; bornier 12 voies + carte QMOS + INA3221 + module
-   LM2596.
+1. **Rail DIN** fixé dans le boîtier ; bornier 12 voies + carte ES30G29 + Module MOSFET +
+   INA3221 + module LM2596.
 2. **Réglages avant câblage** : ajuster le LM2596 à 6 V (multimètre, potentiomètre) ;
    vérifier A0 de l'INA à GND.
-3. **Puissance** : bornes 1-2 → carte QMOS et LM2596 ; chaînes EV (LM2596 → OUT1-4 →
-   bornes 3-6) ; vérifier le serrage, ce sont les seuls fils qui portent ≈ 800 mA.
-4. **Conditionnement signaux** : répartiteur 1→4 sur le 3,3 V, souder les 4
+3. **Fusibles** : installer les porte-fusibles ATO inline — F1 3A sur le câble 12V+
+   (entre batterie et borne 1), F2 2A sur le fil 6V (entre LM2596 OUT+ et MOSFET DC+).
+4. **Puissance** : bornes 1-2 → ES30G29 et LM2596 ; fil 6V LM2596 → MOSFET DC+ (via F2) ;
+   chaînes EV (MOSFET OUT1-4 → bornes 3-6) ; souder diodes D1..D4 sur bornier.
+   Vérifier le serrage, ce sont les seuls fils qui portent ≈ 830 mA.
+5. **Conditionnement signaux** : répartiteur 1→4 sur le 3,3 V, souder les 4
    pull-ups 10 kΩ (deux fils en Y sur la patte de sortie : GPIO + borne) et le
    diviseur 10k/5,6k, gaine thermo, raccorder bornes 7-12.
-5. **I2C + watchdog** : INA3221 (21/22), TPL5010 (13/EN).
-6. **Contrôles hors tension** (checklist ci-dessous) puis mise sous tension USB
+6. **I2C + watchdog** : INA3221 (21/22), TPL5010 (23/EN).
+7. **Contrôles hors tension** (checklist ci-dessous) puis mise sous tension USB
    seule d'abord (12 V débranché), puis 12 V.
 
 ---
@@ -274,7 +278,8 @@ RC fail-safe (désactivé par défaut, Config → Machine).
 | 6a | Contacts NC au repos | Continuité bornes 9-11 ↔ borne 2, capteurs branchés | fermé (LOW au boot) |
 | 6b | Pressostat NO (borne 12) | Continuité borne 12 ↔ borne 2, pression présente | fermé (LOW) ; ouvert (HIGH) sans pression |
 | 7 | Test fil coupé | Débrancher un contact, lire l'UI | sécurité/alarme correspondante déclenchée |
-| 8 | Test impulsion EV | Lancer un arrosage court, écouter les EVs | claquement mécanique à l'ouverture et à la fermeture |
+| 8 | Fusibles F1 et F2 en place | Visuel — porte-fusibles ATO sur câble 12V+ (F1) et fil 6V (F2) | Fusible présent (jamais de cavalier) |
+| 9 | Test impulsion EV | Lancer un arrosage court, écouter les EVs | claquement mécanique à l'ouverture et à la fermeture |
 
 Le contrôle 7 est le test fonctionnel de la règle fail-safe : **chaque entrée
 débranchée doit déclencher le même comportement que la sécurité réelle**

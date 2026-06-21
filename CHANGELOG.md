@@ -5,14 +5,27 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
-## [v2.1.5] — 2026-06-20
+## [v2.1.5] — 2026-06-21
 
 ### Added
 
+- **Fusibles F1 + F2** (`docs/dev/HARDWARE.md`, `docs/dev/SCHEMA_CABLAGE.md`,
+  `docs/dev/SCHEMA_GLOBAL.html`) : protection câblage par deux fusibles ATO lame :
+  - F1 3A ATO : câble 12V+ entre batterie et borne 1 (marge ×4 sur I_normal ≈ 0,7A)
+  - F2 2A ATO : fil 6V entre LM2596 OUT+ et MOSFET DC+ (marge ×2,4 / ×1,2 en pic)
+  - Base de calcul : Bürkert Type 305, 6V impuls 5W → I = 0,83A par bobine
+  - Ajout de symboles F1/F2 dans la Vue globale et le schéma LM2596 (SCHEMA_GLOBAL.html)
+  - Ajout d'un item dans la checklist avant mise sous tension (vérification visuelle fusibles)
+- **Diodes roue libre D1..D4** (`docs/dev/HARDWARE.md`, `docs/dev/SCHEMA_GLOBAL.html`) :
+  1N4007 ou 1N5819, cathode sur bornes 3-6 (côté EV), anode sur borne 2 (GND).
+  Protègent les MOSFETs contre la back-EMF des bobines bistables.
+  Schéma SVG ajouté dans l'onglet Module MOSFET.
 - **Schéma câblage global** (`docs/dev/SCHEMA_GLOBAL.html`) : diagramme SVG complet
   représentant tous les composants (ES30G29, module MOSFET 4CH SKU01357, INA3221, TPL5010DDCR,
-  LM2596, batterie 12V, bornier 12 voies, réseau pull-ups). Entrées commande PWM1..4 + GND
-  par canal (header), alimentation DC+/DC− côté borniers, sorties OUT1+..OUT4+ vers EVs.
+  LM2596, batterie 12V, bornier 12 voies, réseau pull-ups). Navigation à 8 onglets, mode
+  clair/sombre avec persistance localStorage.
+  Entrées commande PWM1..4 + GND par canal (header), alimentation DC+/DC− côté borniers,
+  sorties OUT1+..OUT4+ vers EVs.
 
 ### Changed
 

@@ -237,10 +237,18 @@ svg { display:block; }
 <line x1="250" y1="735" x2="480" y2="735" stroke="#74c0fc" stroke-width="1.5" stroke-dasharray="6,3"/>
 <text x="345" y="731" fill="#74c0fc" font-size="8" font-family="Courier New">3.3V</text>
 <line x1="1075" y1="428" x2="1135" y2="428" stroke="#4dabf7" stroke-width="2"/>
-<line x1="1135" y1="428" x2="1135" y2="283" stroke="#4dabf7" stroke-width="2"/>
+<line x1="1135" y1="428" x2="1135" y2="360" stroke="#4dabf7" stroke-width="2"/>
+<!-- F2 2A ATO sur le fil 6V LM2596→MOSFET -->
+<rect x="1121" y="360" width="28" height="16" rx="3" fill="#001828" stroke="#ffd43b" stroke-width="1.5"/>
+<text x="1135" y="372" fill="#ffd43b" font-size="7" text-anchor="middle" font-family="Courier New">F2</text>
+<line x1="1135" y1="376" x2="1135" y2="283" stroke="#4dabf7" stroke-width="2"/>
 <line x1="1135" y1="283" x2="1100" y2="283" stroke="#4dabf7" stroke-width="2" marker-end="url(#arr_b)"/>
-<text x="1139" y="360" fill="#4dabf7" font-size="8" font-family="Courier New">6V</text>
-<line x1="88" y1="636" x2="88" y2="760" stroke="#ff9f43" stroke-width="1.5"/>
+<text x="1139" y="340" fill="#4dabf7" font-size="8" font-family="Courier New">6V</text>
+<!-- F1 3A ATO sur le câble 12V+ (entre batterie et bus) -->
+<line x1="88" y1="636" x2="88" y2="700" stroke="#ff9f43" stroke-width="1.5"/>
+<rect x="74" y="700" width="28" height="16" rx="3" fill="#2a1500" stroke="#ffd43b" stroke-width="1.5"/>
+<text x="88" y="712" fill="#ffd43b" font-size="7" text-anchor="middle" font-family="Courier New">F1</text>
+<line x1="88" y1="716" x2="88" y2="760" stroke="#ff9f43" stroke-width="1.5"/>
 <line x1="162" y1="636" x2="162" y2="785" stroke="#868e96" stroke-width="1.5"/>
 <path d="M730,760 L730,655" stroke="#ff9f43" stroke-width="1.5" fill="none" marker-end="url(#arr_o)"/>
 <path d="M880,760 L880,452" stroke="#868e96" stroke-width="1.5" fill="none"/>
@@ -743,8 +751,11 @@ svg { display:block; }
 
 <!-- ── DROITE : 6V sortie ── -->
 <line x1="550" y1="128" x2="750" y2="128" stroke="#4dabf7" stroke-width="2.5" marker-end="url(#lb)"/>
-<rect x="566" y="116" width="220" height="20" fill="#161b22" rx="3"/>
-<text x="570" y="130" fill="#4dabf7" font-size="13" font-family="Courier New">DC+ MOSFET (6V bobines)</text>
+<!-- F2 2A ATO sur la sortie LM2596 -->
+<rect x="596" y="116" width="28" height="20" rx="3" fill="#001828" stroke="#ffd43b" stroke-width="1.5"/>
+<text x="610" y="130" fill="#ffd43b" font-size="11" text-anchor="middle" font-family="Courier New">F2</text>
+<rect x="630" y="116" width="115" height="20" fill="#161b22" rx="3"/>
+<text x="634" y="130" fill="#4dabf7" font-size="13" font-family="Courier New">DC+ MOSFET 6V</text>
 
 <line x1="550" y1="218" x2="750" y2="218" stroke="#868e96" stroke-width="2.5" marker-end="url(#lg)"/>
 <rect x="566" y="206" width="152" height="20" fill="#161b22" rx="3"/>
@@ -956,7 +967,7 @@ svg { display:block; }
 
 <table>
 <tr><th>#</th><th>Signal</th><th>Dir</th><th>Source / Dest</th><th>Conditionnement</th><th>Note</th></tr>
-<tr><td class="co">1</td><td class="co">12V+ batterie</td><td>IN</td><td>Batterie / panneau solaire</td><td>→ VIN carte · repiquage borne 7</td><td>Câble rouge · fusible recommandé</td></tr>
+<tr><td class="co">1</td><td class="co">12V+ batterie</td><td>IN</td><td>Batterie / panneau solaire</td><td>→ VIN carte · repiquage borne 7</td><td>Câble rouge · <strong style="color:#ffd43b">F1 3A ATO</strong> sur ce fil</td></tr>
 <tr><td class="cgr">2</td><td class="cgr">GND commun</td><td>—</td><td>Batterie GND</td><td>Retour commun tous fils signal</td><td>Câble noir · point étoile unique</td></tr>
 <tr><td class="cr">3</td><td class="cr">EV CANON OUVRIR</td><td>OUT</td><td>← MOSFET OUT1+</td><td>6V via LM2596 · impulsion 100ms</td><td>GPIO 18</td></tr>
 <tr><td class="cr">4</td><td class="cr">EV CANON FERMER</td><td>OUT</td><td>← MOSFET OUT3+</td><td>6V via LM2596 · impulsion 100ms</td><td>GPIO 14</td></tr>
