@@ -108,7 +108,7 @@ svg { display:block; }
 
 <div class="tabbar">
   <button class="tab active" onclick="showTab(this,'global')">Vue globale</button>
-  <button class="tab" onclick="showTab(this,'es30g29')">ES30G29</button>
+  <button class="tab" onclick="showTab(this,'es30g29')">Heemol 38p</button>
   <button class="tab" onclick="showTab(this,'mosfet')">Module MOSFET</button>
   <button class="tab" onclick="showTab(this,'ina3221')">INA3221</button>
   <button class="tab" onclick="showTab(this,'tpl5010')">TPL5010</button>
@@ -135,8 +135,8 @@ svg { display:block; }
 <text x="700" y="28" fill="#ffffff" font-size="15" font-weight="bold" text-anchor="middle" font-family="Courier New">Schéma câblage global — Irrifrance ESP32</text>
 <text x="700" y="44" fill="#adb5bd" font-size="9" text-anchor="middle" font-family="Courier New">ES30G29 · Module MOSFET 4CH · INA3221 · TPL5010DDCR · LM2596 12V→6V · Bornier 12 voies</text>
 <rect x="480" y="60" width="250" height="760" rx="8" fill="#1a472a" stroke="#2d6a4f" stroke-width="2"/>
-<text x="605" y="84"  fill="#e0e0e0" font-size="13" font-weight="bold" text-anchor="middle" font-family="Courier New">eletechsup ES30G29</text>
-<text x="605" y="100" fill="#6c757d" font-size="9"  text-anchor="middle" font-family="Courier New">ESP32-WROOM</text>
+<text x="605" y="84"  fill="#e0e0e0" font-size="13" font-weight="bold" text-anchor="middle" font-family="Courier New">ESP-32D + Heemol 38p</text>
+<text x="605" y="100" fill="#6c757d" font-size="9"  text-anchor="middle" font-family="Courier New">ESP32-WROOM-32D · shield passif</text>
 <circle cx="480" cy="185" r="4" fill="#ffd43b"/><text x="474" y="189" fill="#ffd43b" font-size="9" text-anchor="end" font-family="Courier New">21 SDA</text>
 <circle cx="480" cy="212" r="4" fill="#ffd43b"/><text x="474" y="216" fill="#ffd43b" font-size="9" text-anchor="end" font-family="Courier New">22 SCL</text>
 <circle cx="480" cy="242" r="4" fill="#cc5de8"/><text x="474" y="246" fill="#cc5de8" font-size="9" text-anchor="end" font-family="Courier New">23 TPL DONE</text>
@@ -150,7 +150,7 @@ svg { display:block; }
 <circle cx="480" cy="488" r="4" fill="#69db7c"/><text x="474" y="492" fill="#69db7c" font-size="9" text-anchor="end" font-family="Courier New">25 pressat</text>
 <circle cx="480" cy="545" r="3" fill="#495057"/><text x="474" y="549" fill="#495057" font-size="8" text-anchor="end" font-family="Courier New">26 libre</text>
 <circle cx="480" cy="568" r="3" fill="#495057"/><text x="474" y="572" fill="#495057" font-size="8" text-anchor="end" font-family="Courier New">27 libre</text>
-<circle cx="480" cy="598" r="4" fill="#ff6b6b"/><text x="474" y="602" fill="#ff6b6b" font-size="9" text-anchor="end" font-family="Courier New">14 EV_CF</text>
+<circle cx="480" cy="598" r="4" fill="#ff6b6b"/><text x="474" y="602" fill="#ff6b6b" font-size="9" text-anchor="end" font-family="Courier New">26 EV_CF</text>
 <circle cx="480" cy="625" r="3" fill="#495057"/><text x="474" y="629" fill="#495057" font-size="8" text-anchor="end" font-family="Courier New">12 libre</text>
 <circle cx="480" cy="648" r="3" fill="#495057"/><text x="474" y="652" fill="#495057" font-size="8" text-anchor="end" font-family="Courier New">13 libre</text>
 <circle cx="480" cy="678" r="4" fill="#868e96"/><text x="474" y="682" fill="#868e96" font-size="9" text-anchor="end" font-family="Courier New">GND</text>
@@ -159,10 +159,10 @@ svg { display:block; }
 <circle cx="730" cy="209" r="3" fill="#495057"/><text x="736" y="213" fill="#495057" font-size="8" font-family="Courier New">5 libre</text>
 <circle cx="730" cy="236" r="3" fill="#74c0fc"/><text x="736" y="240" fill="#74c0fc" font-size="8" font-family="Courier New">17 LoRa TX V3</text>
 <circle cx="730" cy="263" r="3" fill="#74c0fc"/><text x="736" y="267" fill="#74c0fc" font-size="8" font-family="Courier New">16 LoRa RX V3</text>
-<circle cx="730" cy="290" r="4" fill="#ff6b6b"/><text x="736" y="294" fill="#ff6b6b" font-size="9" font-family="Courier New">4  EV_PF</text>
+<circle cx="730" cy="290" r="4" fill="#ff6b6b"/><text x="736" y="294" fill="#ff6b6b" font-size="9" font-family="Courier New">27 EV_PF</text>
 <circle cx="730" cy="317" r="4" fill="#69db7c"/><text x="736" y="321" fill="#69db7c" font-size="9" font-family="Courier New">2  heartbeat LED</text>
 <circle cx="730" cy="344" r="3" fill="#495057"/><text x="736" y="348" fill="#495057" font-size="8" font-family="Courier New">15 libre</text>
-<circle cx="730" cy="595" r="4" fill="#ff9f43"/><text x="736" y="599" fill="#ff9f43" font-size="9" font-family="Courier New">VIN 12V</text>
+<circle cx="730" cy="595" r="4" fill="#69db7c"/><text x="736" y="599" fill="#69db7c" font-size="9" font-family="Courier New">5V (LM2596 #1)</text>
 <circle cx="730" cy="628" r="4" fill="#74c0fc"/><text x="736" y="632" fill="#74c0fc" font-size="9" font-family="Courier New">3.3V out</text>
 <circle cx="730" cy="655" r="4" fill="#868e96"/><text x="736" y="659" fill="#868e96" font-size="9" font-family="Courier New">GND</text>
 <rect x="65" y="68" width="185" height="175" rx="6" fill="#0d1b2a" stroke="#cc5de8" stroke-width="1.5"/>
@@ -208,7 +208,7 @@ svg { display:block; }
 <circle cx="1100" cy="283" r="4" fill="#4dabf7"/><text x="1106" y="287" fill="#4dabf7" font-size="9" font-family="Courier New">DC+ ← 6V (LM2596 OUT+)</text>
 <circle cx="1100" cy="308" r="4" fill="#868e96"/><text x="1106" y="312" fill="#868e96" font-size="9" font-family="Courier New">DC− ← GND</text>
 <rect x="880" y="365" width="195" height="110" rx="6" fill="#0d2b4e" stroke="#4dabf7" stroke-width="1.5"/>
-<text x="977" y="388" fill="#4dabf7" font-size="11" font-weight="bold" text-anchor="middle" font-family="Courier New">LM2596 DC-DC</text>
+<text x="977" y="388" fill="#4dabf7" font-size="11" font-weight="bold" text-anchor="middle" font-family="Courier New">LM2596 #2 — 6V EV</text>
 <text x="977" y="403" fill="#6c757d" font-size="8"  text-anchor="middle" font-family="Courier New">12V → 6V  (régler potentiomètre)</text>
 <circle cx="880" cy="428" r="4" fill="#ff9f43"/><text x="874" y="432" fill="#ff9f43" font-size="9" text-anchor="end" font-family="Courier New">IN+  12V</text>
 <circle cx="880" cy="452" r="4" fill="#868e96"/><text x="874" y="456" fill="#868e96" font-size="9" text-anchor="end" font-family="Courier New">IN−  GND</text>
@@ -250,7 +250,10 @@ svg { display:block; }
 <text x="88" y="712" fill="#ffd43b" font-size="7" text-anchor="middle" font-family="Courier New">F1</text>
 <line x1="88" y1="716" x2="88" y2="760" stroke="#ff9f43" stroke-width="1.5"/>
 <line x1="162" y1="636" x2="162" y2="785" stroke="#868e96" stroke-width="1.5"/>
-<path d="M730,760 L730,655" stroke="#ff9f43" stroke-width="1.5" fill="none" marker-end="url(#arr_o)"/>
+<!-- LM2596 #1 : 12V→5V ESP32 (via AMS1117 DevKit) -->
+<path d="M730,760 L730,655" stroke="#69db7c" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#arr_g)"/>
+<text x="734" y="718" fill="#69db7c" font-size="7" font-family="Courier New">LM2596#1</text>
+<text x="734" y="728" fill="#69db7c" font-size="7" font-family="Courier New">12V→5V</text>
 <path d="M880,760 L880,452" stroke="#868e96" stroke-width="1.5" fill="none"/>
 <path d="M860,760 L860,428 L880,428" stroke="#ff9f43" stroke-width="1.5" fill="none" marker-end="url(#arr_o)"/>
 <path d="M365,760 L365,510 L95,510" stroke="#ff9f43" stroke-width="1.5" fill="none" marker-end="url(#arr_o)"/>
@@ -293,22 +296,22 @@ svg { display:block; }
 <line x1="950" y1="588" x2="985" y2="588" stroke="#cc5de8"  stroke-width="2" marker-end="url(#arr_p)"/><text x="993" y="592" fill="#cc5de8"  font-size="9" font-family="Courier New">TPL5010 watchdog (DONE/RESET)</text>
 <line x1="950" y1="608" x2="985" y2="608" stroke="#69db7c"  stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr_g)"/><text x="993" y="612" fill="#69db7c"  font-size="9" font-family="Courier New">Capteurs / contacts (via pull-ups)</text>
 <line x1="950" y1="628" x2="985" y2="628" stroke="#ff9f43"  stroke-width="2" marker-end="url(#arr_o)"/><text x="993" y="632" fill="#ff9f43"  font-size="9" font-family="Courier New">Alimentation 12V (batterie)</text>
-<line x1="950" y1="648" x2="985" y2="648" stroke="#4dabf7"  stroke-width="2" marker-end="url(#arr_b)"/><text x="993" y="652" fill="#4dabf7"  font-size="9" font-family="Courier New">6V LM2596 → MOSFET DC+</text>
+<line x1="950" y1="648" x2="985" y2="648" stroke="#4dabf7"  stroke-width="2" marker-end="url(#arr_b)"/><text x="993" y="652" fill="#4dabf7"  font-size="9" font-family="Courier New">6V LM2596 #2 → MOSFET DC+</text>
 <line x1="950" y1="668" x2="985" y2="668" stroke="#74c0fc"  stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arr_c)"/><text x="993" y="672" fill="#74c0fc"  font-size="9" font-family="Courier New">3.3V (bus interne → INA, TPL)</text>
 <line x1="950" y1="688" x2="985" y2="688" stroke="#868e96"  stroke-width="2" marker-end="url(#arr_gr)"/><text x="993" y="692" fill="#868e96"  font-size="9" font-family="Courier New">GND commun</text>
 </svg>
 </div>
 
-<!-- ═══════════════════════════════════════════════════ ES30G29 -->
+<!-- ═══════════════════════════════════════════════════ HEEMOL 38p -->
 <div id="es30g29" class="panel">
-<h2>eletechsup ES30G29 — Affectation complète des broches</h2>
-<p class="sub">ESP32-WROOM sur shield borniers à vis · GPIO optimisés pour WiFi (ADC1 uniquement pour capteurs)</p>
+<h2>ESP-32D DevKit + shield breakout Heemol 38 pins — Affectation complète</h2>
+<p class="sub">ESP32-WROOM-32D · shield passif (borniers à vis des deux côtés) · alimentation 5V via LM2596 #1 externe · JTAG complet disponible (GPIO 12/13/14/15)</p>
 <table>
 <tr><th>GPIO</th><th>Signal</th><th>Dir</th><th>Connexion</th><th>Note</th></tr>
 <tr><td class="cr">18</td><td class="cr">EV_CANON OUVRIR</td><td>OUT</td><td>→ Module MOSFET IN1/PWM1</td><td>Impulsion 100ms</td></tr>
 <tr><td class="cr">19</td><td class="cr">EV_POUMON OUVRIR</td><td>OUT</td><td>→ Module MOSFET IN2/PWM2</td><td>Impulsion 100ms</td></tr>
-<tr><td class="cr">14</td><td class="cr">EV_CANON FERMER</td><td>OUT</td><td>→ Module MOSFET IN3/PWM3</td><td>Impulsion 100ms</td></tr>
-<tr><td class="cr"> 4</td><td class="cr">EV_POUMON FERMER</td><td>OUT</td><td>→ Module MOSFET IN4/PWM4</td><td>Impulsion 100ms</td></tr>
+<tr><td class="cr">26</td><td class="cr">EV_CANON FERMER</td><td>OUT</td><td>→ Module MOSFET IN3/PWM3</td><td>Impulsion 100ms · ex-GPIO14 (libère JTAG TMS)</td></tr>
+<tr><td class="cr">27</td><td class="cr">EV_POUMON FERMER</td><td>OUT</td><td>→ Module MOSFET IN4/PWM4</td><td>Impulsion 100ms · ex-GPIO4 (libère strapping pin)</td></tr>
 <tr><td class="cy">21</td><td class="cy">I2C SDA</td><td>I/O</td><td>→ INA3221 SDA</td><td>Pull-up interne activée</td></tr>
 <tr><td class="cy">22</td><td class="cy">I2C SCL</td><td>I/O</td><td>→ INA3221 SCL</td><td>Pull-up interne activée</td></tr>
 <tr><td class="cp">23</td><td class="cp">TPL5010 DONE</td><td>OUT</td><td>→ TPL5010 pin 2 (DONE)</td><td>Impulsion 100ms toutes les ~2s</td></tr>
@@ -319,12 +322,13 @@ svg { display:block; }
 <tr><td class="cg">32</td><td class="cg">Sécurité spires</td><td>IN</td><td>← Pull-up 10kΩ → borne 10</td><td>ADC1 CH4 · contact NC</td></tr>
 <tr><td class="cg">33</td><td class="cg">Contact poumon plein</td><td>IN</td><td>← Pull-up 10kΩ → borne 11</td><td>ADC1 CH5 · contact NC</td></tr>
 <tr><td class="cg">25</td><td class="cg">Pressostat</td><td>IN</td><td>← Pull-up 10kΩ → borne 12</td><td>ADC2 CH8 (digital uniquement)</td></tr>
-<tr><td class="co">VIN</td><td class="co">Alimentation 12V</td><td>IN</td><td>← Batterie 12V · borne 1</td><td>7..16V accepté par le régulateur ES30G29</td></tr>
-<tr><td class="cc">3.3V</td><td class="cc">Sortie régulée</td><td>OUT</td><td>→ INA3221 VS · TPL5010 VDD · réseau pull-ups</td><td>~150mA disponible</td></tr>
+<tr><td class="co">5V</td><td class="co">Alimentation 5V</td><td>IN</td><td>← LM2596 #1 (12V→5V) + filtre 100µF/100nF</td><td>→ AMS1117 onboard DevKit → 3.3V ESP32</td></tr>
+<tr><td class="cc">3.3V</td><td class="cc">Sortie régulée</td><td>OUT</td><td>→ INA3221 VS · TPL5010 VDD · réseau pull-ups</td><td>~150mA disponible (AMS1117 onboard)</td></tr>
 <tr><td class="cgr">GND</td><td class="cgr">Masse commune</td><td>—</td><td>Borne 2 · GND batterie · GND modules</td><td>Retour commun unique</td></tr>
 <tr><td class="cc">16,17</td><td class="cc">UART2</td><td>—</td><td>Réservé LoRa/GSM V3</td><td class="cd">Non câblé actuellement</td></tr>
 <tr><td class="cc">36,39</td><td class="cc">ADC1 CH0/CH3</td><td>—</td><td>Réservé capteur pression analogique V3</td><td class="cd">Non câblé actuellement</td></tr>
-<tr><td class="cd">26,27,13</td><td class="cd">Libres</td><td>—</td><td>Disponibles pour évolutions</td><td class="cd">V3</td></tr>
+<tr><td class="cg">12,13,14,15</td><td class="cg">JTAG</td><td>—</td><td>Disponible pour débogage hardware</td><td class="cg">Libéré depuis v2.3.0 (ex-GPIO4/14 réaffectés)</td></tr>
+<tr><td class="cd">4,13</td><td class="cd">Libres</td><td>—</td><td>Disponibles pour évolutions</td><td class="cd">V3</td></tr>
 <tr><td class="cd"> 5, 15</td><td class="cd">Strapping pins</td><td>—</td><td class="cd">⚠ Vérifier comportement au boot avant usage</td><td class="cd">GPIO 5: SDIO timing · GPIO 15: MTDO</td></tr>
 <tr><td class="cr"> 6–11</td><td class="cr">Flash SPI interne</td><td>—</td><td class="cr">❌ NE PAS UTILISER</td><td class="cr">Connexion directe au flash</td></tr>
 </table>
@@ -407,7 +411,7 @@ svg { display:block; }
 
 <!-- LM2596 block -->
 <rect x="10" y="410" width="130" height="38" rx="5" fill="#0d2040" stroke="#4dabf7" stroke-width="1.5"/>
-<text x="75" y="426" fill="#4dabf7" font-size="12" font-weight="bold" text-anchor="middle" font-family="Courier New">LM2596</text>
+<text x="75" y="426" fill="#4dabf7" font-size="12" font-weight="bold" text-anchor="middle" font-family="Courier New">LM2596 #2</text>
 <text x="75" y="441" fill="#6e7681" font-size="10" text-anchor="middle" font-family="Courier New">12V → 6V</text>
 <circle cx="140" cy="425" r="4" fill="#4dabf7"/>
 
@@ -711,8 +715,13 @@ svg { display:block; }
 
 <!-- ═══════════════════════════════════════════════════ LM2596 -->
 <div id="lm2596" class="panel">
-<h2>LM2596 DC-DC — Convertisseur 12V → 6V</h2>
-<p class="sub">Abaisseur de tension pour alimentation des bobines EV bistables Bürkert · Régler le potentiomètre à 6.0V avant branchement EV</p>
+<h2>LM2596 DC-DC — 2 convertisseurs 12V → 5V (ESP32) et 12V → 6V (EV)</h2>
+<p class="sub">LM2596 #1 : 12V→5V alimentation ESP32 · LM2596 #2 : 12V→6V bobines EV Bürkert · Régler chaque potentiomètre avant branchement</p>
+<table style="margin-bottom:20px;max-width:700px">
+<tr><th>Réf</th><th>Entrée</th><th>Sortie</th><th>Charge</th><th>Réglage</th><th>Filtrage sortie</th></tr>
+<tr><td class="cg"><strong>LM2596 #1</strong></td><td class="co">12V batterie</td><td class="cg">5V → borne 5V shield</td><td>ESP32 DevKit (~250mA)</td><td>Mesurer OUT+/OUT− → 5,0V</td><td><strong style="color:#ffd43b">100µF/16V + 100nF</strong> en parallèle sur OUT+/OUT−</td></tr>
+<tr><td class="cb"><strong>LM2596 #2</strong></td><td class="co">12V batterie</td><td class="cb">6V → MOSFET DC+</td><td>Bobines EV (~830mA pic)</td><td>Mesurer OUT+/OUT− → 6,0V</td><td>F2 2A ATO sur le fil OUT+</td></tr>
+</table>
 <svg viewBox="0 0 860 320" style="width:100%;max-width:860px" xmlns="http://www.w3.org/2000/svg">
 <defs>
   <marker id="lo" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ff9f43"/></marker>
