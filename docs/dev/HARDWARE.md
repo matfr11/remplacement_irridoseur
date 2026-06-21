@@ -6,57 +6,65 @@
 
 ---
 
-## Carte : eletechsup ES30G29 + module 4 MOSFET externe
+## Carte : ESP-32D DevKit + shield breakout Heemol 38 pins + module 4 MOSFET externe
 
-ESP32-WROOM sur shield eletechsup ES30G29 (borniers à vis) avec module 4 MOSFET externe
-pour la commande des électrovannes bistables.
+ESP32-WROOM-32D sur shield breakout Heemol (borniers à vis des deux côtés, passif)
+avec module 4 MOSFET externe pour la commande des électrovannes bistables.
+
+**Alimentation** : pas de régulateur 12V sur le shield — deux LM2596 externes :
+- **LM2596 #1** : 12V → **5V** → borne 5V du shield → AMS1117 onboard DevKit → 3,3V ESP32
+- **LM2596 #2** : 12V → **6V** → MOSFET DC+ → bobines EV (via [F2])
+- Condensateurs de découplage sur sortie LM2596 #1 : **100µF/16V + 100nF céramique** en parallèle (soudés sur OUT+/OUT−)
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│         eletechsup ES30G29 (ESP32-WROOM)            │
+│    ESP-32D DevKit + shield breakout Heemol 38p      │
 │                                                     │
-│  [USB]    ←── programmation + alimentation          │
-│  [12V IN] ←── alimentation terrain (batterie 12V)  │
+│  [USB-C]  ←── programmation                        │
+│  [5V]     ←── LM2596 #1 (12V→5V) + filtre 100µF   │
 │                                                     │
 │  GPIO 18  ──► Module MOSFET → EV_CANON  OUVRIR     │
 │  GPIO 19  ──► Module MOSFET → EV_POUMON OUVRIR     │
-│  GPIO 14  ──► Module MOSFET → EV_CANON  FERMER     │
-│  GPIO  4  ──► Module MOSFET → EV_POUMON FERMER     │
+│  GPIO 26  ──► Module MOSFET → EV_CANON  FERMER     │
+│  GPIO 27  ──► Module MOSFET → EV_POUMON FERMER     │
 │                                                     │
 │  GPIO 21  ──► I2C SDA (INA3221)                    │
 │  GPIO 22  ──► I2C SCL (INA3221)                    │
-│  GPIO 23  ──► TPL5010 DONE (watchdog HW)            │
+│  GPIO 23  ──► TPL5010 DONE (watchdog HW)           │
 │  GPIO  2  ──► LED intégrée DevKit (heartbeat 1Hz)  │
 │  GPIO 25 ←── Pressostat (NC, pull-up 10kΩ)         │
 │  GPIO 32 ←── Sécurité spires (NC, pull-up 10kΩ)    │
 │  GPIO 33 ←── Contact poumon plein (NC, pull-up 10kΩ)│
 │  GPIO 34 ←── Capteur vitesse (diviseur 10k/5.6k)   │
 │  GPIO 35 ←── Fin de course (NC, pull-up 10kΩ)      │
+│                                                     │
+│  GPIO 12/13/14/15 → JTAG disponible (libéré v2.3)  │
 └─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Bornier 12 voies — tableau complet
+## Bornier 20 voies — tableau complet
 
-Layout retenu (2026-06-11) : **puissance à gauche (1-6), signaux à droite (7-12)**
+Layout retenu : **puissance à gauche (1-6), signaux à droite (7-12), réserve (13-20)**
 — les transitoires de commutation EV ne longent pas les entrées 3,3 V. Schéma
-détaillé : [SCHEMA_CABLAGE.md](SCHEMA_CABLAGE.md#bornier-12-voies--affectation).
+détaillé : [SCHEMA_CABLAGE.md](SCHEMA_CABLAGE.md#bornier-20-voies--affectation).
 
 | # | Signal | Direction | Câble | Conditionnement |
 |---|---|---|---|---|
-| 1 | 12V+ batterie | IN | Rouge | → VIN carte, repiquage alim capteur vitesse → borne 7 |
+| 1 | 12V+ batterie | IN | Rouge | → LM2596 #1 et #2, INA3221 VIN3+, repiquage borne 7. **F1 3A ATO** sur ce fil |
 | 2 | GND batterie | — | Noir | Masse commune + retour commun des 4 contacts |
-| 3 | EV_CANON OUVRIR | OUT | — | ← LM2596 6V via module MOSFET (GPIO 18) |
-| 4 | EV_CANON FERMER | OUT | — | ← LM2596 6V via module MOSFET (GPIO 14) |
-| 5 | EV_POUMON OUVRIR | OUT | — | ← LM2596 6V via module MOSFET (GPIO 19) |
-| 6 | EV_POUMON FERMER | OUT | — | ← LM2596 6V via module MOSFET (GPIO  4) |
+| 3 | EV_CANON OUVRIR | OUT | — | ← LM2596 #2 6V via module MOSFET (GPIO 18) · diode D1 |
+| 4 | EV_CANON FERMER | OUT | — | ← LM2596 #2 6V via module MOSFET (GPIO 26) · diode D2 |
+| 5 | EV_POUMON OUVRIR | OUT | — | ← LM2596 #2 6V via module MOSFET (GPIO 19) · diode D3 |
+| 6 | EV_POUMON FERMER | OUT | — | ← LM2596 #2 6V via module MOSFET (GPIO 27) · diode D4 |
 | 7 | Capteur vitesse alim | OUT | — | 12V repiqué de la borne 1 |
 | 8 | Capteur vitesse signal | IN | — | Diviseur 10 kΩ/5,6 kΩ → GPIO 34 |
 | 9 | Fin de course | IN | — | Pull-up 10 kΩ vers 3,3V → GPIO 35 |
 | 10 | Sécurité spires | IN | — | Pull-up 10 kΩ vers 3,3V → GPIO 32 |
 | 11 | Contact poumon plein | IN | — | Pull-up 10 kΩ vers 3,3V → GPIO 33 |
 | 12 | Pressostat | IN | — | Pull-up 10 kΩ vers 3,3V → GPIO 25 |
+| 13–20 | Réserve | — | — | Libres pour extensions futures |
 
 > Le 2ᵉ fil de chaque contact NC est chaîné en un **retour commun** côté machine,
 > raccordé sur la borne 2 (courants ≈ 0,3 mA/contact — aucune chute sensible).
@@ -92,9 +100,9 @@ la back-EMF peut atteindre plusieurs dizaines de volts et détruire les transist
 | Diode | Cathode (barre) | Anode | Protège |
 |---|---|---|---|
 | D1 | Borne 3 (EV_CANON OUV) | Borne 2 (GND) | MOSFET IN1 (GPIO 18) |
-| D2 | Borne 4 (EV_CANON FERM) | Borne 2 (GND) | MOSFET IN3 (GPIO 14) |
+| D2 | Borne 4 (EV_CANON FERM) | Borne 2 (GND) | MOSFET IN3 (GPIO 26) |
 | D3 | Borne 5 (EV_POUMON OUV) | Borne 2 (GND) | MOSFET IN2 (GPIO 19) |
-| D4 | Borne 6 (EV_POUMON FERM) | Borne 2 (GND) | MOSFET IN4 (GPIO 4) |
+| D4 | Borne 6 (EV_POUMON FERM) | Borne 2 (GND) | MOSFET IN4 (GPIO 27) |
 
 **Composant** : 1N4007 (1A/1000V, disponible, robuste) ou 1N5819 (Schottky 1A/40V,
 temps de récupération plus rapide — préférable si disponible).

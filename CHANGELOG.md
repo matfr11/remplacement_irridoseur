@@ -5,6 +5,22 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [v2.3.0] — 2026-06-21
+
+### Changed
+
+- **Migration carte** (`main/gpio_config.h`, `main/version.h`, docs) : remplacement de
+  l'eletechsup ES30G29 par **ESP-32D DevKit + shield breakout Heemol 38 pins**.
+  - Alimentation : 2× LM2596 (12V→5V ESP32 + 12V→6V EV) — condensateurs découplage
+    100µF/100nF sur LM2596 #1 pour filtrage ripple switching avant AMS1117 DevKit
+  - GPIO **EV_CANON FERMER** : 14 → **26** (libère JTAG TMS)
+  - GPIO **EV_POUMON FERMER** : 4 → **27** (libère strapping pin boot)
+  - JTAG complet désormais disponible : GPIO 12/13/14/15
+  - Bornier DIN **12 voies → 20 voies** (8 bornes de réserve)
+  - `HARDWARE.md`, `SCHEMA_CABLAGE.md` mis à jour (synoptique, bornier, chaîne EV, ordre montage)
+
+---
+
 ## [v2.2.0] — 2026-06-21
 
 ### Added

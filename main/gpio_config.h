@@ -3,11 +3,12 @@
 // =============================================================================
 // gpio_config.h — Affectation GPIO Irrifrance ESP32
 //
-// Carte : eletechsup ES30G29 (ESP32-WROOM + borniers à vis) + module 4 MOSFET externe
+// Carte : ESP-32D DevKit + shield breakout Heemol 38 pins + module 4 MOSFET externe
+//         Alimentation : LM2596 #1 12V→5V (ESP32 via pin 5V) + LM2596 #2 12V→6V (EV)
 //
 // Choix des GPIO optimisés :
-//   - EV sur GPIO 18/19/14/4 → UART2 (16/17) libéré pour LoRa/GSM V3
-//   - TPL5010 DONE sur GPIO 23 → évite JTAG TCK (GPIO 13)
+//   - EV sur GPIO 18/19/26/27 → UART2 (16/17) libéré pour LoRa/GSM V3
+//   - TPL5010 DONE sur GPIO 23 → JTAG complet libéré (12/13/14/15)
 //   - ADC1 uniquement pour les capteurs analogiques (compatible WiFi)
 //   - UART2 (16/17) réservé télémétrie V3
 //   - ADC1 CH0 (36) et CH3 (39) réservés capteur pression V3
@@ -20,9 +21,9 @@
 // -----------------------------------------------------------------------------
 
 #define PIN_EV_CANON_OUVRIR     18      // MOSFET module externe — impulsion OUVRIR canon
-#define PIN_EV_CANON_FERMER     14      // MOSFET module externe — impulsion FERMER canon
+#define PIN_EV_CANON_FERMER     26      // MOSFET module externe — impulsion FERMER canon (ex-14, libère JTAG TMS)
 #define PIN_EV_POUMON_OUVRIR    19      // MOSFET module externe — impulsion OUVRIR poumon
-#define PIN_EV_POUMON_FERMER     4      // MOSFET module externe — impulsion FERMER poumon
+#define PIN_EV_POUMON_FERMER    27      // MOSFET module externe — impulsion FERMER poumon (ex-4, libère strapping)
 
 #define DUREE_IMPULSION_EV_MS      100
 #define DUREE_IMPULSION_EV_MS_MIN   20
@@ -109,8 +110,8 @@
 // GPIO 39 (ADC1 CH3)  → libre ✅
 // GPIO 16 (UART2 RX)  → LoRa/GSM RX V3 ✅
 // GPIO 17 (UART2 TX)  → LoRa/GSM TX V3 ✅
-// GPIO 26             → libre ✅
-// GPIO 27             → libre ✅
-// GPIO 13             → libre (JTAG TCK si debug) ✅
+// GPIO 12             → JTAG TDI ✅ (libéré depuis migration Heemol)
+// GPIO 13             → JTAG TCK ✅ (libéré depuis migration Heemol)
+// GPIO 14             → JTAG TMS ✅ (libéré depuis migration Heemol, ex-EV_CF)
+// GPIO 15             → JTAG TDO ✅ (libéré depuis migration Heemol)
 // GPIO 5  ⚠️ strapping pin (SDIO timing au boot) — vérifier compatibilité avant usage
-// GPIO 15 ⚠️ strapping pin (MTDO, désactive UART0 boot messages si LOW) — vérifier avant usage

@@ -19,14 +19,15 @@ points de test), voir [HARDWARE.md](HARDWARE.md).
  ┌────────────────────────────────────────────────────────────────────────────┐
  │                                                                            │
  │  ┌────────────────────────────┐         ┌─────────────────┐                │
- │  │  eletechsup ES30G29        │   I2C   │  INA3221 0x40   │                │
+ │  │  ESP-32D + shield Heemol   │   I2C   │  INA3221 0x40   │                │
  │  │                            ├─SDA 21──┤  CH3 Batterie   │                │
- │  │  12V IN ◄─[F1]─ borne 1/2 ├─SCL 22──┤                 │                │
- │  │                            │         └─────────────────┘                │
+ │  │  5V IN ◄─[LM2596 #1]─12V  ├─SCL 22──┤                 │                │
+ │  │  (borne 1 ──[F1]──►)       │         └─────────────────┘                │
+ │  │                            │                                            │
  │  │  GPIO 18 ──────────────────┐                                            │
  │  │  GPIO 19 ──────────────────┤──► Module MOSFET 4CH ──► bornes 3-6       │
- │  │  GPIO 14 ──────────────────┤    DC+ ◄─[F2]─ LM2596 6V                  │
- │  │  GPIO  4 ──────────────────┘    (bobines EV OUVRIR/FERMER)              │
+ │  │  GPIO 26 ──────────────────┤    DC+ ◄─[F2]─ LM2596 #2 6V               │
+ │  │  GPIO 27 ──────────────────┘    (bobines EV OUVRIR/FERMER)              │
  │  │  GPIO23 ─► TPL5010 DONE    ├─────────┐                                 │
  │  │  EN     ◄─ TPL5010 RESET   │  ┌──────┴──────────┐                      │
  │  │  GPIO 2 ─► LED heartbeat   │  │ TPL5010 watchdog│                      │
@@ -50,18 +51,18 @@ points de test), voir [HARDWARE.md](HARDWARE.md).
 
 ## Bornier 12 voies — affectation
 
-Principe : **puissance à gauche (1-6), signaux à droite (7-12)** — les transitoires
-de commutation des EV (≈ 800 mA sur 100 ms) ne longent pas les entrées 3,3 V haute
+Principe : **puissance à gauche (1-6), signaux à droite (7-12), réserve (13-20)** — les transitoires
+de commutation des EV (≈ 830 mA sur 100 ms) ne longent pas les entrées 3,3 V haute
 impédance.
 
 | Borne | Signal | Câblage côté boîtier | Câblage côté terrain |
 |---|---|---|---|
-| 1 | 12V+ batterie | → VIN ES30G29, → VIN LM2596 (après F1), repiquage → borne 7 | Câble rouge batterie · **F1 3A ATO** sur ce fil |
-| 2 | GND batterie | → GND carte, GND LM2596, retour EV et contacts | Câble noir batterie + fil retour commun |
+| 1 | 12V+ batterie | → LM2596 #1 (5V ESP32), → LM2596 #2 (6V EV), → INA3221 VIN3+, repiquage → borne 7 | Câble rouge batterie · **F1 3A ATO** sur ce fil |
+| 2 | GND batterie | → GND shield, GND LM2596 #1 et #2, retour EV et contacts | Câble noir batterie + fil retour commun |
 | 3 | EV_CANON OUVRIR | ← 6V via Module MOSFET OUT1 (GPIO 18) | Fil bobine ouverture EV canon · diode D1 sur borne |
-| 4 | EV_CANON FERMER | ← 6V via Module MOSFET OUT3 (GPIO 14) | Fil bobine fermeture EV canon · diode D3 sur borne |
-| 5 | EV_POUMON OUVRIR | ← 6V via Module MOSFET OUT2 (GPIO 19) | Fil bobine ouverture EV poumon · diode D2 sur borne |
-| 6 | EV_POUMON FERMER | ← 6V via Module MOSFET OUT4 (GPIO 4) | Fil bobine fermeture EV poumon · diode D4 sur borne |
+| 4 | EV_CANON FERMER | ← 6V via Module MOSFET OUT3 (GPIO 26) | Fil bobine fermeture EV canon · diode D2 sur borne |
+| 5 | EV_POUMON OUVRIR | ← 6V via Module MOSFET OUT2 (GPIO 19) | Fil bobine ouverture EV poumon · diode D3 sur borne |
+| 6 | EV_POUMON FERMER | ← 6V via Module MOSFET OUT4 (GPIO 27) | Fil bobine fermeture EV poumon · diode D4 sur borne |
 | 7 | Capteur vitesse alim | ← repiquage 12V borne 1 | Fil alimentation capteur |
 | 8 | Capteur vitesse signal | → diviseur 10k/5,6k → GPIO 34 | Fil signal capteur (2V/8V) |
 | 9 | Fin de course | → pull-up 10k → GPIO 35 | 1 fil du contact NC |
@@ -179,12 +180,13 @@ pour alimenter les 4 sorties MOSFET (courant de crête ≈ 830 mA × 100 ms par
 impulsion).
 
 ```
- Batterie 12V ──[F1 3A]──► borne 1 ──► LM2596 ──[F2 2A]──► DC+ Module MOSFET (6V)
+ Batterie 12V ──[F1 3A]──► borne 1 ──► LM2596 #2 ──[F2 2A]──► DC+ Module MOSFET (6V)
+                                    └──► LM2596 #1 ──► 5V shield ESP32 (+ filtre 100µF/100nF)
 
  MOSFET OUT1 (GPIO 18) ──► borne 3 ──► bobine OUVRIR  EV_CANON
- MOSFET OUT3 (GPIO 14) ──► borne 4 ──► bobine FERMER  EV_CANON
+ MOSFET OUT3 (GPIO 26) ──► borne 4 ──► bobine FERMER  EV_CANON
  MOSFET OUT2 (GPIO 19) ──► borne 5 ──► bobine OUVRIR  EV_POUMON
- MOSFET OUT4 (GPIO  4) ──► borne 6 ──► bobine FERMER  EV_POUMON
+ MOSFET OUT4 (GPIO 27) ──► borne 6 ──► bobine FERMER  EV_POUMON
 
  Retour commun bobines ──► borne 2 (GND)
  Diodes D1..D4 (1N4007) : cathode sur bornes 3-6, anode sur borne 2
@@ -253,8 +255,10 @@ RC fail-safe (désactivé par défaut, Config → Machine).
 2. **Réglages avant câblage** : ajuster le LM2596 à 6 V (multimètre, potentiomètre) ;
    vérifier A0 de l'INA à GND.
 3. **Fusibles** : installer les porte-fusibles ATO inline — F1 3A sur le câble 12V+
-   (entre batterie et borne 1), F2 2A sur le fil 6V (entre LM2596 OUT+ et MOSFET DC+).
-4. **Puissance** : bornes 1-2 → ES30G29 et LM2596 ; fil 6V LM2596 → MOSFET DC+ (via F2) ;
+   (entre batterie et borne 1), F2 2A sur le fil 6V (entre LM2596 #2 OUT+ et MOSFET DC+).
+4. **Puissance** : bornes 1-2 → LM2596 #1 (12V→5V) et LM2596 #2 (12V→6V) ;
+   souder condensateurs 100µF + 100nF sur OUT+ /OUT− du LM2596 #1 avant de raccorder le shield ;
+   fil 5V LM2596 #1 → borne 5V shield ; fil 6V LM2596 #2 → MOSFET DC+ (via F2) ;
    chaînes EV (MOSFET OUT1-4 → bornes 3-6) ; souder diodes D1..D4 sur bornier.
    Vérifier le serrage, ce sont les seuls fils qui portent ≈ 830 mA.
 5. **Conditionnement signaux** : répartiteur 1→4 sur le 3,3 V, souder les 4
