@@ -502,7 +502,7 @@ function showTab(t) {
   activeTab = t;
   document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.id === 'tab-' + t));
   document.querySelectorAll('nav button').forEach(el => el.classList.toggle('active', el.id === 'nav-' + t));
-  if (t === 'config') loadConfigFromStatus();
+  if (t === 'config') { configDirty = false; loadConfigFromStatus(); }
 }
 
 // ============================================================
@@ -832,7 +832,7 @@ function saveProg() {
   progData[idx] = {nom, dose_mm, largeur_m, buse_mm, pression_bar, tempo_depart_on, tempo_depart_s, tempo_arrivee_on, tempo_arrivee_s};
   sendCmd({cmd:'save_programme', idx, nom, dose_mm, largeur_m, buse_mm, pression_bar,
            tempo_depart_on, tempo_depart_s, tempo_arrivee_on, tempo_arrivee_s});
-  configDirty = false;
+  showToast('Programme sauvegardé');
 }
 
 let _toastTimer = null;

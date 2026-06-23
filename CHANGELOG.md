@@ -5,6 +5,22 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [v2.3.1] — 2026-06-23
+
+### Fixed
+
+- **Sauvegarde programme hors VEILLE** (`main/state_machine.c`) : `recharger_config()`
+  opérationnel dans tous les états (DEROULE, EN_COURS…) — permet de sauvegarder et
+  d'appliquer un programme en cours d'arrosage sans repasser par VEILLE
+- **Formulaire programme** (`main/webui/index.html.in`) : les champs ne s'effacent plus
+  après clic sur Enregistrer — protection `configDirty` maintenue jusqu'au retour sur
+  l'onglet ; toast de confirmation immédiat
+- **Guard DEROULE→OUVERTURE_CANON** (`main/state_machine.c`) : le démarrage depuis
+  ETAT_DEROULE exige désormais `mesure_deroule_m > 0` (au moins une impulsion pastille
+  ou saisie manuelle de longueur) — empêche un départ accidentel sans déroulage mesuré
+
+---
+
 ## [v2.3.0] — 2026-06-21
 
 ### Changed

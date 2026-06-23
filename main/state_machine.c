@@ -685,7 +685,8 @@ static void handle_deroule(const entrees_t *e)
         gpio_reset_impulsions_cycle();
     }
     s_status.cfg_valide = config_programme_est_valide(&s_cfg_prog);
-    if (s_demarrage_autorise && e->pression_ok && !e->fin_course && s_status.cfg_valide) {
+    if (s_demarrage_autorise && e->pression_ok && !e->fin_course
+        && s_status.cfg_valide && s_mesure_deroule_m > 0.0f) {
         s_demarrage_autorise = false;
         s_reprise_pression = false;  // démarrage initial — séquence complète
         float total = s_profil ? s_profil->longueur_tuyau_m : 0.0f;
@@ -1131,10 +1132,6 @@ void state_machine_declencher_urgence(const char *raison)
 void state_machine_recharger_config(void)
 {
     xSemaphoreTakeRecursive(s_mutex, portMAX_DELAY);
-    if (s_etat != ETAT_VEILLE) {
-        xSemaphoreGiveRecursive(s_mutex);
-        return;
-    }
     charger_config_interne();
     xSemaphoreGiveRecursive(s_mutex);
 }

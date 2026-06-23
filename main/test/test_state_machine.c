@@ -127,14 +127,14 @@ void test_state_machine_run(void)
         ESP_LOGE(TAG, "FAIL reload config en VEILLE → état %d", etat);
     }
 
-    // T_reload_hors_veille : recharger_config ignoré hors VEILLE
+    // T_reload_hors_veille : recharger_config en EN_COURS ne change pas l'état
     state_machine_test_injecter_etat(ETAT_EN_COURS);
     state_machine_recharger_config();
     etat = state_machine_get_etat();
     if (etat == ETAT_EN_COURS) {
-        ESP_LOGI(TAG, "PASS reload config hors VEILLE → ignoré (EN_COURS inchangé)");
+        ESP_LOGI(TAG, "PASS reload config en EN_COURS → état inchangé");
     } else {
-        ESP_LOGE(TAG, "FAIL reload config hors VEILLE → état %d", etat);
+        ESP_LOGE(TAG, "FAIL reload config en EN_COURS → état %d", etat);
     }
     state_machine_cmd_reset();
     state_machine_test_injecter_etat(ETAT_VEILLE);
